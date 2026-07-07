@@ -1,0 +1,524 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+
+  /* Spacing scale — strict. Never invent values. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* V4 — Motion tokens. Slide-overs, drag inserts, group expand/collapse. */
+  --motion-duration-instant: 80ms;
+  --motion-duration-fast: 140ms;
+  --motion-duration-base: 200ms;
+  --motion-duration-slow: 320ms;
+  --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --motion-ease-emphasized: cubic-bezier(0.3, 0, 0, 1);
+  --motion-ease-decel: cubic-bezier(0, 0, 0.2, 1);
+
+  /* V4 — Section spacing scale for document-style editors (Notion-like). */
+  --doc-gutter-x: 96px;
+  --doc-gutter-x-md: 64px;
+  --doc-gutter-x-sm: 24px;
+  --doc-block-gap: 12px;
+  --doc-section-gap: 32px;
+  --doc-max-width: 720px;
+
+  /* V4 — Group container surface for schema builder & block groups. */
+  --color-group-surface: var(--surface-2);
+  --color-group-border: var(--border);
+  --color-group-header: var(--surface-3);
+
+
+  /* Grid system */
+  --container-max: 1440px;
+  --container-gutter: 24px;
+  --container-margin: 80px;
+
+  /* 4-level surface ladder — Canvas → Workspace → Section → Card → Interactive */
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-4: var(--surface-4);
+
+
+
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-panel: var(--panel);
+  --color-input-bg: var(--input-bg);
+  --color-card: var(--card);
+  --color-card-foreground: var(--foreground);
+  --color-popover: var(--elevated);
+  --color-popover-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--border);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--foreground);
+  --color-sidebar-primary: var(--primary);
+  --color-sidebar-primary-foreground: var(--primary-foreground);
+  --color-sidebar-accent: var(--muted);
+  --color-sidebar-accent-foreground: var(--foreground);
+  --color-sidebar-border: var(--border);
+  --color-sidebar-ring: var(--ring);
+  --color-topbar: var(--topbar);
+  --color-canvas: var(--canvas);
+  --color-inspector: var(--inspector);
+
+  --color-surface-canvas: var(--surface-canvas);
+  --color-surface-interactive: var(--surface-interactive);
+  --color-surface-focused: var(--surface-focused);
+
+
+  --color-row-hover: var(--row-hover);
+  --color-row-selected: var(--row-selected);
+  --color-elevated: var(--elevated);
+
+  --color-status-live: var(--status-live);
+  --color-status-draft: var(--status-draft);
+  --color-status-preview: var(--status-preview);
+  --color-status-archived: var(--status-archived);
+  --color-status-scheduled: var(--status-scheduled);
+  --color-status-error: var(--status-error);
+  --color-status-warning: var(--status-warning);
+  --color-status-success: var(--status-success);
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Light theme — calm editorial surface ladder.
+   Layered tones replace shadows. Parent surfaces are slightly tinted (S1),
+   paper-cards sit on top in pure white (S0). */
+:root {
+  --s0: #FFFFFF;   /* paper: cards, modals, popovers, topbar */
+  --s1: #FAFBFC;   /* page canvas: route content area */
+  --s2: #F4F5F7;   /* panels, inspectors, muted/secondary */
+  --s3: #ECEEF1;   /* section surfaces, group containers */
+  --s4: #E4E6EB;   /* interactive chips, soft buttons resting */
+
+  --background: var(--s1);
+  --surface:    var(--s2);
+  --panel:      var(--s2);
+  --card:       var(--s0);
+  --elevated:   var(--s0);
+  --elevated-modal: var(--s0);   /* solid paper for dialogs/modals (light) */
+  --sidebar:    var(--s0);
+  --topbar:     var(--s0);
+  --canvas:     var(--s1);
+  --inspector:  var(--s2);
+  --input-bg:   var(--s0);
+
+  /* Editor 3.0 — three-level surface system. */
+  --surface-canvas:      var(--s1);
+  --surface-interactive: var(--s0);
+  --surface-focused:     var(--s2);
+
+  /* 4-level surface ladder — depth via tone, not shadow */
+  --surface-1: var(--s1);   /* Canvas */
+  --surface-2: var(--s0);   /* Workspace panel (paper above canvas) */
+  --surface-3: var(--s2);   /* Section surface */
+  --surface-4: var(--s0);   /* Card / interactive (lifted above section) */
+
+  --foreground:           #0F172A;
+  --foreground-secondary: #475569;
+  --foreground-disabled:  #94A3B8;
+  --muted:                var(--s2);
+  --muted-foreground:     #64748B;
+  --accent:               var(--s2);
+  --accent-foreground:    #0F172A;
+
+  --secondary:            var(--s2);
+  --secondary-foreground: #0F172A;
+
+  /* Hairline border system — soft, neutral, no dark borders */
+  --border-hairline: #EEEFF2;
+  --border:          #E3E5EA;
+  --border-strong:   #CFD2D9;
+
+  --row-hover:    #F4F5F7;
+  --row-selected: color-mix(in srgb, #EF037F 7%, transparent);
+
+  --nav-active-bg: color-mix(in srgb, #EF037F 8%, transparent);
+  --nav-active-indicator: var(--primary);
+
+  --primary: #EF037F;
+  --primary-foreground: #FFFFFF;
+  --primary-hover: #FF1F8F;
+  --primary-pressed: #D6026F;
+  --ring: #EF037F;
+
+  --destructive: #B4243A;
+  --destructive-foreground: #FFFFFF;
+
+  --status-live: #16A34A;
+  --status-draft: #D97706;
+  --status-preview: #2563EB;
+  --status-archived: #6B7280;
+  --status-scheduled: #0891B2;
+  --status-error: #B4243A;
+  --status-warning: #D97706;
+  --status-success: #16A34A;
+
+  /* Block category accents (left rail color). Subtle in both themes. */
+  --accent-content: transparent;
+  --accent-media: #3B82F6;
+  --accent-layout: #8B5CF6;
+  --accent-interactive: #10B981;
+  --accent-action: #EF037F;
+  --accent-advanced: #F59E0B;
+
+  /* Shadows — restricted to floating layers only.
+     Cards/panels/inputs/tables use border + surface tone for depth. */
+  --shadow-1: none;
+  --shadow-2: 0 4px 14px -8px rgba(15, 23, 42, 0.12);
+  --shadow-3: 0 12px 32px -16px rgba(15, 23, 42, 0.16), 0 2px 6px -2px rgba(15, 23, 42, 0.06);
+  --shadow-card:      none;
+  --shadow-container: none;
+  --shadow-elevated:  var(--shadow-3);
+  --shadow-focus:     0 0 0 3px rgba(239, 3, 127, 0.18);
+
+  /* Motion */
+  --motion-fast:   120ms cubic-bezier(0.2, 0, 0, 1);
+  --motion-base:   150ms cubic-bezier(0.2, 0, 0, 1);
+  --motion-drawer: 180ms cubic-bezier(0.3, 0, 0, 1);
+  --motion-modal:  200ms cubic-bezier(0.3, 0, 0, 1);
+  --motion-slow:   200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+
+
+/* Preview surface — always renders as a light "website" canvas, even when the
+   editor chrome is in dark mode. Mirrors the :root light tokens above so
+   text-foreground / text-muted-foreground / border-border / bg-surface /
+   bg-card / bg-muted all read correctly on white inside the preview frame. */
+.bcms-preview-surface {
+  --s0: #FFFFFF;
+  --s1: #FAFAFA;
+  --s2: #F5F5F7;
+  --s3: #EFEFF2;
+  --s4: #E8E8EC;
+
+  --background: var(--s0);
+  --surface: var(--s2);
+  --panel: var(--s2);
+  --card: var(--s0);
+  --elevated: var(--s0);
+  --input-bg: var(--s0);
+
+  --foreground: #111827;
+  --muted: var(--s2);
+  --muted-foreground: #6B7280;
+  --accent: var(--s2);
+  --accent-foreground: #111827;
+  --secondary: var(--s2);
+  --secondary-foreground: #111827;
+
+  --border: #E5E7EB;
+  --border-strong: #D1D5DB;
+
+  color: var(--foreground);
+}
+
+/* Dark — BetterCMS Maroon System.
+   Maroon is the neutral. Bright red is the action language.
+   No pure black. Every layer is a shade of maroon. */
+.dark {
+  --s0:  #100308;   /* Surface 0 — Application canvas (near-black maroon, disappears) */
+  --s1:  #1A0B12;   /* Surface 1 — Content container (lifted ~6%) */
+  --s2:  #211119;   /* Surface 2a — Inset / focused workspace */
+  --s3:  #281720;   /* Surface 2b — Dropdowns, popovers */
+  --s4:  #2F1C27;   /* Surface 2c — Modals, command palette */
+
+
+
+  /* Semantic aliases — canvas stays bright, containers sink */
+  --background: var(--s0);
+  --topbar:     var(--s0);
+  --canvas:     var(--s0);
+  --sidebar:    var(--s0);
+  --inspector:  var(--s1);
+  --surface:    var(--s1);
+  --panel:      var(--s1);
+  --input-bg:   var(--s1);
+  --card:       var(--s1);
+  --elevated:       var(--s3);
+  --elevated-modal: var(--s4);
+
+  /* Editor 3.0 */
+  --surface-canvas:      var(--s0);
+  --surface-interactive: var(--s1);
+  --surface-focused:     var(--s2);
+
+  /* 4-level surface ladder — canvas + container tier */
+  --surface-1: var(--s0);
+  --surface-2: var(--s1);
+  --surface-3: var(--s1);
+  --surface-4: var(--s1);
+
+
+  /* Typography — warm whites, never pure */
+  --foreground:           #F5EDEE;
+  --foreground-secondary: #C9B9BC;
+  --muted:                var(--s1);
+  --muted-foreground:     #968488;
+  --foreground-disabled:  #6B5A5E;
+  --accent:               var(--s1);
+  --accent-foreground:    var(--foreground);
+  --secondary:            var(--s1);
+  --secondary-foreground: var(--foreground);
+
+  /* Borders — hairline does the structural work now that backgrounds don't */
+  --border-hairline: rgba(255, 220, 220, 0.05);
+  --border:          rgba(255, 220, 220, 0.07);
+  --border-strong:   rgba(255, 220, 220, 0.12);
+
+  /* Rows: transparent default, barely-there warm lift on hover, red tint when selected */
+  --row-hover:    rgba(255, 220, 220, 0.035);
+  --row-selected: color-mix(in srgb, #DD4364 7%, transparent);
+
+  /* Sidebar nav: bright red indicator + subtle red wash */
+  --nav-active-bg:        color-mix(in srgb, #DD4364 10%, transparent);
+  --nav-active-indicator: var(--primary);
+
+
+  /* Brand — Bright Red. Reserved for CTA, Publish, active nav, focus, selection. */
+  --primary:            #DD4364;
+  --primary-foreground: #FFFFFF;
+  --primary-hover:      #E85877;
+  --primary-pressed:    #C13354;
+  --ring:               #DD4364;
+
+  /* Status — muted, warmed slightly to sit on maroon */
+  --status-live:      #5FD18A;
+  --status-draft:     #F0B45A;
+  --status-preview:   #6FA8E8;
+  --status-archived:  #968488;
+  --status-scheduled: #4FC9D6;
+  --status-error:     #E5556B;
+  --status-warning:   #F0B45A;
+  --status-success:   #5FD18A;
+
+  --destructive:            #D43A3A;
+  --destructive-foreground: #FFFFFF;
+
+  /* Block category accents */
+  --accent-content: transparent;
+  --accent-media: #6FA8E8;
+  --accent-layout: #B097F0;
+  --accent-interactive: #4FCFA3;
+  --accent-action: #DD4364;
+  --accent-advanced: #F0B45A;
+
+  /* Shadows — only floating layers get a real shadow. Soft and warm. */
+  --shadow-1: none;
+  --shadow-2: 0 4px 12px -4px rgba(0, 0, 0, 0.35);
+  --shadow-3: 0 24px 64px -24px rgba(0, 0, 0, 0.55), 0 4px 16px -8px rgba(0, 0, 0, 0.35);
+  --shadow-card:      none;
+  --shadow-container: none;
+  --shadow-elevated:  var(--shadow-3);
+  --shadow-focus:     0 0 0 1px var(--primary);
+
+  /* Motion */
+  --motion-fast:   120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-base:   150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-drawer: 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-modal:  200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-slow:   200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+
+
+/* Utility class for uppercase labels */
+.u-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  code,
+  kbd,
+  pre,
+  samp,
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Tailwind v4 dropped Preflight's `button { cursor: pointer }`, so every
+     button-based control (this app builds nearly all clickables as <button>)
+     fell back to the arrow cursor. Restore the pointer cursor for interactive
+     elements, and show not-allowed on disabled ones. */
+  button:not(:disabled),
+  a[href],
+  label[for],
+  summary,
+  select:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="link"],
+  [role="tab"],
+  [role="menuitem"]:not([aria-disabled="true"]),
+  [role="menuitemcheckbox"],
+  [role="menuitemradio"],
+  [role="option"],
+  [role="checkbox"],
+  [role="radio"],
+  [role="switch"] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [disabled],
+  [aria-disabled="true"],
+  [data-disabled] {
+    cursor: not-allowed;
+  }
+}
+
+/* Themed scrollbars */
+:root {
+  color-scheme: light;
+  scrollbar-color: var(--border-strong) transparent;
+  scrollbar-width: thin;
+}
+.dark {
+  color-scheme: dark;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--border-strong);
+  border-radius: 8px;
+  border: 2px solid var(--background);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted-foreground);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Sidebar / panel surfaces: tint the thumb border to the surface */
+.bg-sidebar ::-webkit-scrollbar-thumb,
+aside ::-webkit-scrollbar-thumb {
+  border-color: var(--sidebar);
+}
+.bg-panel ::-webkit-scrollbar-thumb,
+.bg-surface ::-webkit-scrollbar-thumb {
+  border-color: var(--panel);
+}
+
+
+/* TipTap / preview rich text styles */
+.bcms-prose {
+  color: var(--color-foreground);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.bcms-prose:focus { outline: none; }
+.bcms-prose h1 { font-size: 1.875rem; font-weight: 600; letter-spacing: -0.02em; margin: 0.75em 0 0.4em; }
+.bcms-prose h2 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; margin: 0.75em 0 0.4em; }
+.bcms-prose h3 { font-size: 1.2rem; font-weight: 600; margin: 0.75em 0 0.4em; }
+.bcms-prose p { margin: 0.4em 0; }
+.bcms-prose strong { font-weight: 600; }
+.bcms-prose em { font-style: italic; }
+.bcms-prose u { text-decoration: underline; }
+.bcms-prose s { text-decoration: line-through; }
+.bcms-prose code { font-family: var(--font-mono); font-size: 0.9em; background: var(--color-muted); padding: 0 4px; border-radius: 3px; }
+.bcms-prose pre { background: var(--color-muted); padding: 12px; border-radius: 6px; overflow-x: auto; }
+.bcms-prose pre code { background: transparent; padding: 0; }
+.bcms-prose ul { list-style: disc; padding-left: 1.4em; margin: 0.4em 0; }
+.bcms-prose ol { list-style: decimal; padding-left: 1.4em; margin: 0.4em 0; }
+.bcms-prose blockquote { border-left: 3px solid var(--color-border); padding-left: 12px; color: var(--color-muted-foreground); margin: 0.6em 0; }
+.bcms-prose a { color: var(--color-primary); text-decoration: underline; }
+.bcms-prose img { max-width: 100%; border-radius: 6px; margin: 0.6em 0; }
+.bcms-prose hr { border: 0; border-top: 1px solid var(--color-border); margin: 1em 0; }
+.bcms-prose p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--color-muted-foreground);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+/* V4 block editor — empty placeholder for contenteditable blocks. */
+.block-editable:empty::before {
+  content: attr(data-placeholder);
+  color: var(--color-muted-foreground);
+  opacity: 0.55;
+  pointer-events: none;
+}
+.block-editable:focus { outline: none; }

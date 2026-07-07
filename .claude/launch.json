@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "bettercms",
+      "runtimeExecutable": "/Users/himanshusahu/.nvm/versions/node/v24.14.0/bin/bun",
+      "runtimeArgs": ["run", "dev"],
+      "port": 8080,
+      "autoPort": true
+    }
+  ]
+}

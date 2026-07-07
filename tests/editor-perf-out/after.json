@@ -1,0 +1,26 @@
+{
+  "label": "after",
+  "results": [
+    {
+      "name": "type-30-chars",
+      "wallMs": 1298.0,
+      "longtaskCount": 1,
+      "longtaskTotalMs": 50,
+      "blockedMs": 0
+    },
+    {
+      "name": "toggle-section-10x",
+      "wallMs": 1145.3,
+      "longtaskCount": 0,
+      "longtaskTotalMs": 0,
+      "blockedMs": 0
+    },
+    {
+      "name": "select-5-sections",
+      "wallMs": 537.4,
+      "longtaskCount": 0,
+      "longtaskTotalMs": 0,
+      "blockedMs": 0
+    }
+  ]
+}
