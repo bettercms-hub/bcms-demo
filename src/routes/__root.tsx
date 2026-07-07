@@ -81,6 +81,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      // Private demo: keep this out of every search index and crawler.
+      { name: "robots", content: "noindex, nofollow, noarchive, nosnippet, noimageindex" },
+      { name: "googlebot", content: "noindex, nofollow, noarchive, nosnippet, noimageindex" },
       { title: "BetterCMS" },
       { name: "description", content: "Structured content, visual editing, and reusable components in one workspace." },
       { property: "og:title", content: "BetterCMS" },

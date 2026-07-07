@@ -37,18 +37,37 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   });
 }
 
+// Private demo: block every crawler/indexer at the HTTP layer. This is the
+// authoritative signal (honored even when a bot ignores robots.txt or the
+// meta tag), applied to every response the server produces.
+const NO_INDEX = "noindex, nofollow, noarchive, nosnippet, noimageindex";
+
+function withNoIndex(response: Response): Response {
+  try {
+    response.headers.set("X-Robots-Tag", NO_INDEX);
+  } catch {
+    // Headers immutable (rare): rebuild with the header added.
+    const headers = new Headers(response.headers);
+    headers.set("X-Robots-Tag", NO_INDEX);
+    return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+  }
+  return response;
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return withNoIndex(await normalizeCatastrophicSsrResponse(response));
     } catch (error) {
       console.error(error);
-      return new Response(renderErrorPage(), {
-        status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      return withNoIndex(
+        new Response(renderErrorPage(), {
+          status: 500,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+      );
     }
   },
 };

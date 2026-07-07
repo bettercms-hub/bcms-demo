@@ -1,0 +1,3 @@
+# Private demo — do not crawl or index any part of this site.
+User-agent: *
+Disallow: /
