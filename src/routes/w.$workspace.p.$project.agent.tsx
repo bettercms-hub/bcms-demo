@@ -8,10 +8,12 @@
  */
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, ChevronRight, Sparkles } from "lucide-react";
+import { ArrowLeft, ChevronRight, ScanSearch, Sparkles, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getProjectBySlug } from "@/lib/cms/use-cms";
-import { canEditContent, canSeeDeveloper, useEffectiveRole } from "@/lib/workspace/my-role";
+import { canCompose, canEditContent, canSeeDeveloper, useEffectiveRole } from "@/lib/workspace/my-role";
+import { SeoPagesDialog } from "@/components/cms/generate/SeoPagesDialog";
+import { AbmPageDialog } from "@/components/cms/generate/AbmPageDialog";
 import { AGENT_SKILLS } from "@/lib/agent/skills";
 import { agentRunActions, useAgentRuns } from "@/lib/agent/runs-store";
 import { aiAction, tierAllowed } from "@/lib/billing/pricing";
@@ -38,6 +40,7 @@ function AgentPage() {
   const runs = useAgentRuns(pr?.id ?? "");
   const [activeRunId, setActiveRunId] = useState<string | null>(handoffRunId ?? null);
   const [seed, setSeed] = useState<{ text: string; n: number } | null>(null);
+  const [generator, setGenerator] = useState<"seo" | "abm" | null>(null);
 
   const active = runs.find((r) => r.id === activeRunId) ?? null;
 
@@ -147,6 +150,45 @@ function AgentPage() {
             })}
           </div>
         </div>
+
+        {/* generators: structured jobs with their own wizards */}
+        {canCompose(effective) && (
+          <div className="mt-6">
+            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Generators</p>
+            <div className="overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-[color:var(--card)]">
+              {(
+                [
+                  { id: "seo" as const, icon: ScanSearch, label: "SEO pages from keywords", blurb: "Paste a list or a CSV, get one draft page per keyword", hint: "Basic and above" },
+                  { id: "abm" as const, icon: Users, label: "ABM page for an account", blurb: "One page personalized for one target account", hint: "Pro and above" },
+                ]
+              ).map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => setGenerator(g.id)}
+                  className="flex w-full items-center gap-3 border-b border-[color:var(--border-hairline)] px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[color:var(--color-row-hover)]"
+                >
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:color-mix(in_oklab,var(--primary)_8%,transparent)] text-primary">
+                    <g.icon className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[13px] font-medium text-foreground">{g.label}</span>
+                    <span className="block truncate text-[11.5px] text-muted-foreground">{g.blurb}</span>
+                  </span>
+                  <span className="shrink-0 text-[11px] text-muted-foreground/80">{g.hint}</span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {generator === "seo" && (
+          <SeoPagesDialog projectId={pr.id} workspace={workspace} project={project} sitePlan={pr.sitePlan ?? "free"} onClose={() => setGenerator(null)} />
+        )}
+        {generator === "abm" && (
+          <AbmPageDialog projectId={pr.id} workspace={workspace} project={project} sitePlan={pr.sitePlan ?? "free"} onClose={() => setGenerator(null)} />
+        )}
 
         {/* named agents: several can work at once */}
         <AgentRoster

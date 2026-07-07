@@ -28,6 +28,10 @@ export interface PageDoc {
   indexing?: "index" | "noindex";
   /** Pushed to the private staging environment. */
   staged?: boolean;
+  /** Set when a generator created this page; groups a batch for review. */
+  batchId?: string;
+  /** The keyword or account the page was generated for. */
+  generatedFor?: string;
 }
 
 /* --------------------------------------------------------------- store */

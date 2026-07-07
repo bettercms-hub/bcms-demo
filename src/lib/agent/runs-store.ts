@@ -11,9 +11,11 @@
  */
 import { useSyncExternalStore } from "react";
 import { getCMSState, recordAgentAudit } from "@/lib/cms/store";
-import { tierAllowed, type AiTier } from "@/lib/billing/pricing";
-import { getPages } from "@/lib/cms/pages-store";
+import { aiAction, tierAllowed, type AiTier } from "@/lib/billing/pricing";
+import { getPages, pagesActions } from "@/lib/cms/pages-store";
+import { hasBrandVoice } from "@/lib/brand/brand-store";
 import { canEditContent, effectiveRoleFor } from "@/lib/workspace/my-role";
+import { buildAbmPage, buildSeoPages, type AbmGenerateConfig, type SeoGenerateConfig } from "./generate";
 import { READ_ONLY_SKILLS, agentSkill, skillFromPrompt, type AgentSkill } from "./skills";
 import {
   applyProposals,
@@ -176,6 +178,93 @@ export const agentRunActions = {
       finishSteps(id);
       const plan = buildPlan({ projectId, skill, prompt, tier, context });
       patchRun(id, (r) => ({ ...r, plan, status: "awaiting_approval" }));
+    });
+    return id;
+  },
+
+  /**
+   * Generator runs: the wizard already collected and confirmed the config,
+   * so there is no plan-approval step. Pages land as drafts with an undo
+   * journal; the run shows up in history and the audit trail like any other.
+   */
+  startGenerator(input: { projectId: string; kind: "seo"; config: SeoGenerateConfig } | { projectId: string; kind: "abm"; config: AbmGenerateConfig }): string {
+    const { projectId, kind } = input;
+    if (!roleCanAct(projectId)) return "";
+    const plan = getCMSState().projects.find((p) => p.id === projectId)?.sitePlan ?? "free";
+    const actionId = kind === "seo" ? "seo-page" : "abm-page";
+    if (!tierAllowed(plan, "balanced", actionId)) return "";
+
+    const perPage = aiAction(actionId)?.costs.balanced ?? 0;
+    const count = kind === "seo" ? input.config.rows.length : 1;
+    const credits = perPage * count;
+    const id = newRunId();
+    const title =
+      kind === "seo"
+        ? `SEO pages: ${count} from keywords`
+        : `ABM page: ${input.config.account.trim() || "target account"}`;
+    const voiceLine = hasBrandVoice(projectId) ? "Follows the brand voice" : "Uses a neutral, factual voice";
+
+    const run: AgentRun = {
+      id,
+      projectId,
+      skillId: kind === "seo" ? "generate-seo" : "generate-abm",
+      title,
+      prompt: kind === "seo" ? `Generate ${count} SEO pages from keywords` : `Generate a page for ${input.config.account}`,
+      tier: "balanced",
+      context: [],
+      status: "applying",
+      steps: [],
+      proposals: [],
+      findings: [],
+      plan: {
+        goal: title,
+        items:
+          kind === "seo"
+            ? [`One draft page per keyword, ${count} total`, "URL, title and meta description from your patterns", "Composed from your section catalog"]
+            : ["One draft page personalized for the account", "Composed from your section catalog", "Set to noindex, the page is for the account, not for search"],
+        boundaries: ["Creates drafts only, nothing publishes", voiceLine, "One click undo while drafts are untouched"],
+        estimate: { min: credits, max: credits },
+      },
+      creditsSpent: 0,
+      appliedCount: 0,
+      createdAt: Date.now(),
+    };
+    byProject.set(projectId, [run, ...(byProject.get(projectId) ?? [])]);
+    emit();
+
+    schedule(id, 300, () => pushStep(id, "Reading the brand kit and section catalog"));
+    schedule(id, 1300, () => pushStep(id, count === 1 ? "Writing the copy" : `Writing copy for ${count} pages`));
+    schedule(id, 2300, () => pushStep(id, "Composing sections and metadata"));
+    schedule(id, 3100, () => {
+      finishSteps(id);
+      // Build at write time so path uniqueness is checked against live state.
+      const pages = kind === "seo" ? buildSeoPages(projectId, input.config, id) : [buildAbmPage(projectId, input.config, id)];
+      for (const pg of pages) pagesActions.add(projectId, pg);
+      patchRun(id, (r) => ({
+        ...r,
+        proposals: pages.map((pg) => ({
+          id: `prop_${pg.id}`,
+          operation: "page.generate",
+          targetType: "page" as const,
+          targetId: pg.path,
+          targetLabel: pg.title,
+          after: pg.seoDescription ?? pg.title,
+          reason: kind === "seo" ? `Keyword: ${pg.generatedFor}` : `Personalized for ${pg.generatedFor}`,
+          risk: "low" as const,
+          status: "applied" as const,
+        })),
+        status: "done",
+        creditsSpent: credits,
+        appliedCount: pages.length,
+        undo: pages.map((pg) => ({ kind: "removePage" as const, path: pg.path, label: pg.title })),
+        finishedAt: Date.now(),
+      }));
+      recordAgentAudit(
+        projectId,
+        "agent.changes_applied",
+        `Generator created ${pages.length} draft ${pages.length === 1 ? "page" : "pages"} (${title})`,
+        id,
+      );
     });
     return id;
   },

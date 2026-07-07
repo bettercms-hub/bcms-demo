@@ -298,6 +298,8 @@ export const AI_ACTIONS: AiActionDef[] = [
   { id: "rewrite", label: "Rewrite or edit, about 800 words", costs: { lite: 5, balanced: 12, max: 25 } },
   { id: "section", label: "Section or block build", costs: { lite: 15, balanced: 30, max: 60 } },
   { id: "page", label: "Full page build", costs: { lite: 50, balanced: 90, max: 180 } },
+  { id: "seo-page", label: "SEO page generation, per page", costs: { balanced: 12 } },
+  { id: "abm-page", label: "ABM page build", costs: { balanced: 60 } },
   { id: "image", label: "Standard image (1024)", costs: { lite: 30 }, isImage: true },
   { id: "qa", label: "QA and safety agent pass", costs: { max: 120 } },
   { id: "aeo", label: "AEO agent run", costs: { max: 400 } },
@@ -308,7 +310,7 @@ export function aiAction(id: string): AiActionDef | undefined {
 }
 
 /** On Basic, Balanced is allowed only for selected tasks. */
-export const BASIC_BALANCED_ACTIONS = ["schema", "rewrite"];
+export const BASIC_BALANCED_ACTIONS = ["schema", "rewrite", "seo-page"];
 
 /** Which tiers a site plan can run, for a given action. The builder defaults to Balanced. */
 export function tierAllowed(plan: SitePlanId, tier: AiTier, actionId?: string): boolean {

@@ -19,10 +19,14 @@ import { PageShell, Section } from "@/components/cms/layout";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatRelative } from "@/lib/cms/format-time";
+import { GenerateMenu } from "@/components/cms/generate/GenerateMenu";
+import { GenerationBatchBar } from "@/components/cms/generate/GenerationBatchBar";
+import { agentRunActions } from "@/lib/agent/runs-store";
 
 export const Route = createFileRoute("/w/$workspace/p/$project/content")({
-  validateSearch: (s: Record<string, unknown>): { view?: "pages" | "content" } => ({
+  validateSearch: (s: Record<string, unknown>): { view?: "pages" | "content"; batch?: string } => ({
     view: s.view === "content" ? "content" : undefined,
+    batch: typeof s.batch === "string" && s.batch.length > 0 ? s.batch : undefined,
   }),
   component: ContentPage,
 });
@@ -37,10 +41,12 @@ const PAGE_TONE: Record<PageState, { label: string; dot: string; text: string }>
 
 function ContentPage() {
   const { workspace, project } = Route.useParams();
-  const { view } = Route.useSearch();
+  const { view, batch } = Route.useSearch();
   const pr = getProjectBySlug(workspace, project)!;
   const staging = `${pr.slug}.bettercms.site`;
-  const pages = usePages(pr.id);
+  const allPages = usePages(pr.id);
+  const batchRun = batch ? agentRunActions.get(batch) : undefined;
+  const pages = batchRun ? allPages.filter((p) => p.batchId === batchRun.id) : allPages;
   const cols = collections.filter((c) => c.projectId === pr.id);
   const { effective } = useEffectiveRole(workspace);
   const canBuild = canCompose(effective);
@@ -54,7 +60,7 @@ function ContentPage() {
   function duplicate(pg: PageDoc) {
     let path = `${pg.path}-copy`;
     let n = 1;
-    while (pages.some((p) => p.path === path)) path = `${pg.path}-copy-${++n}`;
+    while (allPages.some((p) => p.path === path)) path = `${pg.path}-copy-${++n}`;
     pagesActions.add(pr.id, {
       ...pg,
       id: newPageId(),
@@ -78,12 +84,15 @@ function ContentPage() {
       description={isContent ? "Structured collections that power your pages and API." : "Every page on your site. Open one to edit it visually."}
       actions={
         !isContent && canBuild ? (
-          <Button asChild size="sm">
-            <Link to="/w/$workspace/p/$project/visual" params={{ workspace, project }} search={{ new: true }}>
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              New page
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <GenerateMenu projectId={pr.id} workspace={workspace} project={project} sitePlan={pr.sitePlan ?? "free"} />
+            <Button asChild size="sm">
+              <Link to="/w/$workspace/p/$project/visual" params={{ workspace, project }} search={{ new: true }}>
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                New page
+              </Link>
+            </Button>
+          </div>
         ) : undefined
       }
     >
@@ -131,6 +140,16 @@ function ContentPage() {
           )}
         </Section>
       ) : (
+        <>
+        {batchRun && (
+          <GenerationBatchBar
+            projectId={pr.id}
+            run={batchRun}
+            pages={pages}
+            canPublish={showPublish}
+            onDismiss={() => navigate({ to: "/w/$workspace/p/$project/content", params: { workspace, project }, search: {} })}
+          />
+        )}
         <div className="overflow-hidden rounded-xl border border-[color:var(--border-hairline)] bg-card">
           <div className="grid grid-cols-[1fr_150px_130px_44px] items-center gap-3 border-b border-[color:var(--border-hairline)] bg-[color:var(--s2)] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             <span>Page</span>
@@ -221,12 +240,13 @@ function ContentPage() {
               );
             })}
           </ul>
-          {canBuild && (
+          {canBuild && !batchRun && (
             <Link to="/w/$workspace/p/$project/visual" params={{ workspace, project }} search={{ new: true }} className="flex items-center gap-2 border-t border-[color:var(--border-hairline)] px-4 py-2.5 text-[12.5px] font-medium text-primary transition-colors hover:bg-[var(--s4)]">
               <Plus className="h-3.5 w-3.5" /> New page
             </Link>
           )}
         </div>
+        </>
       )}
 
       {settingsPage && (
