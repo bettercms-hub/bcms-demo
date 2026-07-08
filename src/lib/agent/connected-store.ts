@@ -34,6 +34,7 @@ const listeners = new Set<() => void>();
 const EMPTY: AgentGrant[] = [];
 
 function emit() {
+  version++;
   listeners.forEach((l) => l());
 }
 function subscribe(l: () => void) {
@@ -42,12 +43,27 @@ function subscribe(l: () => void) {
 }
 
 let seq = 0;
+let version = 0;
 
 export function useAgentGrants(projectId: string): AgentGrant[] {
   return useSyncExternalStore(
     subscribe,
     () => byProject.get(projectId) ?? EMPTY,
     () => byProject.get(projectId) ?? EMPTY,
+  );
+}
+
+/** Non-hook read, for cross-project summaries (workspace Connected agents). */
+export function getAgentGrants(projectId: string): AgentGrant[] {
+  return byProject.get(projectId) ?? EMPTY;
+}
+
+/** Re-render on any grant change; pair with getAgentGrants across projects. */
+export function useGrantsVersion(): number {
+  return useSyncExternalStore(
+    subscribe,
+    () => version,
+    () => version,
   );
 }
 

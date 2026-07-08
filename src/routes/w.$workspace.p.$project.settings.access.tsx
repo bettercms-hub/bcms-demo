@@ -260,7 +260,7 @@ function NewCustomRoleDialog({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [base, setBase] = useState<BaseRole>("editor");
-  const [caps, setCaps] = useState({ edit: true, publish: false, seo: false, agent: true });
+  const [caps, setCaps] = useState({ edit: true, publish: false, seo: false, agent: true, generate: false, markdown: false });
   const [collections, setCollections] = useState<RoleScope>("all");
   const [pages, setPages] = useState<RoleScope>("all");
   const [sections, setSections] = useState<RoleScope>("all");
@@ -343,6 +343,8 @@ function NewCustomRoleDialog({
                   ["publish", "Publish"],
                   ["seo", "Manage SEO"],
                   ["agent", "Use the agent"],
+                  ["generate", "Generate pages"],
+                  ["markdown", "Manage markdown"],
                 ] as const
               ).map(([key, label]) => (
                 <label

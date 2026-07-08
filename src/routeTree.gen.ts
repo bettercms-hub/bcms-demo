@@ -31,6 +31,8 @@ import { Route as WWorkspaceSettingsGeneralRouteImport } from './routes/w.$works
 import { Route as WWorkspaceSettingsDomainsRouteImport } from './routes/w.$workspace.settings.domains'
 import { Route as WWorkspaceSettingsBillingRouteImport } from './routes/w.$workspace.settings.billing'
 import { Route as WWorkspaceSettingsApiKeysRouteImport } from './routes/w.$workspace.settings.api-keys'
+import { Route as WWorkspaceSettingsAiRouteImport } from './routes/w.$workspace.settings.ai'
+import { Route as WWorkspaceSettingsAgentsRouteImport } from './routes/w.$workspace.settings.agents'
 import { Route as WWorkspacePProjectRouteImport } from './routes/w.$workspace.p.$project'
 import { Route as WWorkspaceSettingsBillingIndexRouteImport } from './routes/w.$workspace.settings.billing.index'
 import { Route as WWorkspacePProjectIndexRouteImport } from './routes/w.$workspace.p.$project.index'
@@ -195,6 +197,17 @@ const WWorkspaceSettingsApiKeysRoute =
   WWorkspaceSettingsApiKeysRouteImport.update({
     id: '/api-keys',
     path: '/api-keys',
+    getParentRoute: () => WWorkspaceSettingsRoute,
+  } as any)
+const WWorkspaceSettingsAiRoute = WWorkspaceSettingsAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => WWorkspaceSettingsRoute,
+} as any)
+const WWorkspaceSettingsAgentsRoute =
+  WWorkspaceSettingsAgentsRouteImport.update({
+    id: '/agents',
+    path: '/agents',
     getParentRoute: () => WWorkspaceSettingsRoute,
   } as any)
 const WWorkspacePProjectRoute = WWorkspacePProjectRouteImport.update({
@@ -495,6 +508,8 @@ export interface FileRoutesByFullPath {
   '/w/$workspace/settings': typeof WWorkspaceSettingsRouteWithChildren
   '/w/$workspace/': typeof WWorkspaceIndexRoute
   '/w/$workspace/p/$project': typeof WWorkspacePProjectRouteWithChildren
+  '/w/$workspace/settings/agents': typeof WWorkspaceSettingsAgentsRoute
+  '/w/$workspace/settings/ai': typeof WWorkspaceSettingsAiRoute
   '/w/$workspace/settings/api-keys': typeof WWorkspaceSettingsApiKeysRoute
   '/w/$workspace/settings/billing': typeof WWorkspaceSettingsBillingRouteWithChildren
   '/w/$workspace/settings/domains': typeof WWorkspaceSettingsDomainsRoute
@@ -565,6 +580,8 @@ export interface FileRoutesByTo {
   '/w/$workspace/roles': typeof WWorkspaceRolesRoute
   '/w/$workspace/settings': typeof WWorkspaceSettingsRouteWithChildren
   '/w/$workspace': typeof WWorkspaceIndexRoute
+  '/w/$workspace/settings/agents': typeof WWorkspaceSettingsAgentsRoute
+  '/w/$workspace/settings/ai': typeof WWorkspaceSettingsAiRoute
   '/w/$workspace/settings/api-keys': typeof WWorkspaceSettingsApiKeysRoute
   '/w/$workspace/settings/domains': typeof WWorkspaceSettingsDomainsRoute
   '/w/$workspace/settings/general': typeof WWorkspaceSettingsGeneralRoute
@@ -637,6 +654,8 @@ export interface FileRoutesById {
   '/w/$workspace/settings': typeof WWorkspaceSettingsRouteWithChildren
   '/w/$workspace/': typeof WWorkspaceIndexRoute
   '/w/$workspace/p/$project': typeof WWorkspacePProjectRouteWithChildren
+  '/w/$workspace/settings/agents': typeof WWorkspaceSettingsAgentsRoute
+  '/w/$workspace/settings/ai': typeof WWorkspaceSettingsAiRoute
   '/w/$workspace/settings/api-keys': typeof WWorkspaceSettingsApiKeysRoute
   '/w/$workspace/settings/billing': typeof WWorkspaceSettingsBillingRouteWithChildren
   '/w/$workspace/settings/domains': typeof WWorkspaceSettingsDomainsRoute
@@ -711,6 +730,8 @@ export interface FileRouteTypes {
     | '/w/$workspace/settings'
     | '/w/$workspace/'
     | '/w/$workspace/p/$project'
+    | '/w/$workspace/settings/agents'
+    | '/w/$workspace/settings/ai'
     | '/w/$workspace/settings/api-keys'
     | '/w/$workspace/settings/billing'
     | '/w/$workspace/settings/domains'
@@ -781,6 +802,8 @@ export interface FileRouteTypes {
     | '/w/$workspace/roles'
     | '/w/$workspace/settings'
     | '/w/$workspace'
+    | '/w/$workspace/settings/agents'
+    | '/w/$workspace/settings/ai'
     | '/w/$workspace/settings/api-keys'
     | '/w/$workspace/settings/domains'
     | '/w/$workspace/settings/general'
@@ -852,6 +875,8 @@ export interface FileRouteTypes {
     | '/w/$workspace/settings'
     | '/w/$workspace/'
     | '/w/$workspace/p/$project'
+    | '/w/$workspace/settings/agents'
+    | '/w/$workspace/settings/ai'
     | '/w/$workspace/settings/api-keys'
     | '/w/$workspace/settings/billing'
     | '/w/$workspace/settings/domains'
@@ -1075,6 +1100,20 @@ declare module '@tanstack/react-router' {
       path: '/api-keys'
       fullPath: '/w/$workspace/settings/api-keys'
       preLoaderRoute: typeof WWorkspaceSettingsApiKeysRouteImport
+      parentRoute: typeof WWorkspaceSettingsRoute
+    }
+    '/w/$workspace/settings/ai': {
+      id: '/w/$workspace/settings/ai'
+      path: '/ai'
+      fullPath: '/w/$workspace/settings/ai'
+      preLoaderRoute: typeof WWorkspaceSettingsAiRouteImport
+      parentRoute: typeof WWorkspaceSettingsRoute
+    }
+    '/w/$workspace/settings/agents': {
+      id: '/w/$workspace/settings/agents'
+      path: '/agents'
+      fullPath: '/w/$workspace/settings/agents'
+      preLoaderRoute: typeof WWorkspaceSettingsAgentsRouteImport
       parentRoute: typeof WWorkspaceSettingsRoute
     }
     '/w/$workspace/p/$project': {
@@ -1439,6 +1478,8 @@ const WWorkspaceSettingsBillingRouteWithChildren =
   )
 
 interface WWorkspaceSettingsRouteChildren {
+  WWorkspaceSettingsAgentsRoute: typeof WWorkspaceSettingsAgentsRoute
+  WWorkspaceSettingsAiRoute: typeof WWorkspaceSettingsAiRoute
   WWorkspaceSettingsApiKeysRoute: typeof WWorkspaceSettingsApiKeysRoute
   WWorkspaceSettingsBillingRoute: typeof WWorkspaceSettingsBillingRouteWithChildren
   WWorkspaceSettingsDomainsRoute: typeof WWorkspaceSettingsDomainsRoute
@@ -1451,6 +1492,8 @@ interface WWorkspaceSettingsRouteChildren {
 }
 
 const WWorkspaceSettingsRouteChildren: WWorkspaceSettingsRouteChildren = {
+  WWorkspaceSettingsAgentsRoute: WWorkspaceSettingsAgentsRoute,
+  WWorkspaceSettingsAiRoute: WWorkspaceSettingsAiRoute,
   WWorkspaceSettingsApiKeysRoute: WWorkspaceSettingsApiKeysRoute,
   WWorkspaceSettingsBillingRoute: WWorkspaceSettingsBillingRouteWithChildren,
   WWorkspaceSettingsDomainsRoute: WWorkspaceSettingsDomainsRoute,

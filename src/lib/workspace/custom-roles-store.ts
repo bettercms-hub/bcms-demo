@@ -28,6 +28,10 @@ export interface CustomRole {
     publish: boolean;
     seo: boolean;
     agent: boolean;
+    /** Page generators: SEO pages and ABM pages. */
+    generate: boolean;
+    /** Markdown delivery: llms.txt, .md files and serve toggles. */
+    markdown: boolean;
   };
   scope: {
     /** Collection ids, or "all". */
@@ -84,7 +88,7 @@ function seed(projectId: string): CustomRole[] {
       name: "Blog author",
       description: "Writes posts in one collection. Cannot publish or touch pages.",
       base: "editor",
-      capabilities: { edit: true, publish: false, seo: false, agent: true },
+      capabilities: { edit: true, publish: false, seo: false, agent: true, generate: false, markdown: false },
       scope: {
         collections: firstCollection ? [firstCollection.id] : "all",
         pages: [],

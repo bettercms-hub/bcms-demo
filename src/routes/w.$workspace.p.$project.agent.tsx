@@ -15,6 +15,7 @@ import { canCompose, canEditContent, canSeeDeveloper, useEffectiveRole } from "@
 import { SeoPagesDialog } from "@/components/cms/generate/SeoPagesDialog";
 import { AbmPageDialog } from "@/components/cms/generate/AbmPageDialog";
 import { AGENT_SKILLS } from "@/lib/agent/skills";
+import { useGovernance } from "@/lib/agent/governance-store";
 import { agentRunActions, useAgentRuns } from "@/lib/agent/runs-store";
 import { aiAction, tierAllowed } from "@/lib/billing/pricing";
 import { AgentComposer } from "@/components/agent/AgentComposer";
@@ -41,6 +42,7 @@ function AgentPage() {
   const [activeRunId, setActiveRunId] = useState<string | null>(handoffRunId ?? null);
   const [seed, setSeed] = useState<{ text: string; n: number } | null>(null);
   const [generator, setGenerator] = useState<"seo" | "abm" | null>(null);
+  const gov = useGovernance(pr?.workspaceId ?? "");
 
   const active = runs.find((r) => r.id === activeRunId) ?? null;
 
@@ -119,12 +121,15 @@ function AgentPage() {
               const cost = aiAction(s.actionId)?.costs;
               const base = cost?.lite ?? cost?.balanced ?? cost?.max;
               const gated = s.minTier === "max" && !tierAllowed(pr.sitePlan ?? "free", "max");
-              const hint = gated
-                ? "Max, on Pro and above"
-                : base
-                  ? `from ${base} ${base === 1 ? "credit" : "credits"}`
-                  : "";
-              const usable = canRun && !gated;
+              const governed = gov.skills[s.id] === false;
+              const hint = governed
+                ? "Off in AI controls"
+                : gated
+                  ? "Max, on Pro and above"
+                  : base
+                    ? `from ${base} ${base === 1 ? "credit" : "credits"}`
+                    : "";
+              const usable = canRun && !gated && !governed;
               return (
                 <button
                   key={s.id}
@@ -158,15 +163,19 @@ function AgentPage() {
             <div className="overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-[color:var(--card)]">
               {(
                 [
-                  { id: "seo" as const, icon: ScanSearch, label: "SEO pages from keywords", blurb: "Paste a list or a CSV, get one draft page per keyword", hint: "Basic and above" },
-                  { id: "abm" as const, icon: Users, label: "ABM page for an account", blurb: "One page personalized for one target account", hint: "Pro and above" },
+                  { id: "seo" as const, icon: ScanSearch, label: "SEO pages from keywords", blurb: "Paste a list or a CSV, get one draft page per keyword", hint: gov.generators.seo ? "Basic and above" : "Off in AI controls" },
+                  { id: "abm" as const, icon: Users, label: "ABM page for an account", blurb: "One page personalized for one target account", hint: gov.generators.abm ? "Pro and above" : "Off in AI controls" },
                 ]
               ).map((g) => (
                 <button
                   key={g.id}
                   type="button"
+                  disabled={!gov.generators[g.id]}
                   onClick={() => setGenerator(g.id)}
-                  className="flex w-full items-center gap-3 border-b border-[color:var(--border-hairline)] px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[color:var(--color-row-hover)]"
+                  className={cn(
+                    "flex w-full items-center gap-3 border-b border-[color:var(--border-hairline)] px-4 py-3 text-left transition-colors last:border-b-0",
+                    gov.generators[g.id] ? "hover:bg-[color:var(--color-row-hover)]" : "cursor-not-allowed opacity-60",
+                  )}
                 >
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:color-mix(in_oklab,var(--primary)_8%,transparent)] text-primary">
                     <g.icon className="h-4 w-4" />

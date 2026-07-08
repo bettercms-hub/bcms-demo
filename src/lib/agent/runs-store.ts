@@ -15,6 +15,7 @@ import { aiAction, tierAllowed, type AiTier } from "@/lib/billing/pricing";
 import { getPages, pagesActions } from "@/lib/cms/pages-store";
 import { hasBrandVoice } from "@/lib/brand/brand-store";
 import { canEditContent, effectiveRoleFor } from "@/lib/workspace/my-role";
+import { clampToCeiling, generatorAllowed, getGovernance, skillAllowed } from "./governance-store";
 import { buildAbmPage, buildSeoPages, type AbmGenerateConfig, type SeoGenerateConfig } from "./generate";
 import { READ_ONLY_SKILLS, agentSkill, skillFromPrompt, type AgentSkill } from "./skills";
 import {
@@ -119,11 +120,16 @@ function roleCanAct(projectId: string): boolean {
   return canEditContent(effectiveRoleFor(ws.slug));
 }
 
-/** Clamp a requested tier to what the project's plan allows. */
+/** The workspace that owns a project, for governance checks. */
+function workspaceIdFor(projectId: string): string {
+  return getCMSState().projects.find((p) => p.id === projectId)?.workspaceId ?? "";
+}
+
+/** Clamp a requested tier to the plan, then to the workspace ceiling. */
 function clampTier(projectId: string, tier: AiTier): AiTier {
   const plan = getCMSState().projects.find((p) => p.id === projectId)?.sitePlan ?? "free";
-  if (tierAllowed(plan, tier)) return tier;
-  return tierAllowed(plan, "balanced") ? "balanced" : "lite";
+  const byPlan = tierAllowed(plan, tier) ? tier : tierAllowed(plan, "balanced") ? "balanced" : "lite";
+  return clampToCeiling(workspaceIdFor(projectId), byPlan);
 }
 
 /* -------------------------------------------------------------- actions */
@@ -145,6 +151,10 @@ export const agentRunActions = {
   start({ projectId, prompt, tier, context, skillId, model, agentId, agentName }: StartRunInput): string {
     if (!roleCanAct(projectId)) return "";
     const skill: AgentSkill = (skillId ? agentSkill(skillId) : undefined) ?? skillFromPrompt(prompt);
+    // Workspace governance: blocked skills and disallowed personal keys stop here.
+    const wsId = workspaceIdFor(projectId);
+    if (!skillAllowed(wsId, skill.id)) return "";
+    if (model && !getGovernance(wsId).byokAllowed) return "";
     const id = newRunId();
     const run: AgentRun = {
       id,
@@ -190,6 +200,7 @@ export const agentRunActions = {
   startGenerator(input: { projectId: string; kind: "seo"; config: SeoGenerateConfig } | { projectId: string; kind: "abm"; config: AbmGenerateConfig }): string {
     const { projectId, kind } = input;
     if (!roleCanAct(projectId)) return "";
+    if (!generatorAllowed(workspaceIdFor(projectId), kind)) return "";
     const plan = getCMSState().projects.find((p) => p.id === projectId)?.sitePlan ?? "free";
     const actionId = kind === "seo" ? "seo-page" : "abm-page";
     if (!tierAllowed(plan, "balanced", actionId)) return "";

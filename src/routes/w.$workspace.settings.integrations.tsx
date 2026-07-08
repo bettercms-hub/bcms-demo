@@ -20,7 +20,7 @@ const INTEGRATIONS: Integration[] = [
   { name: "Vercel", description: "Trigger preview and production deployments on publish.", icon: Triangle, accent: "text-foreground" },
   { name: "Zapier", description: "Connect BetterCMS to 5,000+ apps with no code.", icon: Zap, accent: "text-[#FF4F00]" },
   { name: "Discord", description: "Send activity updates to Discord channels.", icon: MessageSquare, accent: "text-[#5865F2]" },
-  { name: "Notion", description: "Import content and sync documentation seamlessly.", icon: FileText, accent: "text-foreground" },
+  { name: "Notion", description: "Import content and keep documentation in sync.", icon: FileText, accent: "text-foreground" },
 ];
 
 function Integrations() {

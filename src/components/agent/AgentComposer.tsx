@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getPages } from "@/lib/cms/pages-store";
 import { getCMSState } from "@/lib/cms/store";
+import { useGovernance } from "@/lib/agent/governance-store";
 import { SECTION_DEFS } from "@/components/cms/editor/sections/SectionSystem";
 import { AGENT_SKILLS, type AgentSkill } from "@/lib/agent/skills";
 import { projectCollections } from "@/lib/agent/simulate";
@@ -122,6 +123,8 @@ export function AgentComposer({
   const [empty, setEmpty] = useState(!(seed && seed.trim()));
   const [keyDialog, setKeyDialog] = useState(false);
   const byok = useByok(wsSlug);
+  // Workspace governance: hide personal keys entirely when disallowed.
+  const byokPermitted = useGovernance(getCMSState().workspaces.find((w) => w.slug === wsSlug)?.id ?? "").byokAllowed;
 
   const effectiveTier: AiTier = tierAllowed(sitePlan, tier)
     ? tier
@@ -517,8 +520,8 @@ export function AgentComposer({
                   </DropdownMenuItem>
                 );
               })}
-              <DropdownMenuSeparator />
-              {byok ? (
+              {byokPermitted && <DropdownMenuSeparator />}
+              {!byokPermitted ? null : byok ? (
                 <>
                   <DropdownMenuLabel className="text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
                     Your models · {byok.provider}
