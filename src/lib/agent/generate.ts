@@ -204,11 +204,91 @@ export function buildSeoPages(projectId: string, config: SeoGenerateConfig, batc
 
 /* ------------------------------------------------------------- abm page */
 
-export interface AbmGenerateConfig {
+export interface AbmAccount {
   account: string;
   /** Who this page is for and what we should know about them. */
   context: string;
+}
+
+export type AbmMotion = "breakin" | "expand" | "accelerate" | "reengage";
+export type AbmBuildMode = "template" | "ai";
+
+export interface AbmGenerateConfig {
+  /** One account, or many from a CSV. One page per account. */
+  accounts: AbmAccount[];
+  /** The sales motion this page supports; shapes headline and CTA copy. */
+  motion: AbmMotion;
+  /** "template" composes from a chosen page template; "ai" composes from
+   *  the prompt plus the brand kit and section catalog. */
+  mode: AbmBuildMode;
+  /** AI Builder prompt. Used when mode is "ai". */
+  prompt?: string;
   templateId: string;
+}
+
+export const ABM_MOTIONS: { id: AbmMotion; label: string; blurb: string }[] = [
+  { id: "breakin", label: "Break into a new account", blurb: "First touch. Prove relevance fast" },
+  { id: "expand", label: "Expand an existing customer", blurb: "New teams or products for a current account" },
+  { id: "accelerate", label: "Accelerate an open opportunity", blurb: "Answer the evaluation, remove blockers" },
+  { id: "reengage", label: "Re-engage a closed or lost account", blurb: "What changed since they last looked" },
+];
+
+const MOTION_COPY: Record<AbmMotion, { headline: (site: string, a: string) => string; primaryCta: string; ctaHeading: (a: string) => string; ctaSub: string }> = {
+  breakin: {
+    headline: (site, a) => `${site}, built around how ${a} works`,
+    primaryCta: "Book a walkthrough",
+    ctaHeading: (a) => `Ready when ${a} is`,
+    ctaSub: "A tailored walkthrough takes 30 minutes.",
+  },
+  expand: {
+    headline: (site, a) => `More of ${site} for more of ${a}`,
+    primaryCta: "Talk to your account team",
+    ctaHeading: (a) => `The next step for ${a}`,
+    ctaSub: "Your account team already knows the context.",
+  },
+  accelerate: {
+    headline: (site, a) => `The answers ${a} needs to decide`,
+    primaryCta: "Get the evaluation kit",
+    ctaHeading: (a) => `Everything ${a} asked for, in one place`,
+    ctaSub: "Security review, rollout plan and pricing, ready to share.",
+  },
+  reengage: {
+    headline: (site, a) => `What changed at ${site} since ${a} last looked`,
+    primaryCta: "See what is new",
+    ctaHeading: (a) => `Worth a second look for ${a}`,
+    ctaSub: "The gaps from last time are closed.",
+  },
+};
+
+export const SAMPLE_ACCOUNTS_CSV = [
+  "account,context",
+  "Lumina,300-rep sales team moving off spreadsheets. VP Sales wants deal-risk scoring before Q3.",
+  "Harborline,Logistics platform consolidating five brand sites. SEO team of two.",
+  "Vantage Labs,Developer tools startup. Docs and changelog are the whole marketing site.",
+].join("\n");
+
+/** CSV: first column account name, second context. Header row optional. */
+export function parseAccountsCsv(text: string): AbmAccount[] {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (lines.length === 0) return [];
+  const split = (line: string) => {
+    // Split on the FIRST comma only: context freely contains commas.
+    const i = line.indexOf(",");
+    return i === -1 ? [line.trim(), ""] : [line.slice(0, i).trim(), line.slice(i + 1).trim().replace(/^"|"$/g, "")];
+  };
+  const first = split(lines[0]);
+  const hasHeader = /^(account|company|name)$/i.test(first[0]);
+  const body = hasHeader ? lines.slice(1) : lines;
+  const seen = new Set<string>();
+  const out: AbmAccount[] = [];
+  for (const line of body) {
+    const [account, context] = split(line);
+    const key = account.toLowerCase();
+    if (!account || seen.has(key)) continue;
+    seen.add(key);
+    out.push({ account, context });
+  }
+  return out;
 }
 
 /** First sentence of the context, trimmed to a subheadline length. */
@@ -222,13 +302,15 @@ function contextLead(context: string): string {
 export function abmPersonalizationPlan(projectId: string, config: AbmGenerateConfig): { section: string; note: string }[] {
   const template = seoTemplate(config.templateId);
   const site = siteNameFor(projectId);
-  const a = config.account || "the account";
+  const many = config.accounts.length > 1;
+  const a = many ? "each account" : config.accounts[0]?.account || "the account";
+  const motion = MOTION_COPY[config.motion];
   const notes: Record<string, string> = {
-    hero: `Headline and intro speak to ${a} directly, using your account context`,
+    hero: `Headline and intro speak to ${a} directly, framed for "${ABM_MOTIONS.find((m) => m.id === config.motion)?.label.toLowerCase()}"`,
     logos: "Proof stays as is, familiar names build trust",
     features: `Reframed as what ${a} gets on day one`,
     testimonial: "Closest customer story to their situation",
-    cta: `Invitation written for ${a}, walkthrough framing instead of a generic signup`,
+    cta: `"${motion.primaryCta}" framing instead of a generic signup`,
     faq: "Answers the objections in your account context",
     pricing: "Kept as is, pricing stays canonical",
     contact: `Form headed for the ${site} team, tagged with the account`,
@@ -238,67 +320,75 @@ export function abmPersonalizationPlan(projectId: string, config: AbmGenerateCon
     .filter((x, i, arr) => arr.findIndex((y) => y.section === x.section) === i);
 }
 
-/** Compose the personalized draft page. ABM pages default to noindex. */
-export function buildAbmPage(projectId: string, config: AbmGenerateConfig, batchId: string): PageDoc {
+/** Compose the personalized draft pages, one per account. Always noindex:
+ *  these pages are for the accounts, not for search engines. */
+export function buildAbmPages(projectId: string, config: AbmGenerateConfig, batchId: string): PageDoc[] {
   const template = seoTemplate(config.templateId);
   const site = siteNameFor(projectId);
-  const a = config.account.trim() || "your team";
-  const lead = contextLead(config.context);
   const voice = hasBrandVoice(projectId) ? getBrandKit(projectId).voice.tone : "";
-
-  const sections = instantiateTemplate(template).map((s) => {
-    if (s.type === "hero") {
-      return {
-        ...s,
-        content: {
-          ...s.content,
-          badge: `For ${a}`,
-          headline: `${site}, built around how ${a} works`,
-          subheadline: lead ? `${lead} This page shows how teams like yours get there.` : `A walkthrough of ${site}, put together for ${a}.`,
-          primaryCta: "Book a walkthrough",
-          secondaryCta: "See pricing",
-        },
-      };
-    }
-    if (s.type === "features") {
-      return {
-        ...s,
-        content: {
-          ...s.content,
-          heading: `What ${a} gets on day one`,
-          item1: "Guided onboarding with your data",
-          item2: "Security review, ready to send",
-          item3: "A named contact, not a queue",
-        },
-      };
-    }
-    if (s.type === "cta") {
-      return {
-        ...s,
-        content: {
-          ...s.content,
-          heading: `Ready when ${a} is`,
-          subtext: voice ? `A tailored walkthrough takes 30 minutes. Tone: ${voice}.` : "A tailored walkthrough takes 30 minutes.",
-          ctaLabel: "Schedule time",
-        },
-      };
-    }
-    return s;
-  });
-
+  const motion = MOTION_COPY[config.motion];
+  // AI Builder: the prompt's first sentence colors the supporting copy.
+  const promptLead = config.mode === "ai" && config.prompt ? contextLead(config.prompt) : "";
   const taken = new Set<string>();
-  return {
-    id: newPageId(),
-    path: uniquePath(projectId, `/for/${slugifyKeyword(a)}`, taken),
-    title: `${site} for ${a}`,
-    state: "draft",
-    sections,
-    updatedAt: Date.now(),
-    seoTitle: `${site} for ${a}`,
-    seoDescription: lead || `How ${site} fits the way ${a} works.`,
-    // Targeted pages are for the account, not for search engines.
-    indexing: "noindex",
-    batchId,
-    generatedFor: a,
-  };
+
+  return config.accounts.map(({ account, context }) => {
+    const a = account.trim() || "your team";
+    const lead = contextLead(context);
+
+    const sections = instantiateTemplate(template).map((s) => {
+      if (s.type === "hero") {
+        return {
+          ...s,
+          content: {
+            ...s.content,
+            badge: `For ${a}`,
+            headline: motion.headline(site, a),
+            subheadline: lead
+              ? `${lead} This page shows how teams like yours get there.`
+              : promptLead || `A walkthrough of ${site}, put together for ${a}.`,
+            primaryCta: motion.primaryCta,
+            secondaryCta: "See pricing",
+          },
+        };
+      }
+      if (s.type === "features") {
+        return {
+          ...s,
+          content: {
+            ...s.content,
+            heading: `What ${a} gets on day one`,
+            item1: "Guided onboarding with your data",
+            item2: "Security review, ready to send",
+            item3: "A named contact, not a queue",
+          },
+        };
+      }
+      if (s.type === "cta") {
+        return {
+          ...s,
+          content: {
+            ...s.content,
+            heading: motion.ctaHeading(a),
+            subtext: voice ? `${motion.ctaSub} Tone: ${voice}.` : motion.ctaSub,
+            ctaLabel: motion.primaryCta,
+          },
+        };
+      }
+      return s;
+    });
+
+    return {
+      id: newPageId(),
+      path: uniquePath(projectId, `/for/${slugifyKeyword(a)}`, taken),
+      title: `${site} for ${a}`,
+      state: "draft" as const,
+      sections,
+      updatedAt: Date.now(),
+      seoTitle: `${site} for ${a}`,
+      seoDescription: lead || `How ${site} fits the way ${a} works.`,
+      indexing: "noindex" as const,
+      batchId,
+      generatedFor: a,
+    };
+  });
 }

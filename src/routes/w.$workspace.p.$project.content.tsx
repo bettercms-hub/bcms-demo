@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowUpRight, Copy, Database, FileText, MoreHorizontal, Plus, Rocket, Settings2, Trash2 } from "lucide-react";
+import { ArrowUpDown, ArrowUpRight, ChevronDown, ChevronRight, Copy, Database, FileText, Folder, MoreHorizontal, Plus, Rocket, Settings2, Trash2 } from "lucide-react";
 import { collections, entries, schemas } from "@/lib/cms/mock-data";
 import { getProjectBySlug } from "@/lib/cms/use-cms";
 import { newPageId, pagesActions, usePages, type PageDoc, type PageState } from "@/lib/cms/pages-store";
@@ -53,15 +53,55 @@ function ContentPage() {
   const pages = batchRun ? allPages.filter((p) => p.batchId === batchRun.id) : allPages;
   const [pageQuery, setPageQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | PageState>("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "static" | "generated">("all");
+  const [sort, setSort] = useState<"recent" | "name" | "path">("recent");
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const pq = pageQuery.trim().toLowerCase();
-  // Search + status filter only apply to the full list, not a batch review.
+  const hasGenerated = allPages.some((p) => p.batchId);
+  // Search, filters and sort only apply to the full list, not a batch review.
   const visiblePages = batchRun
     ? pages
-    : pages.filter(
-        (p) =>
-          (statusFilter === "all" || p.state === statusFilter) &&
-          (pq === "" || p.title.toLowerCase().includes(pq) || p.path.toLowerCase().includes(pq)),
-      );
+    : [...pages]
+        .filter(
+          (p) =>
+            (statusFilter === "all" || p.state === statusFilter) &&
+            (typeFilter === "all" || (typeFilter === "generated" ? !!p.batchId : !p.batchId)) &&
+            (pq === "" || p.title.toLowerCase().includes(pq) || p.path.toLowerCase().includes(pq)),
+        )
+        .sort((a, b) =>
+          sort === "recent" ? b.updatedAt - a.updatedAt : sort === "name" ? a.title.localeCompare(b.title) : a.path.localeCompare(b.path),
+        );
+
+  // Folders derive from the URL structure: /lp/paris and /lp/lyon group
+  // under /lp. Single-segment pages stay flat at the top.
+  const folderOf = (p: PageDoc) => {
+    const segs = p.path.split("/").filter(Boolean);
+    return segs.length > 1 ? `/${segs[0]}` : null;
+  };
+  type RowItem = { kind: "page"; pg: PageDoc; nested?: boolean } | { kind: "folder"; name: string; count: number };
+  const rowItems: RowItem[] = [];
+  if (batchRun) {
+    for (const pg of visiblePages) rowItems.push({ kind: "page", pg });
+  } else {
+    const rootPages = visiblePages.filter((p) => folderOf(p) === null);
+    const folders = new Map<string, PageDoc[]>();
+    for (const p of visiblePages) {
+      const f = folderOf(p);
+      if (f) folders.set(f, [...(folders.get(f) ?? []), p]);
+    }
+    for (const pg of rootPages) rowItems.push({ kind: "page", pg });
+    for (const [name, list] of [...folders.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+      rowItems.push({ kind: "folder", name, count: list.length });
+      if (!collapsed.has(name)) for (const pg of list) rowItems.push({ kind: "page", pg, nested: true });
+    }
+  }
+  const toggleFolder = (name: string) =>
+    setCollapsed((s) => {
+      const next = new Set(s);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
   const cols = collections.filter((c) => c.projectId === pr.id);
   const { effective } = useEffectiveRole(workspace);
   const canBuild = canCompose(effective);
@@ -209,24 +249,79 @@ function ContentPage() {
                 { id: "scheduled", label: "Scheduled", count: pages.filter((p) => p.state === "scheduled").length },
               ]}
             />
+            {hasGenerated && (
+              <SegmentedFilter<"all" | "static" | "generated">
+                value={typeFilter}
+                onChange={setTypeFilter}
+                options={[
+                  { id: "all", label: "All types" },
+                  { id: "static", label: "Static" },
+                  { id: "generated", label: "Generated" },
+                ]}
+              />
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[color:var(--border-hairline)] bg-[color:var(--s2)] px-2.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <ArrowUpDown className="h-3.5 w-3.5" />
+                  {sort === "recent" ? "Recently edited" : sort === "name" ? "Name" : "Path"}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[170px]">
+                {(
+                  [
+                    ["recent", "Recently edited"],
+                    ["name", "Name"],
+                    ["path", "Path"],
+                  ] as const
+                ).map(([id, label]) => (
+                  <DropdownMenuItem key={id} className="justify-between text-[13px]" onSelect={() => setSort(id)}>
+                    {label}
+                    {sort === id && <span className="text-primary">•</span>}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </ListToolbar>
         )}
         <div className="overflow-hidden rounded-xl border border-[color:var(--border-hairline)] bg-card">
-          <div className="grid grid-cols-[1fr_150px_130px_44px] items-center gap-3 border-b border-[color:var(--border-hairline)] bg-[color:var(--s2)] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="grid grid-cols-[1fr_150px_130px_76px] items-center gap-3 border-b border-[color:var(--border-hairline)] bg-[color:var(--s2)] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             <span>Page</span>
             <span>Status</span>
             <span>Updated</span>
             <span />
           </div>
           <ul className="divide-y divide-[color:var(--border-hairline)]">
-            {visiblePages.length === 0 && (
+            {rowItems.length === 0 && (
               <li className="px-4 py-10 text-center text-[12.5px] text-muted-foreground">No pages match your search.</li>
             )}
-            {visiblePages.map((pg) => {
+            {rowItems.map((item) => {
+              if (item.kind === "folder") {
+                const open = !collapsed.has(item.name);
+                return (
+                  <li key={`folder:${item.name}`}>
+                    <button
+                      type="button"
+                      onClick={() => toggleFolder(item.name)}
+                      aria-expanded={open}
+                      className="flex w-full items-center gap-2.5 bg-[color:var(--s2)]/60 px-4 py-2 text-left transition-colors hover:bg-[var(--s4)]"
+                    >
+                      {open ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+                      <Folder className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="font-mono text-[12px] font-medium text-foreground">{item.name}</span>
+                      <span className="text-[11px] tabular-nums text-muted-foreground">{item.count} {item.count === 1 ? "page" : "pages"}</span>
+                    </button>
+                  </li>
+                );
+              }
+              const pg = item.pg;
               const tone = PAGE_TONE[pg.state];
               const kinds = [...new Set(pg.sections.map((s) => getSectionDef(s.type)?.name).filter(Boolean))];
               return (
-                <li key={pg.id} className="group grid grid-cols-[1fr_150px_130px_44px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--s4)]">
+                <li key={pg.id} className={cn("group grid grid-cols-[1fr_150px_130px_76px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--s4)]", item.nested && "pl-11")}>
                   <Link to="/w/$workspace/p/$project/visual" params={{ workspace, project }} search={{ page: pg.path }} className="flex min-w-0 items-center gap-2.5">
                     <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div className="min-w-0">
@@ -261,6 +356,18 @@ function ContentPage() {
 
                   <span className="text-[11.5px] text-muted-foreground">{formatRelative(new Date(pg.updatedAt).toISOString())}</span>
 
+                  <span className="flex items-center justify-end gap-0.5">
+                  {canBuild && (
+                    <button
+                      type="button"
+                      aria-label={`Page settings for ${pg.title}`}
+                      title="Page settings & SEO"
+                      onClick={() => setSettingsPage(pg)}
+                      className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100"
+                    >
+                      <Settings2 className="h-4 w-4" />
+                    </button>
+                  )}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button type="button" aria-label={`Actions for ${pg.title}`} className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100 data-[state=open]:opacity-100">
@@ -309,6 +416,7 @@ function ContentPage() {
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  </span>
                 </li>
               );
             })}

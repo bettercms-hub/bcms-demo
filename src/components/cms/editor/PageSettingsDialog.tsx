@@ -30,10 +30,20 @@ export function PageSettingsDialog({
   const [seoTitle, setSeoTitle] = useState(page.seoTitle ?? "");
   const [seoDescription, setSeoDescription] = useState(page.seoDescription ?? "");
   const [indexing, setIndexing] = useState<"index" | "noindex">(page.indexing ?? "index");
+  const [jsonLd, setJsonLd] = useState(page.jsonLd ?? "");
 
   const normPath = "/" + path.replace(/^\/+/, "").replace(/\s+/g, "-").toLowerCase();
   const taken = normPath !== page.path && getPages(projectId).some((p) => p.path === normPath);
-  const valid = title.trim().length > 0 && !taken;
+  const jsonLdValid = (() => {
+    if (jsonLd.trim() === "") return true;
+    try {
+      JSON.parse(jsonLd);
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+  const valid = title.trim().length > 0 && !taken && jsonLdValid;
 
   function save() {
     if (!valid) return;
@@ -44,6 +54,7 @@ export function PageSettingsDialog({
       seoTitle: seoTitle.trim() || undefined,
       seoDescription: seoDescription.trim() || undefined,
       indexing,
+      jsonLd: jsonLd.trim() || undefined,
     }));
     if (normPath !== page.path) onPathChange?.(normPath);
     toast.success("Page settings saved");
@@ -100,7 +111,7 @@ export function PageSettingsDialog({
             <input value={seoTitle} onChange={(e) => setSeoTitle(e.target.value)} placeholder={title} className="h-9 w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 text-[13px] outline-none transition-colors focus:border-[color:var(--primary)]" />
           </FieldRow>
 
-          <FieldRow label="Meta description" hint={`${descLen}/160 characters — the snippet under your title in search.`} error={descLen > 160}>
+          <FieldRow label="Meta description" hint={`${descLen}/160 characters, the snippet under your title in search.`} error={descLen > 160}>
             <textarea value={seoDescription} onChange={(e) => setSeoDescription(e.target.value)} rows={3} placeholder="A short, compelling summary of this page." className="w-full resize-none rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 py-2 text-[13px] leading-relaxed outline-none transition-colors focus:border-[color:var(--primary)]" />
           </FieldRow>
 
@@ -126,6 +137,24 @@ export function PageSettingsDialog({
                 </button>
               ))}
             </div>
+          </FieldRow>
+
+          <FieldRow
+            label="Structured data (JSON-LD)"
+            hint={jsonLdValid ? "Optional. Emitted in the page head for rich results and answer engines." : "This is not valid JSON yet."}
+            error={!jsonLdValid}
+          >
+            <textarea
+              value={jsonLd}
+              onChange={(e) => setJsonLd(e.target.value)}
+              rows={5}
+              spellCheck={false}
+              placeholder={'{\n  "@context": "https://schema.org",\n  "@type": "WebPage",\n  "name": "..."\n}'}
+              className={cn(
+                "w-full resize-y rounded-md border bg-[color:var(--s2)] px-2.5 py-2 font-mono text-[11.5px] leading-relaxed outline-none transition-colors",
+                jsonLdValid ? "border-[color:var(--color-border)] focus:border-[color:var(--primary)]" : "border-rose-400",
+              )}
+            />
           </FieldRow>
 
           <div className="rounded-md bg-[color:var(--s2)] px-2.5 py-2 text-[11px] text-muted-foreground">

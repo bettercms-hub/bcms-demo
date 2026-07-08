@@ -26,6 +26,8 @@ export interface PageDoc {
   seoTitle?: string;
   seoDescription?: string;
   indexing?: "index" | "noindex";
+  /** Structured data (JSON-LD), emitted in the page head when valid. */
+  jsonLd?: string;
   /** Pushed to the private staging environment. */
   staged?: boolean;
   /** Set when a generator created this page; groups a batch for review. */

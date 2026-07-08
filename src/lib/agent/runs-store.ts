@@ -16,7 +16,7 @@ import { getPages, pagesActions } from "@/lib/cms/pages-store";
 import { hasBrandVoice } from "@/lib/brand/brand-store";
 import { canEditContent, effectiveRoleFor } from "@/lib/workspace/my-role";
 import { clampToCeiling, generatorAllowed, getGovernance, skillAllowed } from "./governance-store";
-import { buildAbmPage, buildSeoPages, type AbmGenerateConfig, type SeoGenerateConfig } from "./generate";
+import { buildAbmPages, buildSeoPages, type AbmGenerateConfig, type SeoGenerateConfig } from "./generate";
 import { READ_ONLY_SKILLS, agentSkill, skillFromPrompt, type AgentSkill } from "./skills";
 import {
   applyProposals,
@@ -206,13 +206,15 @@ export const agentRunActions = {
     if (!tierAllowed(plan, "balanced", actionId)) return "";
 
     const perPage = aiAction(actionId)?.costs.balanced ?? 0;
-    const count = kind === "seo" ? input.config.rows.length : 1;
+    const count = kind === "seo" ? input.config.rows.length : input.config.accounts.length;
     const credits = perPage * count;
     const id = newRunId();
     const title =
       kind === "seo"
         ? `SEO pages: ${count} from keywords`
-        : `ABM page: ${input.config.account.trim() || "target account"}`;
+        : count === 1
+          ? `ABM page: ${input.config.accounts[0]?.account.trim() || "target account"}`
+          : `ABM pages: ${count} accounts`;
     const voiceLine = hasBrandVoice(projectId) ? "Follows the brand voice" : "Uses a neutral, factual voice";
 
     const run: AgentRun = {
@@ -220,7 +222,12 @@ export const agentRunActions = {
       projectId,
       skillId: kind === "seo" ? "generate-seo" : "generate-abm",
       title,
-      prompt: kind === "seo" ? `Generate ${count} SEO pages from keywords` : `Generate a page for ${input.config.account}`,
+      prompt:
+        kind === "seo"
+          ? `Generate ${count} SEO pages from keywords`
+          : count === 1
+            ? `Generate a page for ${input.config.accounts[0]?.account}`
+            : `Generate pages for ${count} target accounts`,
       tier: "balanced",
       context: [],
       status: "applying",
@@ -232,7 +239,11 @@ export const agentRunActions = {
         items:
           kind === "seo"
             ? [`One draft page per keyword, ${count} total`, "URL, title and meta description from your patterns", "Composed from your section catalog"]
-            : ["One draft page personalized for the account", "Composed from your section catalog", "Set to noindex, the page is for the account, not for search"],
+            : [
+                count === 1 ? "One draft page personalized for the account" : `One draft page per account, ${count} total`,
+                input.config.mode === "ai" ? "Composed from your prompt, brand kit and section catalog" : "Composed from your page template",
+                "Set to noindex, these pages are for the accounts, not for search",
+              ],
         boundaries: ["Creates drafts only, nothing publishes", voiceLine, "One click undo while drafts are untouched"],
         estimate: { min: credits, max: credits },
       },
@@ -249,7 +260,7 @@ export const agentRunActions = {
     schedule(id, 3100, () => {
       finishSteps(id);
       // Build at write time so path uniqueness is checked against live state.
-      const pages = kind === "seo" ? buildSeoPages(projectId, input.config, id) : [buildAbmPage(projectId, input.config, id)];
+      const pages = kind === "seo" ? buildSeoPages(projectId, input.config, id) : buildAbmPages(projectId, input.config, id);
       for (const pg of pages) pagesActions.add(projectId, pg);
       patchRun(id, (r) => ({
         ...r,
