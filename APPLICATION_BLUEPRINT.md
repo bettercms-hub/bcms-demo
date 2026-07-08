@@ -196,3 +196,58 @@ Token-binding section styles to the Brand Kit; programmatic pages from collectio
 ## 18. Clone order (for a coding agent)
 
 1) Stack + tokens (`DESIGN_SYSTEM.md`) → 2) central store + types + seeds → 3) shell (topbar/sidebar/ProjectNav + role system) → 4) pages-store + sections + visual editor + publish → 5) collections/schema/entries → 6) Pages hub (+search/filters) → 7) agent core (skills/runs/simulate/composer/thread/dock) → 8) generators → 9) markdown delivery → 10) auth/onboarding/workspace-new → 11) settings surfaces (domains/keys/webhooks/AI controls/agents) → 12) custom roles + governance wiring → 13) forms/SEO/media/analytics → 14) dark mode + a11y pass. Verify each stage in-browser before proceeding; typecheck with the known pre-existing exclusions removed.
+
+---
+
+## Appendix A — Core data contracts (the shapes a backend must honor)
+
+```ts
+interface Workspace { id; slug; name; logoUrl?; projectIds[]; memberIds[]; createdAt?;
+  workspacePlan?: "free"|"company"|"agency"|"team"|"enterprise"; whiteLabel?; billing? }
+interface Project { id; slug; name; workspaceId; kind: "headless"|"managed"|"hybrid";
+  sitePlan?: "free"|"basic"|"pro"|"team"|"enterprise"; domain?; framework?; source?; repo?;
+  collectionIds[]; componentIds[]; mediaIds[]; publishState; updatedAt }
+interface PageDoc { id; path; title; state: "draft"|"published"|"modified"|"scheduled"|"archived";
+  sections: SectionInstance[]; scheduledAt?; updatedAt; seoTitle?; seoDescription?;
+  indexing?: "index"|"noindex"; staged?; batchId?; generatedFor? }
+interface SectionInstance { id; type; variant?; content: Record<string,string> }
+interface Collection { id; projectId; name; slug; schemaId; entryIds[] }
+interface SchemaField { id; name; label; type; required?; refCollectionId?; options?; groupId?;
+  description?; placeholder?; defaultValue?; unique?; localized?; validation?; hiddenInList? }
+interface Entry { id; collectionId; title; fields: Record<string,unknown>; updatedAt; status?;
+  scheduledAt?; metaTitle?; metaDescription?; canonical?; ogImage?; indexing? }
+interface Domain { id; workspaceId?; projectId?; host; status: "active"|"verifying"|...;
+  primary?; sslStatus?: "issued"|"pending"|"failed"; addedAt }
+interface AgentRun { id; projectId; skillId; title; prompt; tier: "lite"|"balanced"|"max";
+  model?; agentId?; agentName?; context: ContextRef[]; status: RunStatus; steps: RunStep[];
+  plan?: AgentPlan; proposals: ProposedChange[]; findings: AuditFinding[]; creditsSpent;
+  appliedCount; undo?: UndoOp[]; reverted?; createdAt; finishedAt? }
+interface ProposedChange { id; operation; targetType: "page"|"entry"; targetId; targetLabel;
+  fieldPath?; before?; after; reason; risk: "low"|"medium";
+  status: "pending"|"accepted"|"rejected"|"applied" }
+type UndoOp = { kind:"removeEntry"; entryId; label } | { kind:"removePage"; path; label }
+  | { kind:"restorePageField"; path; field:"seoTitle"|"seoDescription"; before; after; label }
+interface CustomRole { id; projectId; name; description; base: "marketer"|"editor"|"reviewer";
+  capabilities: { edit; publish; seo; agent; generate; markdown }; // booleans
+  scope: { collections; pages; sections }: "all"|string[]; members; createdAt }
+interface AiGovernance { monthlyCreditBudget: number|null; tierCeiling; skills: Record<string,bool>;
+  generators: { seo; abm }; byokAllowed; externalAgentsAllowed }
+interface MdFile { id; path /* /x/y.md */; title; body; state: "draft"|"published"; updatedAt }
+interface BrandKit { colors{6 slots}; typography{heading,body}; radius; logos{wordmark,mark};
+  voice{tone, doWords[], dontWords[], protectedPhrases[]}; version }
+interface ApiToken { id; kind:"personal"|"machine"; name; masked; createdAt; lastUsedAt? }
+interface WebhookEndpoint { id; url; events[]; active; createdAt }
+```
+
+## Appendix B — Demo seed inventory (recreate for parity)
+
+Workspaces & seats: **flowtrix** Agency ws (you=Admin) with projects BetterCMS.ai (headless, Pro), Flowtrix.co (hybrid, Pro), Harbor & Co (site, Basic) + seeded domains flowtrix.co / bettercms.ai (active, primary) / harborandco.com (verifying) · **atlas** (you=developer; atlas-portal, Enterprise) · **northwind** Company ws (you=marketer; Pro site + docs project, northwind.com domains) · **pixelforge** (you=editor; client-acme) · **wayground** (you=reviewer; Team site).
+Per project: 5-page marketing site (Home/About published, Pricing draft, Blog published, Contact scheduled; Home hero id pinned `s_home_hero` for the seeded comment), 3 collections (Blog posts/Team members/Testimonials) with entries, named agents (Content agent/SEO agent/Site auditor), one custom role "Blog author" on Team+ projects, `/docs/getting-started.md` markdown file, brand kit defaults.
+
+## Appendix C — Three canonical UX walkthroughs
+
+**Agent run**: composer (@ chips, / skill, tier) → submit → run card streams 3 planning steps (~2.5s) → plan card (goal, will-touch list, boundaries incl. "Creates drafts only" + brand voice line) with Approve/Reject → applying steps → proposal review (default-accepted rows, per-row toggle with entry-create/patch cascade, Apply n) → done card (applied count, credits, **Undo this run**) → run listed in History with hover-undo; audit line recorded.
+
+**SEO batch**: Pages→Generate→SEO pages → paste 4 keywords (chips + count) → Next: template card + `/lp` prefix + `{{keyword}}` patterns + live serp-style example → Next: review (4 drafts, 48 credits, voice, destination) → Generate → 3 streamed steps → "4 draft pages created / Review pages" → Pages hub `?batch=` bar: filtered table, **Publish all (4)** → bar reads "4 live", buttons hide → or **Undo** removes remaining drafts only.
+
+**Markdown twin**: Pages→Markdown pill → llms.txt row Preview (H1, blockquote, Pages/collection/Files sections, drafts absent) → row Serve toggle off → dims + drops from llms.txt live → New markdown file → editor (title/path/mono body) → **Save as draft** (private) → row ⋯ Publish → appears in llms.txt; Edit llms.txt → prefilled generated text → save → Custom badge → Revert to auto.
