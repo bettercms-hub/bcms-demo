@@ -37,6 +37,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ListToolbar, SegmentedFilter } from "@/components/cms/ListToolbar";
+import { Paginator, clampPage, type PageSize } from "@/components/cms/Paginator";
 import { cn } from "@/lib/utils";
 
 type RowKind = "page" | "entry" | "file";
@@ -71,6 +72,8 @@ export function MarkdownManager({
   const [llmsEdit, setLlmsEdit] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [mdPage, setMdPage] = useState(0);
+  const [mdSize, setMdSize] = useState<PageSize>(50);
   const uploadRef = useRef<HTMLInputElement>(null);
   const llmsUploadRef = useRef<HTMLInputElement>(null);
 
@@ -131,11 +134,13 @@ export function MarkdownManager({
   ];
 
   const q = query.trim().toLowerCase();
-  const rows = allRows.filter(
+  const filteredRows = allRows.filter(
     (r) =>
       (typeFilter === "all" || r.kind === typeFilter) &&
       (q === "" || r.title.toLowerCase().includes(q) || r.path.toLowerCase().includes(q)),
   );
+  const pageNav = clampPage(mdPage, filteredRows.length, mdSize);
+  const rows = filteredRows.slice(pageNav * mdSize, (pageNav + 1) * mdSize);
 
   const counts = {
     all: allRows.length,
@@ -366,6 +371,17 @@ export function MarkdownManager({
               </button>
             </div>
           )}
+          <Paginator
+            total={filteredRows.length}
+            page={pageNav}
+            size={mdSize}
+            onPage={setMdPage}
+            onSize={(s) => {
+              setMdSize(s);
+              setMdPage(0);
+            }}
+            noun="endpoint"
+          />
         </div>
       </div>
 

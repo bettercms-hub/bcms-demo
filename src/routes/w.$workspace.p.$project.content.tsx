@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowUpDown, ArrowUpRight, ChevronDown, ChevronRight, Copy, Database, FileText, Folder, MoreHorizontal, Plus, Rocket, Settings2, Trash2 } from "lucide-react";
+import { ArrowUpDown, ArrowUpRight, ChevronDown, ChevronRight, Copy, Database, FileText, Folder, FolderInput, FolderOpen, FolderPlus, MoreHorizontal, Plus, Rocket, Settings2, Trash2 } from "lucide-react";
 import { collections, entries, schemas } from "@/lib/cms/mock-data";
 import { getProjectBySlug } from "@/lib/cms/use-cms";
 import { newPageId, pagesActions, usePages, type PageDoc, type PageState } from "@/lib/cms/pages-store";
+import { folderActions, folderTrail, useFolders } from "@/lib/cms/folders-store";
+import { NewPageDialog } from "@/components/cms/pages/NewPageDialog";
+import { FolderDialog } from "@/components/cms/pages/FolderDialog";
+import { Paginator, clampPage, type PageSize } from "@/components/cms/Paginator";
 import { getSectionDef } from "@/components/cms/editor/sections/SectionSystem";
 import { PublishMenu } from "@/components/cms/editor/PublishMenu";
 import { PageSettingsDialog } from "@/components/cms/editor/PageSettingsDialog";
@@ -12,6 +16,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -56,10 +63,14 @@ function ContentPage() {
   const [typeFilter, setTypeFilter] = useState<"all" | "static" | "generated">("all");
   const [sort, setSort] = useState<"recent" | "name" | "path">("recent");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState<PageSize>(50);
+  const folders = useFolders(pr.id);
   const pq = pageQuery.trim().toLowerCase();
   const hasGenerated = allPages.some((p) => p.batchId);
+  const filtersActive = pq !== "" || statusFilter !== "all" || typeFilter !== "all";
   // Search, filters and sort only apply to the full list, not a batch review.
-  const visiblePages = batchRun
+  const filteredPages = batchRun
     ? pages
     : [...pages]
         .filter(
@@ -72,34 +83,70 @@ function ContentPage() {
           sort === "recent" ? b.updatedAt - a.updatedAt : sort === "name" ? a.title.localeCompare(b.title) : a.path.localeCompare(b.path),
         );
 
-  // Folders derive from the URL structure: /lp/paris and /lp/lyon group
-  // under /lp. Single-segment pages stay flat at the top.
-  const folderOf = (p: PageDoc) => {
+  const pageNav = clampPage(pageIndex, filteredPages.length, pageSize);
+  const pagedPages = batchRun ? filteredPages : filteredPages.slice(pageNav * pageSize, (pageNav + 1) * pageSize);
+
+  // A loose page (no explicit folder) still groups by its first path segment
+  // so generated batches like /lp and /for read as folders.
+  const virtualFolderOf = (p: PageDoc) => {
+    if (p.folderId) return null;
     const segs = p.path.split("/").filter(Boolean);
     return segs.length > 1 ? `/${segs[0]}` : null;
   };
-  type RowItem = { kind: "page"; pg: PageDoc; nested?: boolean } | { kind: "folder"; name: string; count: number };
+
+  type RowItem =
+    | { kind: "page"; pg: PageDoc; depth: number }
+    | { kind: "folder"; key: string; name: string; slug: string; count: number; depth: number; folderId?: string };
   const rowItems: RowItem[] = [];
+
   if (batchRun) {
-    for (const pg of visiblePages) rowItems.push({ kind: "page", pg });
+    for (const pg of pagedPages) rowItems.push({ kind: "page", pg, depth: 0 });
   } else {
-    const rootPages = visiblePages.filter((p) => folderOf(p) === null);
-    const folders = new Map<string, PageDoc[]>();
-    for (const p of visiblePages) {
-      const f = folderOf(p);
-      if (f) folders.set(f, [...(folders.get(f) ?? []), p]);
+    const pagesByFolder = new Map<string, PageDoc[]>();
+    const loose: PageDoc[] = [];
+    for (const p of pagedPages) {
+      if (p.folderId) pagesByFolder.set(p.folderId, [...(pagesByFolder.get(p.folderId) ?? []), p]);
+      else loose.push(p);
     }
-    for (const pg of rootPages) rowItems.push({ kind: "page", pg });
-    for (const [name, list] of [...folders.entries()].sort(([a], [b]) => a.localeCompare(b))) {
-      rowItems.push({ kind: "folder", name, count: list.length });
-      if (!collapsed.has(name)) for (const pg of list) rowItems.push({ kind: "page", pg, nested: true });
+    const childFolders = (parentId: string | null) =>
+      folders.filter((f) => f.parentId === parentId).sort((a, b) => a.name.localeCompare(b.name));
+    const totalUnder = (fid: string): number => {
+      let n = pagesByFolder.get(fid)?.length ?? 0;
+      for (const c of childFolders(fid)) n += totalUnder(c.id);
+      return n;
+    };
+    const walk = (parentId: string | null, depth: number) => {
+      for (const f of childFolders(parentId)) {
+        const count = totalUnder(f.id);
+        // Empty folders show only in the plain, unfiltered, first-page view.
+        if (count === 0 && (filtersActive || pageNav > 0)) continue;
+        rowItems.push({ kind: "folder", key: f.id, name: f.name, slug: f.slug, count, depth, folderId: f.id });
+        if (!collapsed.has(f.id)) {
+          walk(f.id, depth + 1);
+          for (const pg of pagesByFolder.get(f.id) ?? []) rowItems.push({ kind: "page", pg, depth: depth + 1 });
+        }
+      }
+    };
+    // Root-level pages and virtual (path-derived) folders first, then real folders.
+    const virtual = new Map<string, PageDoc[]>();
+    const rootPages: PageDoc[] = [];
+    for (const p of loose) {
+      const v = virtualFolderOf(p);
+      if (v) virtual.set(v, [...(virtual.get(v) ?? []), p]);
+      else rootPages.push(p);
     }
+    for (const pg of rootPages) rowItems.push({ kind: "page", pg, depth: 0 });
+    for (const [name, list] of [...virtual.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+      rowItems.push({ kind: "folder", key: name, name, slug: name.replace(/^\//, ""), count: list.length, depth: 0 });
+      if (!collapsed.has(name)) for (const pg of list) rowItems.push({ kind: "page", pg, depth: 1 });
+    }
+    walk(null, 0);
   }
-  const toggleFolder = (name: string) =>
+  const toggleFolder = (key: string) =>
     setCollapsed((s) => {
       const next = new Set(s);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   const cols = collections.filter((c) => c.projectId === pr.id);
@@ -112,6 +159,18 @@ function ContentPage() {
   const isMarkdown = view === "markdown";
   const [settingsPage, setSettingsPage] = useState<PageDoc | null>(null);
   const [publishFor, setPublishFor] = useState<{ page: PageDoc; rect: { top: number; left: number } } | null>(null);
+  const [newPageOpen, setNewPageOpen] = useState(false);
+  const [folderDialog, setFolderDialog] = useState<{ folder: Parameters<typeof FolderDialog>[0]["folder"] } | "new" | null>(null);
+  const [colPage, setColPage] = useState(0);
+  const [colSize, setColSize] = useState<PageSize>(50);
+  const colNav = clampPage(colPage, cols.length, colSize);
+  const pagedCols = cols.slice(colNav * colSize, (colNav + 1) * colSize);
+
+  function deleteFolder(folderId: string) {
+    const removed = folderActions.remove(pr.id, folderId);
+    pagesActions.clearFolders(pr.id, removed);
+    toast.success("Folder removed. Pages inside moved to the top level.");
+  }
 
   function duplicate(pg: PageDoc) {
     let path = `${pg.path}-copy`;
@@ -147,12 +206,13 @@ function ContentPage() {
       actions={
         !isContent && !isMarkdown && canBuild ? (
           <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setFolderDialog("new")}>
+              <FolderPlus className="mr-1 h-3.5 w-3.5" /> New folder
+            </Button>
             <GenerateMenu projectId={pr.id} workspace={workspace} project={project} sitePlan={pr.sitePlan ?? "free"} />
-            <Button asChild size="sm">
-              <Link to="/w/$workspace/p/$project/visual" params={{ workspace, project }} search={{ new: true }}>
-                <Plus className="mr-1 h-3.5 w-3.5" />
-                New page
-              </Link>
+            <Button size="sm" onClick={() => setNewPageOpen(true)}>
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              New page
             </Button>
           </div>
         ) : undefined
@@ -169,8 +229,9 @@ function ContentPage() {
               </p>
             </div>
           ) : (
+            <>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {cols.map((c) => {
+              {pagedCols.map((c) => {
                 const sch = schemas.find((s) => s.id === c.schemaId);
                 const count = entries.filter((e) => e.collectionId === c.id).length;
                 return (
@@ -199,6 +260,12 @@ function ContentPage() {
                 );
               })}
             </div>
+            {cols.length > colSize && (
+              <div className="mt-3 overflow-hidden rounded-xl border border-[color:var(--border-hairline)] bg-card">
+                <Paginator total={cols.length} page={colNav} size={colSize} onPage={setColPage} onSize={(s) => { setColSize(s); setColPage(0); }} noun="collection" />
+              </div>
+            )}
+            </>
           )}
         </Section>
       ) : (
@@ -300,20 +367,45 @@ function ContentPage() {
             )}
             {rowItems.map((item) => {
               if (item.kind === "folder") {
-                const open = !collapsed.has(item.name);
+                const open = !collapsed.has(item.key);
+                const isReal = !!item.folderId;
                 return (
-                  <li key={`folder:${item.name}`}>
+                  <li key={`folder:${item.key}`} className="group grid grid-cols-[1fr_44px] items-center bg-[color:var(--s2)]/60 transition-colors hover:bg-[var(--s4)]">
                     <button
                       type="button"
-                      onClick={() => toggleFolder(item.name)}
+                      onClick={() => toggleFolder(item.key)}
                       aria-expanded={open}
-                      className="flex w-full items-center gap-2.5 bg-[color:var(--s2)]/60 px-4 py-2 text-left transition-colors hover:bg-[var(--s4)]"
+                      className="flex w-full items-center gap-2.5 py-2 pr-2 text-left"
+                      style={{ paddingLeft: 16 + item.depth * 22 }}
                     >
                       {open ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-                      <Folder className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      <span className="font-mono text-[12px] font-medium text-foreground">{item.name}</span>
+                      {open ? <FolderOpen className="h-4 w-4 shrink-0 text-primary/70" /> : <Folder className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                      <span className="text-[12.5px] font-semibold text-foreground">{item.name}</span>
+                      {isReal && !item.slug && <span className="rounded bg-[color:var(--s2)] px-1 text-[9.5px] font-medium text-muted-foreground">organizer</span>}
+                      {item.slug && <span className="font-mono text-[10.5px] text-muted-foreground/80">/{item.slug}</span>}
                       <span className="text-[11px] tabular-nums text-muted-foreground">{item.count} {item.count === 1 ? "page" : "pages"}</span>
                     </button>
+                    {canBuild && isReal && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button type="button" aria-label={`Folder actions for ${item.name}`} className="mr-2 grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100 data-[state=open]:opacity-100">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[170px]">
+                          <DropdownMenuItem className="text-[13px]" onSelect={() => setNewPageOpen(true)}>
+                            <Plus className="mr-2 h-3.5 w-3.5" /> New page here
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-[13px]" onSelect={() => setFolderDialog({ folder: folders.find((f) => f.id === item.folderId) ?? null })}>
+                            <Settings2 className="mr-2 h-3.5 w-3.5" /> Rename or move
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-[13px] text-destructive focus:text-destructive" onSelect={() => deleteFolder(item.folderId!)}>
+                            <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete folder
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </li>
                 );
               }
@@ -321,7 +413,7 @@ function ContentPage() {
               const tone = PAGE_TONE[pg.state];
               const kinds = [...new Set(pg.sections.map((s) => getSectionDef(s.type)?.name).filter(Boolean))];
               return (
-                <li key={pg.id} className={cn("group grid grid-cols-[1fr_150px_130px_76px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--s4)]", item.nested && "pl-11")}>
+                <li key={pg.id} className="group grid grid-cols-[1fr_150px_130px_76px] items-center gap-3 py-2.5 pr-4 transition-colors hover:bg-[var(--s4)]" style={{ paddingLeft: 16 + item.depth * 22 }}>
                   <Link to="/w/$workspace/p/$project/visual" params={{ workspace, project }} search={{ page: pg.path }} className="flex min-w-0 items-center gap-2.5">
                     <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div className="min-w-0">
@@ -405,6 +497,24 @@ function ContentPage() {
                       )}
                       {canBuild && (
                         <>
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger className="text-[13px]">
+                              <FolderInput className="mr-2 h-3.5 w-3.5" /> Move to folder
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent className="max-h-[280px] w-[220px] overflow-y-auto">
+                              <DropdownMenuItem className="text-[13px]" disabled={!pg.folderId} onSelect={() => pagesActions.setFolder(pr.id, pg.path, null)}>
+                                Top level
+                                {!pg.folderId && <span className="ml-auto text-primary">•</span>}
+                              </DropdownMenuItem>
+                              {folders.length > 0 && <DropdownMenuSeparator />}
+                              {folders.map((f) => (
+                                <DropdownMenuItem key={f.id} className="text-[13px]" disabled={pg.folderId === f.id} onSelect={() => pagesActions.setFolder(pr.id, pg.path, f.id)}>
+                                  <span className="truncate">{folderTrail(folders, f.id)}</span>
+                                  {pg.folderId === f.id && <span className="ml-auto text-primary">•</span>}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-[13px]" onSelect={() => duplicate(pg)}>
                             <Copy className="mr-2 h-3.5 w-3.5" /> Duplicate
@@ -422,9 +532,22 @@ function ContentPage() {
             })}
           </ul>
           {canBuild && !batchRun && (
-            <Link to="/w/$workspace/p/$project/visual" params={{ workspace, project }} search={{ new: true }} className="flex items-center gap-2 border-t border-[color:var(--border-hairline)] px-4 py-2.5 text-[12.5px] font-medium text-primary transition-colors hover:bg-[var(--s4)]">
+            <button type="button" onClick={() => setNewPageOpen(true)} className="flex w-full items-center gap-2 border-t border-[color:var(--border-hairline)] px-4 py-2.5 text-[12.5px] font-medium text-primary transition-colors hover:bg-[var(--s4)]">
               <Plus className="h-3.5 w-3.5" /> New page
-            </Link>
+            </button>
+          )}
+          {!batchRun && (
+            <Paginator
+              total={filteredPages.length}
+              page={pageNav}
+              size={pageSize}
+              onPage={setPageIndex}
+              onSize={(s) => {
+                setPageSize(s);
+                setPageIndex(0);
+              }}
+              noun="page"
+            />
           )}
         </div>
         </>
@@ -450,6 +573,16 @@ function ContentPage() {
           portal
           rect={publishFor.rect}
           onClose={() => setPublishFor(null)}
+        />
+      )}
+      {newPageOpen && (
+        <NewPageDialog projectId={pr.id} workspace={workspace} project={project} onClose={() => setNewPageOpen(false)} />
+      )}
+      {folderDialog && (
+        <FolderDialog
+          projectId={pr.id}
+          folder={folderDialog === "new" ? null : folderDialog.folder}
+          onClose={() => setFolderDialog(null)}
         />
       )}
     </PageShell>

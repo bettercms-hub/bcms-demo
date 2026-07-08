@@ -4,7 +4,7 @@
  */
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { Globe, Settings2, Trash2, X } from "lucide-react";
+import { Globe, Image as ImageIcon, Settings2, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getPages, pagesActions, type PageDoc } from "@/lib/cms/pages-store";
@@ -29,6 +29,7 @@ export function PageSettingsDialog({
   const [path, setPath] = useState(page.path);
   const [seoTitle, setSeoTitle] = useState(page.seoTitle ?? "");
   const [seoDescription, setSeoDescription] = useState(page.seoDescription ?? "");
+  const [ogImage, setOgImage] = useState(page.ogImage ?? "");
   const [indexing, setIndexing] = useState<"index" | "noindex">(page.indexing ?? "index");
   const [jsonLd, setJsonLd] = useState(page.jsonLd ?? "");
 
@@ -53,6 +54,7 @@ export function PageSettingsDialog({
       path: normPath,
       seoTitle: seoTitle.trim() || undefined,
       seoDescription: seoDescription.trim() || undefined,
+      ogImage: ogImage.trim() || undefined,
       indexing,
       jsonLd: jsonLd.trim() || undefined,
     }));
@@ -136,6 +138,25 @@ export function PageSettingsDialog({
                   </span>
                 </button>
               ))}
+            </div>
+          </FieldRow>
+
+          <FieldRow label="Social image (OG image)" hint="Shown when the page is shared on social and chat. 1200x630 works best.">
+            <div className="flex items-start gap-2.5">
+              <div className="grid h-[52px] w-[92px] shrink-0 place-items-center overflow-hidden rounded-md border border-[color:var(--color-border)] bg-[color:var(--s2)]">
+                {ogImage.trim() ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={ogImage} alt="" className="h-full w-full object-cover" onError={(e) => ((e.currentTarget.style.display = "none"))} />
+                ) : (
+                  <ImageIcon className="h-4 w-4 text-muted-foreground/60" />
+                )}
+              </div>
+              <input
+                value={ogImage}
+                onChange={(e) => setOgImage(e.target.value)}
+                placeholder="https://cdn.yoursite.com/og/page.png"
+                className="h-9 w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 font-mono text-[12px] outline-none transition-colors focus:border-[color:var(--primary)]"
+              />
             </div>
           </FieldRow>
 

@@ -25,9 +25,13 @@ export interface PageDoc {
   /** SEO / page meta, editable in Page settings. */
   seoTitle?: string;
   seoDescription?: string;
+  /** Social preview image URL (og:image / twitter:image). */
+  ogImage?: string;
   indexing?: "index" | "noindex";
   /** Structured data (JSON-LD), emitted in the page head when valid. */
   jsonLd?: string;
+  /** Organizing folder id, or undefined for the root of the pages tree. */
+  folderId?: string | null;
   /** Pushed to the private staging environment. */
   staged?: boolean;
   /** Set when a generator created this page; groups a batch for review. */
@@ -95,6 +99,23 @@ export const pagesActions = {
     byProject.set(
       projectId,
       ensure(projectId).filter((p) => p.path !== path),
+    );
+    emit();
+  },
+  /** Move a page into a folder (or to root with null). Path is unchanged. */
+  setFolder(projectId: string, path: string, folderId: string | null) {
+    byProject.set(
+      projectId,
+      ensure(projectId).map((p) => (p.path === path ? { ...p, folderId, updatedAt: Date.now() } : p)),
+    );
+    emit();
+  },
+  /** Clear a folder from any pages that referenced it (after folder delete). */
+  clearFolders(projectId: string, folderIds: string[]) {
+    const gone = new Set(folderIds);
+    byProject.set(
+      projectId,
+      ensure(projectId).map((p) => (p.folderId && gone.has(p.folderId) ? { ...p, folderId: null } : p)),
     );
     emit();
   },
