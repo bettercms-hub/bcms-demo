@@ -547,10 +547,7 @@ function ContentPage() {
                   <Link to="/w/$workspace/p/$project/visual" params={{ workspace, project }} search={{ page: pg.path }} className="flex min-w-0 items-center gap-2.5">
                     <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="truncate text-[13px] font-medium text-foreground">{pg.title}</span>
-                        <span className="shrink-0 rounded bg-[color:var(--s2)] px-1 py-px text-[9.5px] font-medium uppercase tracking-wide text-muted-foreground/80">Static</span>
-                      </div>
+                      <div className="truncate text-[13px] font-medium text-foreground">{pg.title}</div>
                       <div className="truncate text-[11px] text-muted-foreground">
                         <span className="font-mono">{effectiveUrl(pg)}</span>
                         {kinds.length > 0 && <span className="text-muted-foreground/70"> · {pg.sections.length} sections</span>}
@@ -717,10 +714,7 @@ function ContentPage() {
                       >
                         <Database className="h-4 w-4 shrink-0 text-muted-foreground" />
                         <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="truncate text-[13px] font-medium text-foreground">{c.name}</span>
-                            <span className="shrink-0 rounded bg-[color:color-mix(in_oklab,var(--primary)_11%,transparent)] px-1 py-px text-[9.5px] font-medium uppercase tracking-wide text-primary">Collection</span>
-                          </div>
+                          <div className="truncate text-[13px] font-medium text-foreground">{c.name}</div>
                           <div className="truncate text-[11px] text-muted-foreground">
                             <span className="font-mono">/{c.slug}/:slug</span>
                           </div>
@@ -731,7 +725,18 @@ function ContentPage() {
                         <span className="text-muted-foreground">Dynamic</span>
                       </span>
                       <span className="text-[11.5px] tabular-nums text-muted-foreground">{count} {count === 1 ? "entry" : "entries"}</span>
-                      <span className="flex items-center justify-end">
+                      <span className="flex items-center justify-end gap-0.5">
+                        {canBuild && (
+                          <Link
+                            to="/w/$workspace/p/$project/schema"
+                            params={{ workspace, project }}
+                            aria-label={`Settings for ${c.name}`}
+                            title="Collection settings"
+                            className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100"
+                          >
+                            <Settings2 className="h-4 w-4" />
+                          </Link>
+                        )}
                         <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
                       </span>
                     </li>
