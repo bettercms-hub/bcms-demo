@@ -252,19 +252,25 @@
   color: var(--foreground);
 }
 
-/* Dark — BetterCMS Maroon System.
-   Maroon is the neutral. Bright red is the action language.
-   No pure black. Every layer is a shade of maroon. */
+/* Dark — BetterCMS Graphite System.
+   Neutral cool grays, no hue tint in surfaces. Elevation = lighter, never
+   shadow. The canvas is dark graphite, not black: comfortable in a dim room
+   without glare, with enough floor for the surface ladder to read.
+   The brand pink stays the brand pink, lifted one step for dark contrast.
+
+   Contrast targets (WCAG AA, checked):
+   - foreground #EDEDEF on card #1C1C1F  ~ 14.6:1
+   - secondary  #C2C2C8 on card          ~  9.6:1
+   - muted-fg   #A0A0A8 on card          ~  6.4:1 (AA normal text)
+   - primary    #F63E8F on canvas        ~  4.8:1 (links, active nav) */
 .dark {
-  --s0:  #100308;   /* Surface 0 — Application canvas (near-black maroon, disappears) */
-  --s1:  #1A0B12;   /* Surface 1 — Content container (lifted ~6%) */
-  --s2:  #211119;   /* Surface 2a — Inset / focused workspace */
-  --s3:  #281720;   /* Surface 2b — Dropdowns, popovers */
-  --s4:  #2F1C27;   /* Surface 2c — Modals, command palette */
+  --s0:  #141416;   /* Surface 0 — app chrome: canvas, sidebar, topbar */
+  --s1:  #1C1C1F;   /* Surface 1 — cards, panels, inputs (lifted) */
+  --s2:  #222226;   /* Surface 2 — inset, focused, muted fills */
+  --s3:  #28282D;   /* Surface 3 — dropdowns, popovers */
+  --s4:  #2E2E34;   /* Surface 4 — modals, command palette */
 
-
-
-  /* Semantic aliases — canvas stays bright, containers sink */
+  /* Semantic aliases — chrome sits on s0, content lifts above it */
   --background: var(--s0);
   --topbar:     var(--s0);
   --canvas:     var(--s0);
@@ -285,71 +291,70 @@
   /* 4-level surface ladder — canvas + container tier */
   --surface-1: var(--s0);
   --surface-2: var(--s1);
-  --surface-3: var(--s1);
+  --surface-3: var(--s2);
   --surface-4: var(--s1);
 
-
-  /* Typography — warm whites, never pure */
-  --foreground:           #F5EDEE;
-  --foreground-secondary: #C9B9BC;
-  --muted:                var(--s1);
-  --muted-foreground:     #968488;
-  --foreground-disabled:  #6B5A5E;
-  --accent:               var(--s1);
+  /* Typography — near-white, never pure white (glare), strictly neutral */
+  --foreground:           #EDEDEF;
+  --foreground-secondary: #C2C2C8;
+  --muted:                var(--s2);
+  --muted-foreground:     #A0A0A8;
+  --foreground-disabled:  #6E6E76;
+  --accent:               var(--s2);
   --accent-foreground:    var(--foreground);
-  --secondary:            var(--s1);
+  --secondary:            var(--s2);
   --secondary-foreground: var(--foreground);
 
-  /* Borders — hairline does the structural work now that backgrounds don't */
-  --border-hairline: rgba(255, 220, 220, 0.05);
-  --border:          rgba(255, 220, 220, 0.07);
-  --border-strong:   rgba(255, 220, 220, 0.12);
+  /* Borders — neutral white alphas; hairline carries the structure */
+  --border-hairline: rgba(255, 255, 255, 0.06);
+  --border:          rgba(255, 255, 255, 0.09);
+  --border-strong:   rgba(255, 255, 255, 0.16);
 
-  /* Rows: transparent default, barely-there warm lift on hover, red tint when selected */
-  --row-hover:    rgba(255, 220, 220, 0.035);
-  --row-selected: color-mix(in srgb, #DD4364 7%, transparent);
+  /* Rows: neutral lift on hover, pink tint only when selected */
+  --row-hover:    rgba(255, 255, 255, 0.045);
+  --row-selected: color-mix(in srgb, #F63E8F 12%, transparent);
 
-  /* Sidebar nav: bright red indicator + subtle red wash */
-  --nav-active-bg:        color-mix(in srgb, #DD4364 10%, transparent);
+  /* Sidebar nav: pink indicator + subtle pink wash */
+  --nav-active-bg:        color-mix(in srgb, #F63E8F 12%, transparent);
   --nav-active-indicator: var(--primary);
 
-
-  /* Brand — Bright Red. Reserved for CTA, Publish, active nav, focus, selection. */
-  --primary:            #DD4364;
+  /* Brand — the same pink as light, lifted one step so text and rings
+     hold contrast on graphite. */
+  --primary:            #F63E8F;
   --primary-foreground: #FFFFFF;
-  --primary-hover:      #E85877;
-  --primary-pressed:    #C13354;
-  --ring:               #DD4364;
+  --primary-hover:      #FF5AA1;
+  --primary-pressed:    #E02A7D;
+  --ring:               #F63E8F;
 
-  /* Status — muted, warmed slightly to sit on maroon */
-  --status-live:      #5FD18A;
-  --status-draft:     #F0B45A;
-  --status-preview:   #6FA8E8;
-  --status-archived:  #968488;
-  --status-scheduled: #4FC9D6;
-  --status-error:     #E5556B;
-  --status-warning:   #F0B45A;
-  --status-success:   #5FD18A;
+  /* Status — 400-level hues that read on graphite without shouting */
+  --status-live:      #4ADE80;
+  --status-draft:     #FBBF24;
+  --status-preview:   #60A5FA;
+  --status-archived:  #8B8B93;
+  --status-scheduled: #22D3EE;
+  --status-error:     #F87171;
+  --status-warning:   #FBBF24;
+  --status-success:   #4ADE80;
 
-  --destructive:            #D43A3A;
+  --destructive:            #E5484D;
   --destructive-foreground: #FFFFFF;
 
   /* Block category accents */
   --accent-content: transparent;
-  --accent-media: #6FA8E8;
-  --accent-layout: #B097F0;
-  --accent-interactive: #4FCFA3;
-  --accent-action: #DD4364;
-  --accent-advanced: #F0B45A;
+  --accent-media: #60A5FA;
+  --accent-layout: #A78BFA;
+  --accent-interactive: #34D399;
+  --accent-action: #F63E8F;
+  --accent-advanced: #FBBF24;
 
-  /* Shadows — only floating layers get a real shadow. Soft and warm. */
+  /* Shadows — only floating layers, deeper than light mode */
   --shadow-1: none;
-  --shadow-2: 0 4px 12px -4px rgba(0, 0, 0, 0.35);
-  --shadow-3: 0 24px 64px -24px rgba(0, 0, 0, 0.55), 0 4px 16px -8px rgba(0, 0, 0, 0.35);
+  --shadow-2: 0 4px 12px -4px rgba(0, 0, 0, 0.4);
+  --shadow-3: 0 24px 64px -24px rgba(0, 0, 0, 0.6), 0 4px 16px -8px rgba(0, 0, 0, 0.4);
   --shadow-card:      none;
   --shadow-container: none;
   --shadow-elevated:  var(--shadow-3);
-  --shadow-focus:     0 0 0 1px var(--primary);
+  --shadow-focus:     0 0 0 3px rgba(246, 62, 143, 0.28);
 
   /* Motion */
   --motion-fast:   120ms cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -360,6 +365,22 @@
 }
 
 
+
+/* Dark remap — status hues authored for light backgrounds (500 to 700
+   steps) lift to their 400-step equivalents in dark mode, app-wide, in one
+   place. The website preview canvas (.bcms-preview-surface) is excluded:
+   it deliberately stays a light "website" even in dark chrome.
+   New code should still prefer explicit dark: variants; this layer keeps
+   the long tail readable. */
+.dark :is(.text-emerald-500, .text-emerald-600, .text-emerald-700):not(.bcms-preview-surface *) { color: #4ADE80; }
+.dark :is(.text-amber-500, .text-amber-600, .text-amber-700):not(.bcms-preview-surface *) { color: #FBBF24; }
+.dark :is(.text-rose-500, .text-rose-600):not(.bcms-preview-surface *) { color: #FB7185; }
+.dark :is(.text-red-500, .text-red-600):not(.bcms-preview-surface *) { color: #F87171; }
+.dark :is(.text-sky-500, .text-sky-600):not(.bcms-preview-surface *) { color: #38BDF8; }
+.dark :is(.text-blue-500, .text-blue-600):not(.bcms-preview-surface *) { color: #60A5FA; }
+.dark :is(.text-indigo-500, .text-indigo-600):not(.bcms-preview-surface *) { color: #818CF8; }
+.dark :is(.text-violet-500, .text-violet-600):not(.bcms-preview-surface *) { color: #A78BFA; }
+.dark :is(.text-cyan-600, .text-teal-600):not(.bcms-preview-surface *) { color: #22D3EE; }
 
 /* Utility class for uppercase labels */
 .u-label {
