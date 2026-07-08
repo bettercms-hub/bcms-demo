@@ -10,8 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as WorkspaceNewRouteImport } from './routes/workspace.new'
 import { Route as WWorkspaceRouteImport } from './routes/w.$workspace'
 import { Route as DevScrollbarsRouteImport } from './routes/dev.scrollbars'
 import { Route as WWorkspaceIndexRouteImport } from './routes/w.$workspace.index'
@@ -83,6 +85,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -91,6 +98,11 @@ const AuthRoute = AuthRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorkspaceNewRoute = WorkspaceNewRouteImport.update({
+  id: '/workspace/new',
+  path: '/workspace/new',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WWorkspaceRoute = WWorkspaceRouteImport.update({
@@ -471,9 +483,11 @@ const WWorkspacePProjectPagesPageIdSeoRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/onboarding': typeof OnboardingRoute
   '/reset-password': typeof ResetPasswordRoute
   '/dev/scrollbars': typeof DevScrollbarsRoute
   '/w/$workspace': typeof WWorkspaceRouteWithChildren
+  '/workspace/new': typeof WorkspaceNewRoute
   '/w/$workspace/agent': typeof WWorkspaceAgentRoute
   '/w/$workspace/members': typeof WWorkspaceMembersRoute
   '/w/$workspace/projects': typeof WWorkspaceProjectsRoute
@@ -541,8 +555,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/onboarding': typeof OnboardingRoute
   '/reset-password': typeof ResetPasswordRoute
   '/dev/scrollbars': typeof DevScrollbarsRoute
+  '/workspace/new': typeof WorkspaceNewRoute
   '/w/$workspace/agent': typeof WWorkspaceAgentRoute
   '/w/$workspace/members': typeof WWorkspaceMembersRoute
   '/w/$workspace/projects': typeof WWorkspaceProjectsRoute
@@ -609,9 +625,11 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/onboarding': typeof OnboardingRoute
   '/reset-password': typeof ResetPasswordRoute
   '/dev/scrollbars': typeof DevScrollbarsRoute
   '/w/$workspace': typeof WWorkspaceRouteWithChildren
+  '/workspace/new': typeof WorkspaceNewRoute
   '/w/$workspace/agent': typeof WWorkspaceAgentRoute
   '/w/$workspace/members': typeof WWorkspaceMembersRoute
   '/w/$workspace/projects': typeof WWorkspaceProjectsRoute
@@ -681,9 +699,11 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/onboarding'
     | '/reset-password'
     | '/dev/scrollbars'
     | '/w/$workspace'
+    | '/workspace/new'
     | '/w/$workspace/agent'
     | '/w/$workspace/members'
     | '/w/$workspace/projects'
@@ -751,8 +771,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/onboarding'
     | '/reset-password'
     | '/dev/scrollbars'
+    | '/workspace/new'
     | '/w/$workspace/agent'
     | '/w/$workspace/members'
     | '/w/$workspace/projects'
@@ -818,9 +840,11 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/auth'
+    | '/onboarding'
     | '/reset-password'
     | '/dev/scrollbars'
     | '/w/$workspace'
+    | '/workspace/new'
     | '/w/$workspace/agent'
     | '/w/$workspace/members'
     | '/w/$workspace/projects'
@@ -889,9 +913,11 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  OnboardingRoute: typeof OnboardingRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   DevScrollbarsRoute: typeof DevScrollbarsRoute
   WWorkspaceRoute: typeof WWorkspaceRouteWithChildren
+  WorkspaceNewRoute: typeof WorkspaceNewRoute
   ApiPublicFormsFormIdSubmitRoute: typeof ApiPublicFormsFormIdSubmitRoute
 }
 
@@ -902,6 +928,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -916,6 +949,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/workspace/new': {
+      id: '/workspace/new'
+      path: '/workspace/new'
+      fullPath: '/workspace/new'
+      preLoaderRoute: typeof WorkspaceNewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/w/$workspace': {
@@ -1580,9 +1620,11 @@ const WWorkspaceRouteWithChildren = WWorkspaceRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  OnboardingRoute: OnboardingRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   DevScrollbarsRoute: DevScrollbarsRoute,
   WWorkspaceRoute: WWorkspaceRouteWithChildren,
+  WorkspaceNewRoute: WorkspaceNewRoute,
   ApiPublicFormsFormIdSubmitRoute: ApiPublicFormsFormIdSubmitRoute,
 }
 export const routeTree = rootRouteImport

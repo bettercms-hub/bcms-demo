@@ -440,6 +440,31 @@ export const select = {
 // ---------- Workspace actions ----------
 
 export const workspaceActions = {
+  /** Create a workspace (onboarding + the switcher's Create workspace). */
+  create(input: { name: string }): Workspace {
+    const base =
+      input.name
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9-]+/g, "-")
+        .replace(/-{2,}/g, "-")
+        .replace(/^-+|-+$/g, "") || "workspace";
+    let slug = base;
+    let n = 2;
+    while (state.workspaces.some((w) => w.slug === slug)) slug = `${base}-${n++}`;
+    const ws: Workspace = {
+      id: newId("ws"),
+      slug,
+      name: input.name.trim(),
+      projectIds: [],
+      memberIds: [],
+      createdAt: new Date().toISOString(),
+      workspacePlan: "free",
+    };
+    set((s) => ({ ...s, workspaces: [...s.workspaces, ws] }));
+    recordAudit(ws.id, "workspace.created", "workspace", ws.name);
+    return ws;
+  },
   /** Update a workspace's identity (name / slug / logo) and persist it. */
   update(id: string, patch: Partial<Pick<Workspace, "name" | "slug" | "logoUrl">>) {
     set((s) => ({

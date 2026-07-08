@@ -149,8 +149,10 @@ export function WorkspaceIdentity({ wsSlug }: { wsSlug: string }) {
           </div>
 
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-[13px]">
-            <Plus className="mr-2 h-3.5 w-3.5" /> Create workspace
+          <DropdownMenuItem asChild className="text-[13px]">
+            <Link to="/workspace/new">
+              <Plus className="mr-2 h-3.5 w-3.5" /> Create workspace
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild className="text-[13px]">
             <Link to="/w/$workspace/settings" params={{ workspace: wsSlug }}>
