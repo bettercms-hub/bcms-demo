@@ -283,6 +283,17 @@ export function MarkdownManager({
               { id: "file", label: "Files", count: counts.file },
             ]}
           />
+          {canEdit && (
+            <div className="flex items-center gap-2">
+              <input ref={uploadRef} type="file" accept=".md,text/markdown" className="hidden" onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} />
+              <Button size="sm" variant="outline" onClick={() => uploadRef.current?.click()}>
+                <Upload className="mr-1 h-3.5 w-3.5" /> Upload .md
+              </Button>
+              <Button size="sm" onClick={() => setEditing("new")}>
+                <Plus className="mr-1 h-3.5 w-3.5" /> New markdown file
+              </Button>
+            </div>
+          )}
         </ListToolbar>
 
         <div className="overflow-hidden rounded-xl border border-[color:var(--border-hairline)] bg-card">
@@ -360,17 +371,6 @@ export function MarkdownManager({
               <li className="px-4 py-10 text-center text-[12.5px] text-muted-foreground">No endpoints match your search.</li>
             )}
           </ul>
-          {canEdit && (
-            <div className="flex items-center gap-4 border-t border-[color:var(--border-hairline)] px-4 py-2.5">
-              <button type="button" onClick={() => setEditing("new")} className="inline-flex items-center gap-2 text-[12.5px] font-medium text-primary transition-colors hover:opacity-80">
-                <Plus className="h-3.5 w-3.5" /> New markdown file
-              </button>
-              <input ref={uploadRef} type="file" accept=".md,text/markdown" className="hidden" onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])} />
-              <button type="button" onClick={() => uploadRef.current?.click()} className="inline-flex items-center gap-2 text-[12.5px] font-medium text-muted-foreground transition-colors hover:text-foreground">
-                <Upload className="h-3.5 w-3.5" /> Upload .md
-              </button>
-            </div>
-          )}
           <Paginator
             total={filteredRows.length}
             page={pageNav}

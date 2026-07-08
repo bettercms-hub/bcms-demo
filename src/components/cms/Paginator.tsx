@@ -38,19 +38,19 @@ export function Paginator({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--border-hairline)] px-4 py-2.5">
+      <span className="text-[12px] tabular-nums text-muted-foreground">
+        {from}
+        {to > from ? `-${to}` : ""} of {total} {total === 1 ? noun : `${noun}s`}
+      </span>
+
       <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
-        <span className="tabular-nums">
-          {from}
-          {to > from ? `-${to}` : ""} of {total} {total === 1 ? noun : `${noun}s`}
-        </span>
-        <span className="text-muted-foreground/40">·</span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button type="button" className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]">
               {size} per page
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-[150px]">
+          <DropdownMenuContent align="end" className="w-[150px]">
             {PAGE_SIZES.map((s) => (
               <DropdownMenuItem key={s} className="justify-between text-[13px]" onSelect={() => onSize(s)}>
                 {s} per page
@@ -59,37 +59,40 @@ export function Paginator({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
 
-      {pageCount > 1 && (
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            disabled={page === 0}
-            onClick={() => onPage(page - 1)}
-            className={cn(
-              "inline-flex h-7 items-center gap-1 rounded-md border border-[color:var(--color-border)] pl-1.5 pr-2 text-[12px] font-medium transition-colors",
-              page === 0 ? "cursor-not-allowed text-muted-foreground/40" : "text-foreground hover:bg-[color:var(--color-row-hover)]",
-            )}
-          >
-            <ChevronLeft className="h-3.5 w-3.5" /> Prev
-          </button>
-          <span className="px-1.5 text-[12px] tabular-nums text-muted-foreground">
-            {page + 1} / {pageCount}
-          </span>
-          <button
-            type="button"
-            disabled={page >= pageCount - 1}
-            onClick={() => onPage(page + 1)}
-            className={cn(
-              "inline-flex h-7 items-center gap-1 rounded-md border border-[color:var(--color-border)] pl-2 pr-1.5 text-[12px] font-medium transition-colors",
-              page >= pageCount - 1 ? "cursor-not-allowed text-muted-foreground/40" : "text-foreground hover:bg-[color:var(--color-row-hover)]",
-            )}
-          >
-            Next <ChevronRight className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
+        {pageCount > 1 && (
+          <>
+            <span className="text-muted-foreground/40">·</span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={page === 0}
+                onClick={() => onPage(page - 1)}
+                className={cn(
+                  "inline-flex h-7 items-center gap-1 rounded-md border border-[color:var(--color-border)] pl-1.5 pr-2 text-[12px] font-medium transition-colors",
+                  page === 0 ? "cursor-not-allowed text-muted-foreground/40" : "text-foreground hover:bg-[color:var(--color-row-hover)]",
+                )}
+              >
+                <ChevronLeft className="h-3.5 w-3.5" /> Prev
+              </button>
+              <span className="px-1.5 text-[12px] tabular-nums text-muted-foreground">
+                {page + 1} / {pageCount}
+              </span>
+              <button
+                type="button"
+                disabled={page >= pageCount - 1}
+                onClick={() => onPage(page + 1)}
+                className={cn(
+                  "inline-flex h-7 items-center gap-1 rounded-md border border-[color:var(--color-border)] pl-2 pr-1.5 text-[12px] font-medium transition-colors",
+                  page >= pageCount - 1 ? "cursor-not-allowed text-muted-foreground/40" : "text-foreground hover:bg-[color:var(--color-row-hover)]",
+                )}
+              >
+                Next <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

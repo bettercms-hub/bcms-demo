@@ -1,12 +1,24 @@
 import { useState } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowUpDown, ArrowUpRight, ChevronDown, ChevronRight, Copy, Database, FileText, Folder, FolderInput, FolderOpen, FolderPlus, MoreHorizontal, Plus, Rocket, Settings2, Trash2 } from "lucide-react";
+import { ArrowUpDown, ArrowUpRight, ChevronDown, ChevronRight, Copy, Database, FileText, Folder, FolderInput, FolderOpen, FolderPlus, GripVertical, MoreHorizontal, Plus, Rocket, Settings2, Trash2 } from "lucide-react";
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  pointerWithin,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
 import { collections, entries, schemas } from "@/lib/cms/mock-data";
 import { getProjectBySlug } from "@/lib/cms/use-cms";
 import { newPageId, pagesActions, usePages, type PageDoc, type PageState } from "@/lib/cms/pages-store";
-import { folderActions, folderTrail, useFolders } from "@/lib/cms/folders-store";
+import { descendantIds, eligibleParents, folderActions, folderTrail, useFolders } from "@/lib/cms/folders-store";
 import { NewPageDialog } from "@/components/cms/pages/NewPageDialog";
 import { FolderDialog } from "@/components/cms/pages/FolderDialog";
+import { Draggable, Droppable, mergeRefs } from "@/components/cms/pages/tree-dnd";
 import { Paginator, clampPage, type PageSize } from "@/components/cms/Paginator";
 import { getSectionDef } from "@/components/cms/editor/sections/SectionSystem";
 import { PublishMenu } from "@/components/cms/editor/PublishMenu";
@@ -188,6 +200,57 @@ function ContentPage() {
     });
   }
 
+  /* -------------------------------------------------- drag to organize */
+  // Drag a page onto a folder to move it in, or a folder onto a folder to
+  // nest it. Row order still follows the Sort dropdown; drag only changes
+  // folder membership and nesting.
+  const [drag, setDrag] = useState<{ id: string; type: "page" | "folder"; label: string } | null>(null);
+  const dndOff = !canBuild || !!batchRun;
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor),
+  );
+  const foldersById = new Map(folders.map((f) => [f.id, f]));
+  const folderHeight = (fid: string): number => {
+    const kids = folders.filter((f) => f.parentId === fid);
+    return kids.length === 0 ? 0 : 1 + Math.max(...kids.map((k) => folderHeight(k.id)));
+  };
+  // While dragging a folder, its own subtree can't be a drop target.
+  const draggingFolderId = drag?.type === "folder" ? drag.id.slice("folder:".length) : null;
+  const blockedTargets = draggingFolderId ? new Set([draggingFolderId, ...descendantIds(folders, draggingFolderId)]) : null;
+
+  const onDragStart = (e: DragStartEvent) => {
+    const d = e.active.data.current as { type: "page" | "folder"; label: string } | undefined;
+    if (d) setDrag({ id: String(e.active.id), type: d.type, label: d.label });
+  };
+  const onDragEnd = (e: DragEndEvent) => {
+    setDrag(null);
+    const a = e.active.data.current as { type: "page" | "folder"; path?: string; folderId?: string } | undefined;
+    const o = e.over?.data.current as { type: "folder" | "root"; folderId?: string } | undefined;
+    if (!a || !o) return;
+    const target = o.type === "root" ? null : o.folderId ?? null;
+    if (a.type === "page" && a.path != null) {
+      const pg = pages.find((p) => p.path === a.path);
+      if (!pg || (pg.folderId ?? null) === target) return;
+      pagesActions.setFolder(pr.id, a.path, target);
+      toast.success(target ? `Moved to ${folderTrail(folders, target)}` : "Moved to top level");
+    } else if (a.type === "folder" && a.folderId) {
+      if ((foldersById.get(a.folderId)?.parentId ?? null) === target) return;
+      if (target === null) {
+        folderActions.update(pr.id, a.folderId, { parentId: null });
+        toast.success("Moved to top level");
+        return;
+      }
+      const ok = eligibleParents(folders, a.folderId, folderHeight(a.folderId)).some((f) => f.id === target);
+      if (!ok) {
+        toast.error("Can't nest there. That would go too deep.");
+        return;
+      }
+      folderActions.update(pr.id, a.folderId, { parentId: target });
+      toast.success(`Nested in ${folderTrail(folders, target)}`);
+    }
+  };
+
   return (
     <PageShell
       breadcrumbs={[
@@ -354,6 +417,7 @@ function ContentPage() {
             </DropdownMenu>
           </ListToolbar>
         )}
+        <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDrag(null)}>
         <div className="overflow-hidden rounded-xl border border-[color:var(--border-hairline)] bg-card">
           <div className="grid grid-cols-[1fr_150px_130px_76px] items-center gap-3 border-b border-[color:var(--border-hairline)] bg-[color:var(--s2)] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             <span>Page</span>
@@ -361,6 +425,21 @@ function ContentPage() {
             <span>Updated</span>
             <span />
           </div>
+          {drag && (
+            <Droppable id="root" data={{ type: "root" }} disabled={dndOff}>
+              {({ setNodeRef, isOver }) => (
+                <div
+                  ref={setNodeRef}
+                  className={cn(
+                    "flex items-center gap-2 border-b border-[color:var(--border-hairline)] px-4 py-2 text-[11.5px] font-medium transition-colors",
+                    isOver ? "bg-[color:color-mix(in_oklab,var(--primary)_12%,transparent)] text-primary" : "bg-[color:var(--s2)]/60 text-muted-foreground",
+                  )}
+                >
+                  <FolderInput className="h-3.5 w-3.5" /> Drop here to move to the top level
+                </div>
+              )}
+            </Droppable>
+          )}
           <ul className="divide-y divide-[color:var(--border-hairline)]">
             {rowItems.length === 0 && (
               <li className="px-4 py-10 text-center text-[12.5px] text-muted-foreground">No pages match your search.</li>
@@ -369,51 +448,92 @@ function ContentPage() {
               if (item.kind === "folder") {
                 const open = !collapsed.has(item.key);
                 const isReal = !!item.folderId;
+                const dropDisabled = dndOff || !isReal || (blockedTargets?.has(item.folderId ?? "") ?? false);
+                const dragDisabled = dndOff || !isReal;
                 return (
-                  <li key={`folder:${item.key}`} className="group grid grid-cols-[1fr_44px] items-center bg-[color:var(--s2)]/60 transition-colors hover:bg-[var(--s4)]">
-                    <button
-                      type="button"
-                      onClick={() => toggleFolder(item.key)}
-                      aria-expanded={open}
-                      className="flex w-full items-center gap-2.5 py-2 pr-2 text-left"
-                      style={{ paddingLeft: 16 + item.depth * 22 }}
-                    >
-                      {open ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-                      {open ? <FolderOpen className="h-4 w-4 shrink-0 text-primary/70" /> : <Folder className="h-4 w-4 shrink-0 text-muted-foreground" />}
-                      <span className="text-[12.5px] font-semibold text-foreground">{item.name}</span>
-                      {isReal && !item.slug && <span className="rounded bg-[color:var(--s2)] px-1 text-[9.5px] font-medium text-muted-foreground">organizer</span>}
-                      {item.slug && <span className="font-mono text-[10.5px] text-muted-foreground/80">/{item.slug}</span>}
-                      <span className="text-[11px] tabular-nums text-muted-foreground">{item.count} {item.count === 1 ? "page" : "pages"}</span>
-                    </button>
-                    {canBuild && isReal && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button type="button" aria-label={`Folder actions for ${item.name}`} className="mr-2 grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100 data-[state=open]:opacity-100">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-[170px]">
-                          <DropdownMenuItem className="text-[13px]" onSelect={() => setNewPageOpen(true)}>
-                            <Plus className="mr-2 h-3.5 w-3.5" /> New page here
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-[13px]" onSelect={() => setFolderDialog({ folder: folders.find((f) => f.id === item.folderId) ?? null })}>
-                            <Settings2 className="mr-2 h-3.5 w-3.5" /> Rename or move
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-[13px] text-destructive focus:text-destructive" onSelect={() => deleteFolder(item.folderId!)}>
-                            <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete folder
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                  <Droppable key={`folder:${item.key}`} id={`folder:${item.folderId ?? item.key}`} data={{ type: "folder", folderId: item.folderId }} disabled={dropDisabled}>
+                    {({ setNodeRef: dropRef, isOver }) => (
+                      <Draggable id={`folder:${item.folderId ?? item.key}`} data={{ type: "folder", folderId: item.folderId, label: item.name }} disabled={dragDisabled}>
+                        {({ setNodeRef: dragRef, handleProps, style }) => (
+                          <li
+                            ref={mergeRefs(dropRef, dragRef)}
+                            style={style}
+                            className={cn(
+                              "group relative grid grid-cols-[1fr_44px] items-center bg-[color:var(--s2)]/60 transition-colors hover:bg-[var(--s4)]",
+                              isOver && "bg-[color:color-mix(in_oklab,var(--primary)_10%,transparent)] ring-1 ring-inset ring-[color:color-mix(in_oklab,var(--primary)_55%,transparent)]",
+                            )}
+                          >
+                            {!dragDisabled && (
+                              <button
+                                type="button"
+                                aria-label={`Drag ${item.name}`}
+                                {...handleProps}
+                                style={{ left: item.depth * 22 }}
+                                className="absolute top-1/2 z-10 grid h-6 w-4 -translate-y-1/2 cursor-grab touch-none place-items-center text-muted-foreground/50 opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100 active:cursor-grabbing"
+                              >
+                                <GripVertical className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => toggleFolder(item.key)}
+                              aria-expanded={open}
+                              className="flex w-full items-center gap-2.5 py-2 pr-2 text-left"
+                              style={{ paddingLeft: 16 + item.depth * 22 }}
+                            >
+                              {open ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+                              {open ? <FolderOpen className="h-4 w-4 shrink-0 text-primary/70" /> : <Folder className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                              <span className="text-[12.5px] font-semibold text-foreground">{item.name}</span>
+                              {isReal && !item.slug && <span className="rounded bg-[color:var(--s2)] px-1 text-[9.5px] font-medium text-muted-foreground">organizer</span>}
+                              {item.slug && <span className="font-mono text-[10.5px] text-muted-foreground/80">/{item.slug}</span>}
+                              <span className="text-[11px] tabular-nums text-muted-foreground">{item.count} {item.count === 1 ? "page" : "pages"}</span>
+                            </button>
+                            {canBuild && isReal && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button type="button" aria-label={`Folder actions for ${item.name}`} className="mr-2 grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100 data-[state=open]:opacity-100">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-[170px]">
+                                  <DropdownMenuItem className="text-[13px]" onSelect={() => setNewPageOpen(true)}>
+                                    <Plus className="mr-2 h-3.5 w-3.5" /> New page here
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="text-[13px]" onSelect={() => setFolderDialog({ folder: folders.find((f) => f.id === item.folderId) ?? null })}>
+                                    <Settings2 className="mr-2 h-3.5 w-3.5" /> Rename or move
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem className="text-[13px] text-destructive focus:text-destructive" onSelect={() => deleteFolder(item.folderId!)}>
+                                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete folder
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </li>
+                        )}
+                      </Draggable>
                     )}
-                  </li>
+                  </Droppable>
                 );
               }
               const pg = item.pg;
               const tone = PAGE_TONE[pg.state];
               const kinds = [...new Set(pg.sections.map((s) => getSectionDef(s.type)?.name).filter(Boolean))];
               return (
-                <li key={pg.id} className="group grid grid-cols-[1fr_150px_130px_76px] items-center gap-3 py-2.5 pr-4 transition-colors hover:bg-[var(--s4)]" style={{ paddingLeft: 16 + item.depth * 22 }}>
+                <Draggable key={pg.id} id={`page:${pg.path}`} data={{ type: "page", path: pg.path, label: pg.title }} disabled={dndOff}>
+                  {({ setNodeRef, handleProps, style }) => (
+                <li ref={setNodeRef} className="group relative grid grid-cols-[1fr_150px_130px_76px] items-center gap-3 py-2.5 pr-4 transition-colors hover:bg-[var(--s4)]" style={{ ...style, paddingLeft: 16 + item.depth * 22 }}>
+                  {!dndOff && (
+                    <button
+                      type="button"
+                      aria-label={`Drag ${pg.title}`}
+                      {...handleProps}
+                      style={{ left: item.depth * 22 }}
+                      className="absolute top-1/2 z-10 grid h-6 w-4 -translate-y-1/2 cursor-grab touch-none place-items-center text-muted-foreground/50 opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100 active:cursor-grabbing"
+                    >
+                      <GripVertical className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                   <Link to="/w/$workspace/p/$project/visual" params={{ workspace, project }} search={{ page: pg.path }} className="flex min-w-0 items-center gap-2.5">
                     <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div className="min-w-0">
@@ -528,6 +648,8 @@ function ContentPage() {
                   </DropdownMenu>
                   </span>
                 </li>
+                  )}
+                </Draggable>
               );
             })}
           </ul>
@@ -550,6 +672,15 @@ function ContentPage() {
             />
           )}
         </div>
+        <DragOverlay dropAnimation={null}>
+          {drag && (
+            <div className="pointer-events-none inline-flex items-center gap-2 rounded-lg border border-[color:var(--color-border)] bg-card px-2.5 py-1.5 text-[12.5px] font-medium text-foreground shadow-lg">
+              {drag.type === "folder" ? <Folder className="h-3.5 w-3.5 text-muted-foreground" /> : <FileText className="h-3.5 w-3.5 text-muted-foreground" />}
+              {drag.label}
+            </div>
+          )}
+        </DragOverlay>
+        </DndContext>
         </>
         )}
         </>
