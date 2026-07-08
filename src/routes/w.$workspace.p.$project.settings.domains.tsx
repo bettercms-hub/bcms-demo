@@ -1,49 +1,48 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Copy, ExternalLink, Plus, Search, ShieldCheck, Trash2 } from "lucide-react";
+import { Check, Copy, ExternalLink, Globe, MoreHorizontal, Plus, Search, ShieldCheck, Star, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader, SettingsSection, StatusDot } from "@/components/cms/SettingsSubNav";
-import { DataTable, type DataTableColumn } from "@/components/cms/settings/DataTable";
 import { LockedFeature } from "@/components/cms/billing/FeatureGate";
+import { AddDomainDialog } from "@/components/cms/domains/AddDomainDialog";
 import { siteHas } from "@/lib/billing/pricing";
 import { getProjectBySlug } from "@/lib/cms/use-cms";
+import { domainActions, useCMS } from "@/lib/cms/store";
+import type { Domain } from "@/lib/cms/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/w/$workspace/p/$project/settings/domains")({
   component: Domains,
 });
 
-interface DomainRow {
-  id: string;
-  host: string;
-  kind: "primary" | "custom" | "preview";
-  verified: boolean;
-  ssl: "issued" | "pending" | "error";
+function sslMeta(status: Domain["sslStatus"]) {
+  if (status === "issued") return { label: "SSL issued", cls: "text-emerald-500" };
+  if (status === "pending") return { label: "SSL pending", cls: "text-amber-500" };
+  if (status === "failed") return { label: "SSL failed", cls: "text-rose-500" };
+  return { label: "No SSL", cls: "text-muted-foreground" };
 }
-
-const DOMAINS: DomainRow[] = [
-  { id: "1", host: "acme.com", kind: "primary", verified: true, ssl: "issued" },
-  { id: "2", host: "www.acme.com", kind: "custom", verified: true, ssl: "issued" },
-  { id: "3", host: "shop.acme.com", kind: "custom", verified: false, ssl: "pending" },
-  { id: "4", host: "acme.bettercms.site", kind: "preview", verified: true, ssl: "issued" },
-  { id: "5", host: "staging.acme.bettercms.site", kind: "preview", verified: true, ssl: "issued" },
-];
 
 function Domains() {
   const { workspace, project } = Route.useParams();
   const pr = getProjectBySlug(workspace, project);
   const plan = pr?.sitePlan ?? "free";
 
-  const primary = DOMAINS.find((d) => d.kind === "primary");
-  const custom = DOMAINS.filter((d) => d.kind === "custom");
-  const preview = DOMAINS.filter((d) => d.kind === "preview");
-
+  // Real domains for this project, from the same store the workspace roll-up reads.
+  const domains = useCMS((s) => (pr ? s.domains.filter((d) => d.projectId === pr.id) : []));
   const [q, setQ] = useState("");
-  const filteredCustom = useMemo(
-    () => custom.filter((d) => !q || d.host.toLowerCase().includes(q.toLowerCase())),
-    [custom, q],
+  const [adding, setAdding] = useState(false);
+
+  const primary = domains.find((d) => d.primary);
+  const others = useMemo(
+    () => domains.filter((d) => !d.primary && (!q || d.host.toLowerCase().includes(q.toLowerCase()))),
+    [domains, q],
   );
+
+  // Preview URLs are always available and not stored as custom domains.
+  const previews = pr ? [`${pr.slug}.bettercms.site`, `staging.${pr.slug}.bettercms.site`] : [];
 
   if (!siteHas(plan, "custom-domain")) {
     return (
@@ -56,68 +55,129 @@ function Domains() {
     );
   }
 
+  function makePrimary(d: Domain) {
+    domainActions.setPrimary(d.id);
+    toast.success(`${d.host} is now the primary domain`);
+  }
+  function remove(d: Domain) {
+    domainActions.remove(d.id);
+    toast.success(`${d.host} removed`);
+  }
+
   return (
     <>
       <PageHeader
         title="Domains"
-        description="Connect custom domains, verify ownership, and manage SSL."
+        description="Connect custom domains, verify ownership, and manage SSL for this project."
         action={
-          <Button size="sm" className="gap-1.5">
+          <Button size="sm" className="gap-1.5" onClick={() => setAdding(true)}>
             <Plus className="h-3.5 w-3.5" /> Add domain
           </Button>
         }
       />
 
-      {primary && (
-        <SettingsSection title="Primary domain" description="The canonical URL for this site.">
+      <SettingsSection title="Primary domain" description="The canonical URL for this site. All traffic redirects here.">
+        {primary ? (
           <div className="flex items-center justify-between py-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-[14px] font-semibold text-foreground">{primary.host}</span>
                 <Badge variant="outline" className="text-[10px]">Primary</Badge>
-                <StatusDot tone="success" />
-                <span className="text-[11px] uppercase tracking-wider text-emerald-500">SSL issued</span>
+                <StatusDot tone={primary.sslStatus === "issued" ? "success" : "warning"} />
+                <span className={`text-[11px] uppercase tracking-wider ${sslMeta(primary.sslStatus).cls}`}>{sslMeta(primary.sslStatus).label}</span>
               </div>
-              <p className="mt-1 text-[12px] text-muted-foreground">
-                All traffic redirects here. Change with care.
-              </p>
+              <p className="mt-1 text-[12px] text-muted-foreground">Change the primary from any verified custom domain below.</p>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Button asChild variant="outline" size="sm" className="h-8 gap-1 text-[12px]">
-                <a href={`https://${primary.host}`} target="_blank" rel="noreferrer">
-                  <ExternalLink className="h-3 w-3" /> Open
-                </a>
-              </Button>
-              <Button variant="ghost" size="sm" className="h-8 gap-1 text-[12px]">Change</Button>
-            </div>
+            <Button asChild variant="outline" size="sm" className="h-8 gap-1 text-[12px]">
+              <a href={`https://${primary.host}`} target="_blank" rel="noreferrer">
+                <ExternalLink className="h-3 w-3" /> Open
+              </a>
+            </Button>
           </div>
-        </SettingsSection>
-      )}
-
-      <SettingsSection title="Custom domains" description="Domains pointing to this project." flush>
-        <DomainsDataTable
-          rows={filteredCustom}
-          toolbar={
-            <>
-              <div className="relative max-w-sm flex-1">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="Search domains…"
-                  className="h-8 pl-8 text-[12px]"
-                />
-              </div>
-              <span className="ml-auto text-[12px] text-muted-foreground">
-                {filteredCustom.length} domain{filteredCustom.length === 1 ? "" : "s"}
-              </span>
-            </>
-          }
-        />
+        ) : (
+          <div className="py-4 text-[12.5px] text-muted-foreground">
+            No primary domain yet. Add a custom domain, then set it as primary. Your site stays live on{" "}
+            <span className="font-mono text-foreground">{previews[0]}</span>.
+          </div>
+        )}
       </SettingsSection>
 
-      <SettingsSection title="Preview domains" description="Auto-generated URLs for previews and staging." flush>
-        <DomainsDataTable rows={preview} hideActions />
+      <SettingsSection title="Custom domains" description="Domains pointing to this project." flush>
+        <div className="flex items-center gap-3 border-b border-[color:var(--border-hairline)] px-4 py-2.5">
+          <div className="relative max-w-xs flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search domains" className="h-8 pl-8 text-[12px]" />
+          </div>
+          <span className="ml-auto text-[12px] text-muted-foreground">{others.length} domain{others.length === 1 ? "" : "s"}</span>
+        </div>
+
+        {others.length === 0 ? (
+          <div className="px-4 py-8 text-center text-[12.5px] text-muted-foreground">
+            {q ? "No domains match your search." : "No secondary domains. Add one to point more traffic at this project."}
+          </div>
+        ) : (
+          <ul className="divide-y divide-[color:var(--border-hairline)]">
+            {others.map((d) => {
+              const ssl = sslMeta(d.sslStatus);
+              const verified = d.status === "active";
+              return (
+                <li key={d.id} className="group flex items-center gap-3 px-4 py-3">
+                  <Globe className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+                  <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-foreground">{d.host}</span>
+                  <span className="inline-flex w-[110px] items-center gap-1.5 text-[12px]">
+                    <StatusDot tone={verified ? "success" : "warning"} />
+                    {verified ? "Verified" : "Verifying"}
+                  </span>
+                  <span className="inline-flex w-[110px] items-center gap-1.5 text-[12px]">
+                    <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className={ssl.cls}>{d.sslStatus ?? "none"}</span>
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button asChild variant="ghost" size="icon" className="h-7 w-7" title="Open">
+                      <a href={`https://${d.host}`} target="_blank" rel="noreferrer"><ExternalLink className="h-3.5 w-3.5" /></a>
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button type="button" aria-label={`Actions for ${d.host}`} className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground data-[state=open]:bg-[color:var(--color-row-hover)]">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-[190px]">
+                        <DropdownMenuItem className="text-[13px]" disabled={!verified} onSelect={() => makePrimary(d)}>
+                          <Star className="mr-2 h-3.5 w-3.5" /> Set as primary
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-[13px]" onSelect={() => { navigator.clipboard.writeText(d.host); toast.success("Copied"); }}>
+                          <Copy className="mr-2 h-3.5 w-3.5" /> Copy domain
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-[13px] text-destructive focus:text-destructive" onSelect={() => remove(d)}>
+                          <Trash2 className="mr-2 h-3.5 w-3.5" /> Remove
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </SettingsSection>
+
+      <SettingsSection title="Preview domains" description="Auto-generated URLs for previews and staging. Always on, no setup." flush>
+        <ul className="divide-y divide-[color:var(--border-hairline)]">
+          {previews.map((host) => (
+            <li key={host} className="flex items-center gap-3 px-4 py-3">
+              <Globe className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+              <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-foreground">{host}</span>
+              <span className="inline-flex items-center gap-1.5 text-[12px] text-emerald-500">
+                <Check className="h-3.5 w-3.5" /> Live
+              </span>
+              <Button asChild variant="ghost" size="icon" className="h-7 w-7" title="Open">
+                <a href={`https://${host}`} target="_blank" rel="noreferrer"><ExternalLink className="h-3.5 w-3.5" /></a>
+              </Button>
+            </li>
+          ))}
+        </ul>
       </SettingsSection>
 
       <SettingsSection title="DNS instructions" description="Add these records at your registrar to verify a new domain.">
@@ -127,81 +187,9 @@ function Domains() {
           <DnsRow type="TXT" name="_bettercms" value="verify=abcd1234efgh5678" />
         </div>
       </SettingsSection>
+
+      {adding && pr && <AddDomainDialog workspaceId={pr.workspaceId} fixedProjectId={pr.id} onClose={() => setAdding(false)} onAdded={() => toast.success("Domain added. Follow the DNS steps to verify.")} />}
     </>
-  );
-}
-
-function DomainsDataTable({
-  rows,
-  hideActions = false,
-  toolbar,
-}: {
-  rows: DomainRow[];
-  hideActions?: boolean;
-  toolbar?: React.ReactNode;
-}) {
-  const columns: DataTableColumn<DomainRow>[] = [
-    {
-      key: "host",
-      header: "Domain",
-      cell: (d) => <span className="font-mono">{d.host}</span>,
-      sortAccessor: (d) => d.host,
-    },
-    {
-      key: "verified",
-      header: "Verification",
-      cell: (d) => (
-        <span className="inline-flex items-center gap-1.5">
-          <StatusDot tone={d.verified ? "success" : "warning"} />
-          {d.verified ? "Verified" : "Pending"}
-        </span>
-      ),
-      sortAccessor: (d) => (d.verified ? 1 : 0),
-    },
-    {
-      key: "ssl",
-      header: "SSL",
-      cell: (d) => (
-        <span className="inline-flex items-center gap-1.5">
-          <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className={`capitalize ${d.ssl === "issued" ? "text-emerald-500" : d.ssl === "pending" ? "text-amber-500" : "text-rose-500"}`}>{d.ssl}</span>
-        </span>
-      ),
-      sortAccessor: (d) => d.ssl,
-    },
-    {
-      key: "actions",
-      header: "Actions",
-      align: "right",
-      cell: () =>
-        !hideActions ? (
-          <div className="inline-flex gap-1">
-            <Button variant="ghost" size="icon" className="h-7 w-7" title="Open">
-              <ExternalLink className="h-3.5 w-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-rose-500" title="Remove">
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        ) : (
-          <Button variant="ghost" size="icon" className="h-7 w-7" title="Open">
-            <ExternalLink className="h-3.5 w-3.5" />
-          </Button>
-        ),
-    },
-  ];
-
-  return (
-    <DataTable
-      rows={rows}
-      rowKey={(d) => d.id}
-      columns={columns}
-      pageSize={10}
-      maxHeight="480px"
-      toolbar={toolbar}
-      emptyTitle="No domains"
-      emptyDescription="Add a custom domain to point traffic at this project."
-    />
   );
 }
 
@@ -211,7 +199,7 @@ function DnsRow({ type, name, value }: { type: string; name: string; value: stri
       <Badge variant="outline" className="justify-center font-mono text-[10px]">{type}</Badge>
       <Input readOnly value={name} className="font-mono" />
       <Input readOnly value={value} className="font-mono" />
-      <Button variant="outline" size="icon" className="h-9 w-9" title="Copy">
+      <Button variant="outline" size="icon" className="h-9 w-9" title="Copy" onClick={() => { navigator.clipboard.writeText(value); toast.success("Copied"); }}>
         <Copy className="h-3.5 w-3.5" />
       </Button>
     </div>
