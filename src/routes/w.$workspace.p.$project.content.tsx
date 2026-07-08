@@ -24,6 +24,7 @@ import { GenerationBatchBar } from "@/components/cms/generate/GenerationBatchBar
 import { agentRunActions } from "@/lib/agent/runs-store";
 import { MarkdownManager } from "@/components/cms/markdown/MarkdownManager";
 import { pageToMarkdown } from "@/lib/md/serialize";
+import { ListToolbar, SegmentedFilter } from "@/components/cms/ListToolbar";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/w/$workspace/p/$project/content")({
@@ -50,6 +51,17 @@ function ContentPage() {
   const allPages = usePages(pr.id);
   const batchRun = batch ? agentRunActions.get(batch) : undefined;
   const pages = batchRun ? allPages.filter((p) => p.batchId === batchRun.id) : allPages;
+  const [pageQuery, setPageQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | PageState>("all");
+  const pq = pageQuery.trim().toLowerCase();
+  // Search + status filter only apply to the full list, not a batch review.
+  const visiblePages = batchRun
+    ? pages
+    : pages.filter(
+        (p) =>
+          (statusFilter === "all" || p.state === statusFilter) &&
+          (pq === "" || p.title.toLowerCase().includes(pq) || p.path.toLowerCase().includes(pq)),
+      );
   const cols = collections.filter((c) => c.projectId === pr.id);
   const { effective } = useEffectiveRole(workspace);
   const canBuild = canCompose(effective);
@@ -185,6 +197,20 @@ function ContentPage() {
             onDismiss={() => navigate({ to: "/w/$workspace/p/$project/content", params: { workspace, project }, search: {} })}
           />
         )}
+        {!batchRun && (
+          <ListToolbar query={pageQuery} onQuery={setPageQuery} placeholder="Search pages">
+            <SegmentedFilter<"all" | PageState>
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { id: "all", label: "All", count: pages.length },
+                { id: "published", label: "Published", count: pages.filter((p) => p.state === "published").length },
+                { id: "draft", label: "Draft", count: pages.filter((p) => p.state === "draft").length },
+                { id: "scheduled", label: "Scheduled", count: pages.filter((p) => p.state === "scheduled").length },
+              ]}
+            />
+          </ListToolbar>
+        )}
         <div className="overflow-hidden rounded-xl border border-[color:var(--border-hairline)] bg-card">
           <div className="grid grid-cols-[1fr_150px_130px_44px] items-center gap-3 border-b border-[color:var(--border-hairline)] bg-[color:var(--s2)] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             <span>Page</span>
@@ -193,7 +219,10 @@ function ContentPage() {
             <span />
           </div>
           <ul className="divide-y divide-[color:var(--border-hairline)]">
-            {pages.map((pg) => {
+            {visiblePages.length === 0 && (
+              <li className="px-4 py-10 text-center text-[12.5px] text-muted-foreground">No pages match your search.</li>
+            )}
+            {visiblePages.map((pg) => {
               const tone = PAGE_TONE[pg.state];
               const kinds = [...new Set(pg.sections.map((s) => getSectionDef(s.type)?.name).filter(Boolean))];
               return (

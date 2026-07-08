@@ -2,15 +2,18 @@
  * md-store — the Markdown delivery surface, per project.
  *
  * Holds what the serializers cannot derive: which surfaces are on
- * (llms.txt, llms-full.txt), which pages and entries are excluded from
- * markdown delivery, and the standalone .md files a team writes by hand
- * (guides, agent instructions, anything that is markdown-first).
+ * (llms.txt, llms-full.txt), whether llms.txt is auto-generated or a
+ * hand-authored override, which pages and entries are excluded from
+ * markdown delivery, and the standalone .md files a team writes by hand.
  *
- * Pages and entries themselves stay structured; their markdown twins are
- * serialized on request. In-memory for the demo, per project in the
- * backend for production.
+ * Standalone files carry their own draft/published lifecycle: drafts are
+ * private, published files are live and appear in llms.txt. Pages and
+ * entries stay structured; their markdown twins are serialized on request.
+ * In-memory for the demo, per project in the backend for production.
  */
 import { useSyncExternalStore } from "react";
+
+export type MdFileState = "draft" | "published";
 
 export interface MdFile {
   id: string;
@@ -18,6 +21,7 @@ export interface MdFile {
   path: string;
   title: string;
   body: string;
+  state: MdFileState;
   updatedAt: number;
 }
 
@@ -26,6 +30,10 @@ export interface MdState {
   llms: boolean;
   /** Serve /llms-full.txt, the full corpus. Heavy, off by default. */
   llmsFull: boolean;
+  /** "auto" generates llms.txt from the site; "custom" serves llmsCustom. */
+  llmsMode: "auto" | "custom";
+  /** Hand-authored llms.txt, used when llmsMode is "custom". */
+  llmsCustom: string;
   /** Page paths and entry ids excluded from markdown delivery. */
   excluded: string[];
   files: MdFile[];
@@ -70,6 +78,8 @@ function seed(): MdState {
   return {
     llms: true,
     llmsFull: false,
+    llmsMode: "auto",
+    llmsCustom: "",
     excluded: [],
     files: [
       {
@@ -77,6 +87,7 @@ function seed(): MdState {
         path: "/docs/getting-started.md",
         title: "Getting started",
         body: SEED_FILE_BODY,
+        state: "published",
         updatedAt: Date.now() - 3 * 86_400_000,
       },
     ],
@@ -121,6 +132,10 @@ export const mdActions = {
   setSurface(projectId: string, surface: "llms" | "llmsFull", on: boolean) {
     patch(projectId, (s) => ({ ...s, [surface]: on }));
   },
+  /** Switch llms.txt to a hand-authored override (or back to auto). */
+  setLlmsMode(projectId: string, mode: "auto" | "custom", custom?: string) {
+    patch(projectId, (s) => ({ ...s, llmsMode: mode, llmsCustom: custom ?? s.llmsCustom }));
+  },
   /** Toggle a page path or entry id in or out of markdown delivery. */
   toggleExcluded(projectId: string, key: string) {
     patch(projectId, (s) => ({
@@ -128,17 +143,30 @@ export const mdActions = {
       excluded: s.excluded.includes(key) ? s.excluded.filter((x) => x !== key) : [...s.excluded, key],
     }));
   },
-  addFile(projectId: string, input: { path: string; title: string; body: string }): MdFile {
-    const file: MdFile = { ...input, path: normalizeMdPath(input.path), id: newFileId(), updatedAt: Date.now() };
+  addFile(projectId: string, input: { path: string; title: string; body: string; state?: MdFileState }): MdFile {
+    const file: MdFile = {
+      path: normalizeMdPath(input.path),
+      title: input.title,
+      body: input.body,
+      state: input.state ?? "draft",
+      id: newFileId(),
+      updatedAt: Date.now(),
+    };
     patch(projectId, (s) => ({ ...s, files: [...s.files, file] }));
     return file;
   },
-  updateFile(projectId: string, id: string, input: Partial<Pick<MdFile, "path" | "title" | "body">>) {
+  updateFile(projectId: string, id: string, input: Partial<Pick<MdFile, "path" | "title" | "body" | "state">>) {
     patch(projectId, (s) => ({
       ...s,
       files: s.files.map((f) =>
         f.id === id ? { ...f, ...input, path: input.path ? normalizeMdPath(input.path) : f.path, updatedAt: Date.now() } : f,
       ),
+    }));
+  },
+  setFileState(projectId: string, id: string, state: MdFileState) {
+    patch(projectId, (s) => ({
+      ...s,
+      files: s.files.map((f) => (f.id === id ? { ...f, state, updatedAt: Date.now() } : f)),
     }));
   },
   removeFile(projectId: string, id: string) {
