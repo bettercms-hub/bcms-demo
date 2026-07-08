@@ -15,7 +15,7 @@ import {
 import { collections, entries, schemas } from "@/lib/cms/mock-data";
 import { getProjectBySlug } from "@/lib/cms/use-cms";
 import { newPageId, pagesActions, usePages, type PageDoc, type PageState } from "@/lib/cms/pages-store";
-import { descendantIds, eligibleParents, folderActions, folderTrail, useFolders } from "@/lib/cms/folders-store";
+import { descendantIds, eligibleParents, folderActions, folderTrail, folderUrlPrefix, useFolders } from "@/lib/cms/folders-store";
 import { NewPageDialog } from "@/components/cms/pages/NewPageDialog";
 import { FolderDialog } from "@/components/cms/pages/FolderDialog";
 import { Draggable, Droppable, mergeRefs } from "@/components/cms/pages/tree-dnd";
@@ -182,6 +182,16 @@ function ContentPage() {
     const removed = folderActions.remove(pr.id, folderId);
     pagesActions.clearFolders(pr.id, removed);
     toast.success("Folder removed. Pages inside moved to the top level.");
+  }
+
+  // The URL a page actually serves at: its own slug under any URL-folder
+  // prefix. A page dragged into a folder keeps its short path, so we compose
+  // the effective URL for display rather than rewriting the stored path.
+  function effectiveUrl(pg: PageDoc) {
+    const prefix = folderUrlPrefix(folders, pg.folderId ?? null);
+    if (!prefix) return pg.path;
+    const last = pg.path.split("/").filter(Boolean).pop() ?? "";
+    return `${prefix}/${last}`;
   }
 
   function duplicate(pg: PageDoc) {
@@ -537,9 +547,12 @@ function ContentPage() {
                   <Link to="/w/$workspace/p/$project/visual" params={{ workspace, project }} search={{ page: pg.path }} className="flex min-w-0 items-center gap-2.5">
                     <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div className="min-w-0">
-                      <div className="truncate text-[13px] font-medium text-foreground">{pg.title}</div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate text-[13px] font-medium text-foreground">{pg.title}</span>
+                        <span className="shrink-0 rounded bg-[color:var(--s2)] px-1 py-px text-[9.5px] font-medium uppercase tracking-wide text-muted-foreground/80">Static</span>
+                      </div>
                       <div className="truncate text-[11px] text-muted-foreground">
-                        <span className="font-mono">{pg.path}</span>
+                        <span className="font-mono">{effectiveUrl(pg)}</span>
                         {kinds.length > 0 && <span className="text-muted-foreground/70"> · {pg.sections.length} sections</span>}
                       </div>
                     </div>
@@ -681,6 +694,53 @@ function ContentPage() {
           )}
         </DragOverlay>
         </DndContext>
+        {!batchRun && cols.length > 0 && (() => {
+          const q = pageQuery.trim().toLowerCase();
+          const shown = cols.filter((c) => q === "" || c.name.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q));
+          if (shown.length === 0) return null;
+          return (
+            <div className="mt-4 overflow-hidden rounded-xl border border-[color:var(--border-hairline)] bg-card">
+              <div className="flex items-center gap-2 border-b border-[color:var(--border-hairline)] bg-[color:var(--s2)] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <Database className="h-3.5 w-3.5" /> Collection pages
+                <span className="rounded bg-card px-1.5 py-px text-[10px] font-medium normal-case tracking-normal text-muted-foreground/80">One page per entry, rendered from a collection</span>
+              </div>
+              <ul className="divide-y divide-[color:var(--border-hairline)]">
+                {shown.map((c) => {
+                  const count = entries.filter((e) => e.collectionId === c.id).length;
+                  return (
+                    <li key={c.id} className="group grid grid-cols-[1fr_150px_130px_76px] items-center gap-3 py-2.5 pl-4 pr-4 transition-colors hover:bg-[var(--s4)]">
+                      <Link
+                        to="/w/$workspace/p/$project/editor"
+                        params={{ workspace, project }}
+                        search={{ scope: "collections" as const, node: `collection:${c.id}`, section: undefined }}
+                        className="flex min-w-0 items-center gap-2.5"
+                      >
+                        <Database className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="truncate text-[13px] font-medium text-foreground">{c.name}</span>
+                            <span className="shrink-0 rounded bg-[color:color-mix(in_oklab,var(--primary)_11%,transparent)] px-1 py-px text-[9.5px] font-medium uppercase tracking-wide text-primary">Collection</span>
+                          </div>
+                          <div className="truncate text-[11px] text-muted-foreground">
+                            <span className="font-mono">/{c.slug}/:slug</span>
+                          </div>
+                        </div>
+                      </Link>
+                      <span className="inline-flex items-center gap-1.5 text-[12px]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--primary)]/70" />
+                        <span className="text-muted-foreground">Dynamic</span>
+                      </span>
+                      <span className="text-[11.5px] tabular-nums text-muted-foreground">{count} {count === 1 ? "entry" : "entries"}</span>
+                      <span className="flex items-center justify-end">
+                        <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })()}
         </>
         )}
         </>
