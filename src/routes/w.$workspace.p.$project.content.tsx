@@ -22,10 +22,13 @@ import { formatRelative } from "@/lib/cms/format-time";
 import { GenerateMenu } from "@/components/cms/generate/GenerateMenu";
 import { GenerationBatchBar } from "@/components/cms/generate/GenerationBatchBar";
 import { agentRunActions } from "@/lib/agent/runs-store";
+import { MarkdownManager } from "@/components/cms/markdown/MarkdownManager";
+import { pageToMarkdown } from "@/lib/md/serialize";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/w/$workspace/p/$project/content")({
-  validateSearch: (s: Record<string, unknown>): { view?: "pages" | "content"; batch?: string } => ({
-    view: s.view === "content" ? "content" : undefined,
+  validateSearch: (s: Record<string, unknown>): { view?: "pages" | "content" | "markdown"; batch?: string } => ({
+    view: s.view === "content" ? "content" : s.view === "markdown" ? "markdown" : undefined,
     batch: typeof s.batch === "string" && s.batch.length > 0 ? s.batch : undefined,
   }),
   component: ContentPage,
@@ -54,6 +57,7 @@ function ContentPage() {
   const navigate = useNavigate();
 
   const isContent = view === "content";
+  const isMarkdown = view === "markdown";
   const [settingsPage, setSettingsPage] = useState<PageDoc | null>(null);
   const [publishFor, setPublishFor] = useState<{ page: PageDoc; rect: { top: number; left: number } } | null>(null);
 
@@ -78,12 +82,18 @@ function ContentPage() {
       breadcrumbs={[
         { label: workspace, to: "/w/$workspace", params: { workspace } },
         { label: pr.name, to: "/w/$workspace/p/$project/content", params: { workspace, project } },
-        { label: isContent ? "Content" : "Pages" },
+        { label: isContent ? "Content" : isMarkdown ? "Markdown" : "Pages" },
       ]}
-      title={isContent ? "Content" : "Pages"}
-      description={isContent ? "Structured collections that power your pages and API." : "Every page on your site. Open one to edit it visually."}
+      title={isContent ? "Content" : isMarkdown ? "Markdown" : "Pages"}
+      description={
+        isContent
+          ? "Structured collections that power your pages and API."
+          : isMarkdown
+            ? "Everything on this site, served as markdown for agents and answer engines."
+            : "Every page on your site. Open one to edit it visually."
+      }
       actions={
-        !isContent && canBuild ? (
+        !isContent && !isMarkdown && canBuild ? (
           <div className="flex items-center gap-2">
             <GenerateMenu projectId={pr.id} workspace={workspace} project={project} sitePlan={pr.sitePlan ?? "free"} />
             <Button asChild size="sm">
@@ -140,6 +150,31 @@ function ContentPage() {
           )}
         </Section>
       ) : (
+        <>
+        <div className="mb-3 flex w-fit items-center gap-0.5 rounded-lg border border-[color:var(--border-hairline)] bg-[color:var(--s2)] p-0.5">
+          {(
+            [
+              { label: "Pages", search: {} as Record<string, unknown>, active: !isMarkdown },
+              { label: "Markdown", search: { view: "markdown" }, active: isMarkdown },
+            ]
+          ).map((v) => (
+            <Link
+              key={v.label}
+              to="/w/$workspace/p/$project/content"
+              params={{ workspace, project }}
+              search={v.search as never}
+              className={cn(
+                "rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors",
+                v.active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {v.label}
+            </Link>
+          ))}
+        </div>
+        {isMarkdown ? (
+          <MarkdownManager projectId={pr.id} siteName={pr.name} domain={pr.domain ?? staging} canEdit={canBuild} />
+        ) : (
         <>
         {batchRun && (
           <GenerationBatchBar
@@ -207,6 +242,15 @@ function ContentPage() {
                       <DropdownMenuItem className="text-[13px]" onSelect={() => navigate({ to: "/w/$workspace/p/$project/visual", params: { workspace, project }, search: { page: pg.path } })}>
                         <ArrowUpRight className="mr-2 h-3.5 w-3.5" /> Open in editor
                       </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-[13px]"
+                        onSelect={() => {
+                          navigator.clipboard.writeText(pageToMarkdown({ name: pr.name, domain: pr.domain ?? staging }, pg));
+                          toast.success("Page copied as markdown");
+                        }}
+                      >
+                        <Copy className="mr-2 h-3.5 w-3.5" /> Copy as Markdown
+                      </DropdownMenuItem>
                       {canBuild && (
                         <DropdownMenuItem className="text-[13px]" onSelect={() => setSettingsPage(pg)}>
                           <Settings2 className="mr-2 h-3.5 w-3.5" /> Page settings & SEO
@@ -246,6 +290,8 @@ function ContentPage() {
             </Link>
           )}
         </div>
+        </>
+        )}
         </>
       )}
 
