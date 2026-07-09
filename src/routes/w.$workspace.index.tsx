@@ -865,7 +865,9 @@ function FolderMenu({ onRename, onDelete }: { onRename: () => void; onDelete: ()
           <MoreHorizontal className="h-4 w-4" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[160px]">
+      {/* Same React-portal bubbling stop as ProjectMenu: without it, item
+          clicks reach the folder row's onClick and open the folder. */}
+      <DropdownMenuContent align="end" className="w-[160px]" onClick={(e) => e.stopPropagation()}>
         <DropdownMenuItem className="text-[13px]" onSelect={onRename}>
           <Pencil className="mr-2 h-3.5 w-3.5" /> Rename
         </DropdownMenuItem>
@@ -904,7 +906,9 @@ function ProjectMenu({
           <MoreHorizontal className="h-4 w-4" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[188px]">
+      {/* React portals bubble through the REACT tree, so without this stop
+          every item click also fires the row's onClick and navigates away. */}
+      <DropdownMenuContent align="end" className="w-[188px]" onClick={(e) => e.stopPropagation()}>
         <DropdownMenuItem className="text-[13px]"><ExternalLink className="mr-2 h-3.5 w-3.5" /> Open</DropdownMenuItem>
         <DropdownMenuItem className="text-[13px]"><Eye className="mr-2 h-3.5 w-3.5" /> Preview</DropdownMenuItem>
         <DropdownMenuItem className="text-[13px]"><Send className="mr-2 h-3.5 w-3.5" /> Publish</DropdownMenuItem>
@@ -941,6 +945,7 @@ function ProjectMenu({
         {pending ? (
           <DropdownMenuItem
             className="text-[13px]"
+            data-testid="menu-cancel-transfer"
             onSelect={() => {
               transferActions.cancel(pending.id);
               toast.success("Transfer request canceled");
@@ -949,7 +954,13 @@ function ProjectMenu({
             <ArrowLeftRight className="mr-2 h-3.5 w-3.5" /> Cancel transfer ({pending.toEmail})
           </DropdownMenuItem>
         ) : (
-          <DropdownMenuItem className="text-[13px]" onSelect={onTransfer}>
+          <DropdownMenuItem
+            className="text-[13px]"
+            data-testid="menu-transfer-project"
+            // Defer past the menu's own close/focus-restore so the dialog
+            // portal never races Radix's pointer-events cleanup.
+            onSelect={() => setTimeout(onTransfer, 0)}
+          >
             <ArrowLeftRight className="mr-2 h-3.5 w-3.5" /> Transfer project
           </DropdownMenuItem>
         )}
