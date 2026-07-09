@@ -540,6 +540,38 @@ export const projectActions = {
     return project;
   },
   /**
+   * Move a project to another workspace (Webflow-style transfer). Content,
+   * pages, schemas and media travel with the project; the site plan resets
+   * to the base tier and the slug dedupes against the destination.
+   */
+  transfer(projectId: string, targetWorkspaceId: string) {
+    const project = state.projects.find((p) => p.id === projectId);
+    const target = state.workspaces.find((w) => w.id === targetWorkspaceId);
+    if (!project || !target || project.workspaceId === targetWorkspaceId) return;
+    const from = state.workspaces.find((w) => w.id === project.workspaceId);
+    let slug = project.slug;
+    let n = 2;
+    while (state.projects.some((p) => p.id !== projectId && p.workspaceId === targetWorkspaceId && p.slug === slug)) {
+      slug = `${project.slug}-${n++}`;
+    }
+    set((s) => ({
+      ...s,
+      projects: s.projects.map((p) =>
+        p.id === projectId
+          ? { ...p, workspaceId: targetWorkspaceId, slug, sitePlan: "free" as const, updatedAt: new Date().toISOString() }
+          : p,
+      ),
+      workspaces: s.workspaces.map((w) =>
+        w.id === targetWorkspaceId
+          ? { ...w, projectIds: [projectId, ...w.projectIds.filter((id) => id !== projectId)] }
+          : { ...w, projectIds: w.projectIds.filter((id) => id !== projectId) },
+      ),
+    }));
+    persistCreatedProjects();
+    if (from) recordAudit(from.id, "project.transferred_out", "project", `${project.name} to ${target.name}`, project.id);
+    recordAudit(targetWorkspaceId, "project.transferred_in", "project", project.name, project.id);
+  },
+  /**
    * Switch delivery mode. Content never moves; only the active delivery
    * adapters change. `kind` stays in sync as the derived back-compat label.
    */

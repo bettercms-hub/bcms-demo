@@ -5,6 +5,7 @@ import {
   Layers,
   Archive,
   ArrowLeft,
+  ArrowLeftRight,
   ArrowUpDown,
   Check,
   ChevronDown,
@@ -53,7 +54,9 @@ import { useFolders, type Folder as FolderType } from "@/lib/cms/use-folders";
 import { StackIcon, StackTag, type StackKey } from "@/components/cms/icons/StackIcon";
 import { NewProjectWizard } from "@/components/cms/project/NewProjectWizard";
 import { SitePlanBadge } from "@/components/cms/billing/PlanBadge";
-import type { ProjectKind, SitePlanId } from "@/lib/cms/types";
+import { TransferProjectDialog } from "@/components/cms/workspace/TransferProjectDialog";
+import { transferActions, useTransfers } from "@/lib/workspace/transfers-store";
+import type { ProjectKind, SitePlanId, Workspace } from "@/lib/cms/types";
 import { modeOf, type DeliveryMode } from "@/lib/cms/delivery";
 
 export const Route = createFileRoute("/w/$workspace/")({
@@ -139,7 +142,8 @@ function WorkspaceHome() {
   const [wizardOpen, setWizardOpen] = useState(false);
 
   return (
-    <div className="mx-auto w-full max-w-[1240px] px-8 pb-24 pt-12">
+    <div className="mx-auto w-full max-w-[1240px] px-4 pb-24 pt-8 sm:px-8 sm:pt-12">
+      <IncomingTransfers ws={ws} />
       <WorkspaceHeader name={ws.name} onNewProject={() => setWizardOpen(true)} />
       <ProjectsExplorer workspace={workspace} projects={rows} onNewProject={() => setWizardOpen(true)} />
       <NewProjectWizard
@@ -192,11 +196,13 @@ function ProjectsExplorer({
 }) {
   const { folders, assignments, createFolder, renameFolder, deleteFolder, moveToFolder } =
     useFolders(workspace);
+  const ws = useCMS((s) => s.workspaces.find((w) => w.slug === workspace))!;
 
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("updated");
   const [view, setView] = useState<"list" | "grid">("list");
+  const [transferFor, setTransferFor] = useState<ProjectRow | null>(null);
 
   const [dialog, setDialog] = useState<{ open: boolean; mode: "create" | "rename"; id?: string; name: string }>({
     open: false,
@@ -385,6 +391,7 @@ function ProjectsExplorer({
           onMove={moveToFolder}
           onRenameFolder={(f) => setDialog({ open: true, mode: "rename", id: f.id, name: f.name })}
           onDeleteFolder={handleDeleteFolder}
+          onTransfer={setTransferFor}
         />
       ) : (
         <ExplorerTable
@@ -396,6 +403,7 @@ function ProjectsExplorer({
           onMove={moveToFolder}
           onRenameFolder={(f) => setDialog({ open: true, mode: "rename", id: f.id, name: f.name })}
           onDeleteFolder={handleDeleteFolder}
+          onTransfer={setTransferFor}
         />
       )}
 
@@ -406,6 +414,14 @@ function ProjectsExplorer({
         onOpenChange={(open) => setDialog((d) => ({ ...d, open }))}
         onSubmit={submitDialog}
       />
+      {transferFor && (
+        <TransferProjectDialog
+          project={{ id: transferFor.id, name: transferFor.name }}
+          fromWorkspaceId={ws.id}
+          fromWorkspaceName={ws.name}
+          onClose={() => setTransferFor(null)}
+        />
+      )}
     </div>
   );
 }
@@ -589,6 +605,7 @@ function ExplorerTable({
   onMove,
   onRenameFolder,
   onDeleteFolder,
+  onTransfer,
 }: {
   workspace: string;
   items: ExplorerItem[];
@@ -598,6 +615,7 @@ function ExplorerTable({
   onMove: (projectIds: string | string[], folderId: string | null) => void;
   onRenameFolder: (f: FolderType) => void;
   onDeleteFolder: (f: FolderType) => void;
+  onTransfer: (p: ProjectRow) => void;
 }) {
   const navigate = useNavigate();
   return (
@@ -696,6 +714,7 @@ function ExplorerTable({
                     folders={folders}
                     currentFolderId={assignments[p.id] ?? null}
                     onMove={onMove}
+                    onTransfer={() => onTransfer(p)}
                   />
                 </div>
               </div>
@@ -718,6 +737,7 @@ function ExplorerGrid({
   onMove,
   onRenameFolder,
   onDeleteFolder,
+  onTransfer,
 }: {
   workspace: string;
   items: ExplorerItem[];
@@ -727,6 +747,7 @@ function ExplorerGrid({
   onMove: (projectIds: string | string[], folderId: string | null) => void;
   onRenameFolder: (f: FolderType) => void;
   onDeleteFolder: (f: FolderType) => void;
+  onTransfer: (p: ProjectRow) => void;
 }) {
   const navigate = useNavigate();
   return (
@@ -795,6 +816,7 @@ function ExplorerGrid({
                       folders={folders}
                       currentFolderId={assignments[p.id] ?? null}
                       onMove={onMove}
+                      onTransfer={() => onTransfer(p)}
                     />
                   </div>
                   <div className="mt-3.5 flex items-center justify-between gap-2">
@@ -860,12 +882,16 @@ function ProjectMenu({
   folders,
   currentFolderId,
   onMove,
+  onTransfer,
 }: {
   projectId: string;
   folders: FolderType[];
   currentFolderId: string | null;
   onMove: (projectIds: string | string[], folderId: string | null) => void;
+  onTransfer: () => void;
 }) {
+  const transfers = useTransfers();
+  const pending = transfers.find((r) => r.projectId === projectId && r.status === "pending");
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -912,6 +938,21 @@ function ProjectMenu({
             </DropdownMenuSubContent>
           </DropdownMenuPortal>
         </DropdownMenuSub>
+        {pending ? (
+          <DropdownMenuItem
+            className="text-[13px]"
+            onSelect={() => {
+              transferActions.cancel(pending.id);
+              toast.success("Transfer request canceled");
+            }}
+          >
+            <ArrowLeftRight className="mr-2 h-3.5 w-3.5" /> Cancel transfer ({pending.toEmail})
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem className="text-[13px]" onSelect={onTransfer}>
+            <ArrowLeftRight className="mr-2 h-3.5 w-3.5" /> Transfer project
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem className="text-[13px]"><Archive className="mr-2 h-3.5 w-3.5" /> Archive</DropdownMenuItem>
         <DropdownMenuItem className="text-[13px] text-destructive focus:text-destructive">
@@ -919,6 +960,64 @@ function ProjectMenu({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/* ────────────────────────── incoming transfers ────────────────────────── */
+
+/**
+ * Pending transfer offers, shown on every dashboard except the sender's.
+ * Accepting pulls the project into THIS workspace; the demo is single-player
+ * so the recipient's inbox is any other workspace you open.
+ */
+function IncomingTransfers({ ws }: { ws: Workspace }) {
+  const all = useTransfers();
+  const incoming = all.filter((r) => r.status === "pending" && r.fromWorkspaceId !== ws.id);
+  if (incoming.length === 0) return null;
+  return (
+    <div className="mb-6 space-y-2.5">
+      {incoming.map((r) => (
+        <div
+          key={r.id}
+          className="flex flex-wrap items-center gap-3 rounded-xl border border-[color:color-mix(in_oklab,var(--primary)_35%,transparent)] bg-[color:color-mix(in_oklab,var(--primary)_6%,transparent)] px-4 py-3"
+        >
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[color:color-mix(in_oklab,var(--primary)_12%,transparent)] text-primary">
+            <ArrowLeftRight className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-semibold text-foreground">
+              {r.fromWorkspaceName} wants to transfer “{r.projectName}” to you
+            </div>
+            <div className="truncate text-[11.5px] text-muted-foreground">
+              Sent to {r.toEmail}
+              {r.note ? <> · “{r.note}”</> : null} · Accepting moves it into {ws.name} with its content, pages and media.
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                transferActions.decline(r.id);
+                toast.success("Transfer declined");
+              }}
+              className="h-8 rounded-md px-3 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
+            >
+              Decline
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                transferActions.accept(r.id, ws.id);
+                toast.success(`${r.projectName} joined ${ws.name}`);
+              }}
+              className="h-8 rounded-md bg-primary px-3.5 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
+            >
+              Accept into {ws.name}
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 

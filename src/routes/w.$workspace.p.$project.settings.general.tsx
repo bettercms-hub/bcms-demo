@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { ArrowLeftRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, SettingsSection, SettingsRow, FieldRow } from "@/components/cms/SettingsSubNav";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getProjectBySlug } from "@/lib/cms/use-cms";
+import { useCMS } from "@/lib/cms/store";
+import { TransferProjectDialog } from "@/components/cms/workspace/TransferProjectDialog";
+import { transferActions, useTransfers } from "@/lib/workspace/transfers-store";
 import { useSaveSeoSettings, useSeoSettings } from "@/lib/seo/queries";
 
 export const Route = createFileRoute("/w/$workspace/p/$project/settings/general")({
@@ -23,15 +26,22 @@ export const Route = createFileRoute("/w/$workspace/p/$project/settings/general"
 
 function General() {
   const { workspace, project } = Route.useParams();
-  const pr = getProjectBySlug(workspace, project)!;
+  const navigate = useNavigate();
+  // Nullable on purpose: a just-transferred project vanishes from this
+  // workspace mid-render, and we navigate away right after.
+  const pr = getProjectBySlug(workspace, project);
+  const ws = useCMS((s) => s.workspaces.find((w) => w.slug === workspace));
+  const [transferOpen, setTransferOpen] = useState(false);
+  const transfers = useTransfers();
+  const pendingTransfer = pr ? transfers.find((r) => r.projectId === pr.id && r.status === "pending") : undefined;
   const scope = { workspace, project };
   const { data: seo } = useSeoSettings(scope);
   const saveSeo = useSaveSeoSettings(scope);
 
   const [identity, setIdentity] = useState({
-    name: pr.name,
-    slug: pr.slug,
-    description: pr.description ?? "",
+    name: pr?.name ?? "",
+    slug: pr?.slug ?? "",
+    description: pr?.description ?? "",
   });
 
   const [seoForm, setSeoForm] = useState({
@@ -50,6 +60,8 @@ function General() {
       default_twitter_handle: seo.default_twitter_handle ?? "",
     });
   }, [seo]);
+
+  if (!pr || !ws) return null;
 
   return (
     <>
@@ -203,6 +215,45 @@ function General() {
           </Select>
         </SettingsRow>
       </SettingsSection>
+
+      <SettingsSection
+        title="Transfer project"
+        description="Move this project to another workspace, or hand it to someone else. Content, pages, schemas and media travel with it; the site plan resets to Starter."
+      >
+        {pendingTransfer ? (
+          <SettingsRow
+            label={`Transfer pending: ${pendingTransfer.toEmail}`}
+            description="They accept from their dashboard. You can cancel any time before that."
+          >
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                transferActions.cancel(pendingTransfer.id);
+                toast.success("Transfer request canceled");
+              }}
+            >
+              Cancel transfer
+            </Button>
+          </SettingsRow>
+        ) : (
+          <SettingsRow label="Transfer this project" description="To one of your workspaces, or by email to a new owner.">
+            <Button size="sm" variant="outline" onClick={() => setTransferOpen(true)}>
+              <ArrowLeftRight className="mr-1.5 h-3.5 w-3.5" /> Transfer
+            </Button>
+          </SettingsRow>
+        )}
+      </SettingsSection>
+
+      {transferOpen && (
+        <TransferProjectDialog
+          project={{ id: pr.id, name: pr.name }}
+          fromWorkspaceId={ws.id}
+          fromWorkspaceName={ws.name}
+          onClose={() => setTransferOpen(false)}
+          onTransferred={() => navigate({ to: "/w/$workspace", params: { workspace } })}
+        />
+      )}
     </>
   );
 }

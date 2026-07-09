@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { WorkspaceSubNav } from "@/components/cms/workspace/WorkspaceSubNav";
+import { GuestsSection } from "@/components/cms/workspace/GuestsSection";
 import { PageShell } from "@/components/cms/layout";
 import { Icon } from "@/components/cms/Icon";
 import { MetricGrid, MetricTile } from "@/components/cms/ui/MetricTile";
@@ -259,6 +260,11 @@ function Members() {
                 <MemberRow key={m.id} member={m} onChangeSeat={handleChangeSeat} onRemove={handleRemove} />
               ))
             )}
+          </div>
+
+          {/* Agency guests: whole teams collaborate without paid seats. */}
+          <div className="mt-10">
+            <GuestsSection ws={ws} />
           </div>
 
           {/* Pending invitations */}
