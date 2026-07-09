@@ -9,8 +9,12 @@
  *   that duplicates the project into the visitor's workspace. Cloning can
  *   be turned off so a template stays look-only.
  *
- * Persisted to localStorage so a link opened in a fresh tab still resolves
- * to its project (seeded + created projects both exist in every tab).
+ * The token SELF-ENCODES { projectId, kind, cloneEnabled } so a link works
+ * in any browser — the recipient is usually a different browser, where a
+ * localStorage registry wouldn't help. (Seeded projects exist in every
+ * browser; a freshly created project only resolves in the tab that made it,
+ * an accepted demo limitation.) The per-project map below just remembers
+ * which links the owner has turned on, for the Share dialog UI.
  */
 import { useSyncExternalStore } from "react";
 
@@ -34,17 +38,46 @@ interface ProjectShares {
 const STORAGE_KEY = "bettercms.shares.v1";
 
 let byProject: Record<string, ProjectShares> = {};
-let byToken: Record<string, { projectId: string; kind: ShareKind }> = {};
 const listeners = new Set<() => void>();
 
-function reindex() {
-  byToken = {};
-  for (const [projectId, shares] of Object.entries(byProject)) {
-    for (const link of [shares.preview, shares.template]) {
-      if (link) byToken[link.token] = { projectId, kind: link.kind };
-    }
+/* --------------------------------------------------- token codec */
+
+function b64urlEncode(s: string): string {
+  const b64 = typeof btoa !== "undefined" ? btoa(s) : Buffer.from(s, "utf8").toString("base64");
+  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function b64urlDecode(s: string): string {
+  const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+  return typeof atob !== "undefined" ? atob(b64) : Buffer.from(b64, "base64").toString("utf8");
+}
+
+function encodeToken(projectId: string, kind: ShareKind, cloneEnabled: boolean): string {
+  const prefix = kind === "template" ? "t" : "p";
+  const payload = b64urlEncode(JSON.stringify({ p: projectId, k: kind, c: cloneEnabled }));
+  return `${prefix}_${payload}`;
+}
+
+/** Decode a token straight into a link — no registry needed, so any browser resolves it. */
+export function resolveShare(token: string): ShareLink | undefined {
+  try {
+    const payload = token.slice(2); // drop the "p_" / "t_" prefix
+    const data = JSON.parse(b64urlDecode(payload)) as { p: string; k: ShareKind; c?: boolean };
+    if (!data.p || (data.k !== "preview" && data.k !== "template")) return undefined;
+    const owner = byProject[data.p]?.[data.k];
+    return {
+      token,
+      projectId: data.p,
+      kind: data.k,
+      cloneEnabled: data.k === "template" ? data.c !== false : false,
+      createdAt: owner?.createdAt ?? "",
+      views: owner?.views ?? 0,
+    };
+  } catch {
+    return undefined;
   }
 }
+
+/* --------------------------------------------------- persistence */
 
 function hydrate() {
   if (typeof window === "undefined") return;
@@ -54,12 +87,10 @@ function hydrate() {
   } catch {
     byProject = {};
   }
-  reindex();
 }
 hydrate();
 
 function persist() {
-  reindex();
   if (typeof window !== "undefined") {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(byProject));
@@ -70,17 +101,15 @@ function persist() {
   listeners.forEach((l) => l());
 }
 
-let seq = 0;
-function newToken(kind: ShareKind): string {
-  const rand = Math.random().toString(36).slice(2, 8);
-  return `${kind === "template" ? "t" : "p"}_${Date.now().toString(36)}${(seq++).toString(36)}${rand}`;
+function makeLink(projectId: string, kind: ShareKind, cloneEnabled: boolean): ShareLink {
+  return { token: encodeToken(projectId, kind, cloneEnabled), projectId, kind, cloneEnabled, createdAt: new Date().toISOString(), views: 0 };
 }
 
-// Stable reference for "no shares": returning a fresh {} each read would make
+/* --------------------------------------------------------------- reads */
+
+// Stable reference for "no shares": a fresh {} each read would make
 // useSyncExternalStore think the snapshot changed every render (infinite loop).
 const EMPTY: ProjectShares = Object.freeze({});
-
-/* --------------------------------------------------------------- reads */
 
 export function useShare(projectId: string): ProjectShares {
   return useSyncExternalStore(
@@ -93,26 +122,12 @@ export function useShare(projectId: string): ProjectShares {
   );
 }
 
-/** Resolve a share token to its project + link (fresh reads, no hook). */
-export function resolveShare(token: string): ShareLink | undefined {
-  const hit = byToken[token];
-  if (!hit) return undefined;
-  return byProject[hit.projectId]?.[hit.kind];
-}
-
 /* ------------------------------------------------------------- actions */
 
 export const shareActions = {
   enablePreview(projectId: string): ShareLink {
     const cur = byProject[projectId] ?? {};
-    const link: ShareLink = cur.preview ?? {
-      token: newToken("preview"),
-      projectId,
-      kind: "preview",
-      cloneEnabled: false,
-      createdAt: new Date().toISOString(),
-      views: 0,
-    };
+    const link = cur.preview ?? makeLink(projectId, "preview", false);
     byProject = { ...byProject, [projectId]: { ...cur, preview: link } };
     persist();
     return link;
@@ -125,14 +140,7 @@ export const shareActions = {
   },
   enableTemplate(projectId: string): ShareLink {
     const cur = byProject[projectId] ?? {};
-    const link: ShareLink = cur.template ?? {
-      token: newToken("template"),
-      projectId,
-      kind: "template",
-      cloneEnabled: true,
-      createdAt: new Date().toISOString(),
-      views: 0,
-    };
+    const link = cur.template ?? makeLink(projectId, "template", true);
     byProject = { ...byProject, [projectId]: { ...cur, template: link } };
     persist();
     return link;
@@ -143,27 +151,21 @@ export const shareActions = {
     byProject = { ...byProject, [projectId]: { ...cur, template: undefined } };
     persist();
   },
+  /** Cloning is baked into the token, so toggling it re-mints the template link. */
   setCloneEnabled(projectId: string, cloneEnabled: boolean) {
     const cur = byProject[projectId];
     if (!cur?.template) return;
-    byProject = { ...byProject, [projectId]: { ...cur, template: { ...cur.template, cloneEnabled } } };
-    persist();
-  },
-  /** New token, invalidating the old link. */
-  regenerate(projectId: string, kind: ShareKind) {
-    const cur = byProject[projectId];
-    const link = cur?.[kind];
-    if (!link) return;
-    byProject = { ...byProject, [projectId]: { ...cur, [kind]: { ...link, token: newToken(kind), views: 0 } } };
+    const link: ShareLink = { ...cur.template, cloneEnabled, token: encodeToken(projectId, "template", cloneEnabled) };
+    byProject = { ...byProject, [projectId]: { ...cur, template: link } };
     persist();
   },
   recordView(token: string) {
-    const hit = byToken[token];
-    if (!hit) return;
-    const cur = byProject[hit.projectId];
-    const link = cur?.[hit.kind];
-    if (!link) return;
-    byProject = { ...byProject, [hit.projectId]: { ...cur, [hit.kind]: { ...link, views: link.views + 1 } } };
+    const decoded = resolveShare(token);
+    if (!decoded) return;
+    const cur = byProject[decoded.projectId];
+    const link = cur?.[decoded.kind];
+    if (!link) return; // only the owner's browser counts views (no backend)
+    byProject = { ...byProject, [decoded.projectId]: { ...cur, [decoded.kind]: { ...link, views: link.views + 1 } } };
     persist();
   },
 };
