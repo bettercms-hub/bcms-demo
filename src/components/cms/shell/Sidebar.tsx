@@ -13,13 +13,18 @@ import { WorkspaceIdentity } from "./WorkspaceIdentity";
 import { UserMenu } from "./UserMenu";
 import { SidebarSection } from "./SidebarSection";
 import { SidebarItem } from "./SidebarItem";
+import { useViewportTier } from "@/lib/device";
+import { deviceAllowsWorkspaceItem } from "@/lib/device-caps";
 
 interface Props {
   wsSlug: string;
   pathname: string;
+  /** "static" is the >=md rail; "drawer" fills the mobile off-canvas panel. */
+  variant?: "static" | "drawer";
 }
 
-export function Sidebar({ wsSlug, pathname }: Props) {
+export function Sidebar({ wsSlug, pathname, variant = "static" }: Props) {
+  const tier = useViewportTier();
   const activeProjectSlug = useMemo(() => {
     const m = pathname.match(new RegExp(`^/w/${wsSlug}/p/([^/]+)`));
     return m?.[1];
@@ -32,12 +37,16 @@ export function Sidebar({ wsSlug, pathname }: Props) {
     { label: "Billing", icon: CreditCard, to: `/w/${wsSlug}/settings/billing` },
     { label: "Usage", icon: BarChart3, to: `/w/${wsSlug}/settings/usage` },
     { label: "Domains", icon: Globe, to: `/w/${wsSlug}/settings/domains` },
-  ];
+  ].filter((it) => deviceAllowsWorkspaceItem(tier, it.label));
   const isManageActive = (to: string) => pathname === to || pathname.startsWith(to + "/");
 
   return (
     <aside
-      className="relative hidden w-[252px] shrink-0 flex-col border-r border-border bg-sidebar md:flex"
+      className={
+        variant === "drawer"
+          ? "relative flex w-full flex-col border-r border-border bg-sidebar shadow-xl"
+          : "relative hidden w-[252px] shrink-0 flex-col border-r border-border bg-sidebar md:flex"
+      }
       aria-label="Workspace"
     >
       <WorkspaceIdentity wsSlug={wsSlug} />
@@ -50,12 +59,14 @@ export function Sidebar({ wsSlug, pathname }: Props) {
             to={`/w/${wsSlug}`}
             active={pathname === `/w/${wsSlug}` || Boolean(activeProjectSlug)}
           />
-          <SidebarItem
-            label="Agent"
-            icon={Sparkles}
-            to={`/w/${wsSlug}/agent`}
-            active={pathname === `/w/${wsSlug}/agent`}
-          />
+          {deviceAllowsWorkspaceItem(tier, "Agent") && (
+            <SidebarItem
+              label="Agent"
+              icon={Sparkles}
+              to={`/w/${wsSlug}/agent`}
+              active={pathname === `/w/${wsSlug}/agent`}
+            />
+          )}
         </SidebarSection>
 
         <SidebarSection label="Manage">

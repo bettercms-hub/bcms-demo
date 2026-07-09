@@ -373,7 +373,7 @@ export function CollectionView({ collectionId }: Props) {
   const activeChips = STATUS_OPTIONS.filter((o) => (statusCounts[o.value] ?? 0) > 0);
 
   return (
-    <div className="mx-auto max-w-[1280px] px-6 py-6">
+    <div className="mx-auto max-w-[1280px] px-4 py-5 sm:px-6 sm:py-6">
       {/* ============= Header ============= */}
       <header className="mb-5 flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="min-w-0">
@@ -396,7 +396,7 @@ export function CollectionView({ collectionId }: Props) {
             )}
           </div>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+        <div className="flex max-w-full shrink-0 flex-wrap items-center gap-1.5">
           {canEdit && (
             <>
               <input

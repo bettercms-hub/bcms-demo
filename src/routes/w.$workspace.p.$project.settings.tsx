@@ -65,10 +65,10 @@ function ProjectSettingsLayout() {
   ];
 
   return (
-    <div className="flex min-h-0 flex-1">
+    <div className="flex min-h-0 flex-1 max-md:flex-col">
       <SettingsSubNav items={items} title="Project settings" />
       <div className="flex-1 overflow-auto">
-        <div className="mx-auto w-full max-w-[1100px] px-10 py-12 lg:px-14">
+        <div className="mx-auto w-full max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8 md:px-10 md:py-12 lg:px-14">
           <nav
             aria-label="Breadcrumb"
             className="mb-6 flex items-center gap-1 text-[12px] text-muted-foreground"

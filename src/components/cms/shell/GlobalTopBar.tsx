@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Bell, HelpCircle, Search, Settings } from "lucide-react";
+import { Bell, HelpCircle, Menu, Search, Settings } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +12,8 @@ import { editorBus } from "@/lib/cms/editor-bus";
 
 interface Props {
   onOpenPalette: () => void;
+  /** Opens the mobile workspace drawer; the trigger only shows below md. */
+  onMenu?: () => void;
   project?: {
     wsSlug: string;
     wsName: string;
@@ -28,11 +30,21 @@ const STATUS_DOT: Record<string, string> = {
   archived: "bg-muted-foreground/40",
 };
 
-export function GlobalTopBar({ onOpenPalette, project }: Props) {
+export function GlobalTopBar({ onOpenPalette, onMenu, project }: Props) {
   return (
-    <header className="relative z-30 grid h-12 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-b border-border bg-[color:var(--topbar)] px-3">
+    <header className="relative z-30 grid h-12 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b border-border bg-[color:var(--topbar)] px-2 sm:gap-4 sm:px-3">
       {/* LEFT — breadcrumb / brand */}
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+        {onMenu && (
+          <button
+            type="button"
+            onClick={onMenu}
+            aria-label="Open navigation"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
+          >
+            <Menu className="h-[18px] w-[18px]" strokeWidth={1.75} />
+          </button>
+        )}
         {project ? (
           <>
             <ProjectBreadcrumb
@@ -60,27 +72,35 @@ export function GlobalTopBar({ onOpenPalette, project }: Props) {
         )}
       </div>
 
-      {/* CENTER — command search */}
-      <div className="flex justify-center">
+      {/* CENTER — command search (full pill on larger screens, icon on phones) */}
+      <div className="hidden justify-center sm:flex">
         <button
           type="button"
           onClick={onOpenPalette}
-          className="group flex h-9 w-[440px] max-w-[60vw] items-center gap-2 rounded-lg border border-border bg-transparent px-3 text-[12.5px] text-muted-foreground transition-[background-color,border-color,color] duration-150 ease-out hover:border-border-strong hover:bg-[var(--s2b)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="group flex h-9 w-[440px] max-w-[46vw] items-center gap-2 rounded-lg border border-border bg-transparent px-3 text-[12.5px] text-muted-foreground transition-[background-color,border-color,color] duration-150 ease-out hover:border-border-strong hover:bg-[var(--s2b)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Search className="h-3.5 w-3.5" strokeWidth={1.75} />
           <span className="flex-1 text-left">Search or jump to…</span>
-          <kbd className="rounded border border-border bg-[var(--s2b)] px-1.5 py-px font-mono text-[10px] font-medium text-muted-foreground/90">⌘K</kbd>
+          <kbd className="hidden rounded border border-border bg-[var(--s2b)] px-1.5 py-px font-mono text-[10px] font-medium text-muted-foreground/90 md:inline-block">⌘K</kbd>
         </button>
       </div>
+      <div className="sm:hidden" aria-hidden />
 
       {/* RIGHT — utility cluster */}
       <div className="flex items-center justify-end gap-0.5">
-        <UtilityIconButton
-          label="Help & shortcuts"
-          onClick={() => editorBus.emit({ type: "editor:open-cheatsheet" })}
-        >
-          <HelpCircle className="h-4 w-4" strokeWidth={1.75} />
-        </UtilityIconButton>
+        <span className="sm:hidden">
+          <UtilityIconButton label="Search" onClick={onOpenPalette}>
+            <Search className="h-4 w-4" strokeWidth={1.75} />
+          </UtilityIconButton>
+        </span>
+        <span className="hidden sm:contents">
+          <UtilityIconButton
+            label="Help & shortcuts"
+            onClick={() => editorBus.emit({ type: "editor:open-cheatsheet" })}
+          >
+            <HelpCircle className="h-4 w-4" strokeWidth={1.75} />
+          </UtilityIconButton>
+        </span>
         {project && (
           <Link
             to="/w/$workspace/p/$project/settings"

@@ -27,7 +27,31 @@ export function SettingsSubNav({ items, title }: Props) {
   }
 
   return (
-    <aside className="w-[220px] shrink-0 border-r border-[color:var(--border-hairline)] bg-background">
+    <>
+      {/* Phones: the rail becomes a horizontal chip bar above the content. */}
+      <nav
+        aria-label={title}
+        className="flex w-full shrink-0 items-center gap-1 overflow-x-auto border-b border-[color:var(--border-hairline)] bg-background px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden"
+      >
+        {items.map((it) => {
+          const active = pathname === it.href || pathname.startsWith(it.href + "/");
+          return (
+            <Link
+              key={it.href}
+              to={it.href}
+              className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
+                active
+                  ? "bg-[color:var(--row-selected)] text-foreground"
+                  : "text-muted-foreground hover:bg-[color:var(--row-hover)] hover:text-foreground"
+              }`}
+            >
+              {it.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+    <aside className="hidden w-[220px] shrink-0 border-r border-[color:var(--border-hairline)] bg-background md:block">
       <div className="px-4 pb-3 pt-5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/80">
         {title}
       </div>
@@ -62,6 +86,7 @@ export function SettingsSubNav({ items, title }: Props) {
         ))}
       </nav>
     </aside>
+    </>
   );
 }
 

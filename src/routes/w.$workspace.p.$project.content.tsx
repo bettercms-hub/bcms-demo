@@ -323,7 +323,7 @@ function ContentPage() {
                         <div className="truncate text-[13.5px] font-semibold text-foreground">{c.name}</div>
                         <div className="truncate font-mono text-[11px] text-muted-foreground">/{c.slug}</div>
                       </div>
-                      <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                      <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 max-md:opacity-100" />
                     </div>
                     <div className="mt-3 flex items-center gap-4 text-[11.5px] text-muted-foreground">
                       <span className="tabular-nums">{count} {count === 1 ? "entry" : "entries"}</span>
@@ -429,10 +429,10 @@ function ContentPage() {
         )}
         <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDrag(null)}>
         <div className="overflow-hidden rounded-xl border border-[color:var(--border-hairline)] bg-card">
-          <div className="grid grid-cols-[1fr_150px_130px_76px] items-center gap-3 border-b border-[color:var(--border-hairline)] bg-[color:var(--s2)] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="grid grid-cols-[1fr_92px_64px] items-center gap-3 border-b border-[color:var(--border-hairline)] bg-[color:var(--s2)] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid-cols-[1fr_150px_130px_76px]">
             <span>Page</span>
             <span>Status</span>
-            <span>Updated</span>
+            <span className="hidden sm:block">Updated</span>
             <span />
           </div>
           {drag && (
@@ -501,7 +501,7 @@ function ContentPage() {
                             {canBuild && isReal && (
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <button type="button" aria-label={`Folder actions for ${item.name}`} className="mr-2 grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100 data-[state=open]:opacity-100">
+                                  <button type="button" aria-label={`Folder actions for ${item.name}`} className="mr-2 grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100 max-md:opacity-100 data-[state=open]:opacity-100">
                                     <MoreHorizontal className="h-4 w-4" />
                                   </button>
                                 </DropdownMenuTrigger>
@@ -532,7 +532,7 @@ function ContentPage() {
               return (
                 <Draggable key={pg.id} id={`page:${pg.path}`} data={{ type: "page", path: pg.path, label: pg.title }} disabled={dndOff}>
                   {({ setNodeRef, handleProps, style }) => (
-                <li ref={setNodeRef} className="group relative grid grid-cols-[1fr_150px_130px_76px] items-center gap-3 py-2.5 pr-4 transition-colors hover:bg-[var(--s4)]" style={{ ...style, paddingLeft: 16 + item.depth * 22 }}>
+                <li ref={setNodeRef} className="group relative grid grid-cols-[1fr_92px_64px] items-center gap-3 py-2.5 pr-4 transition-colors hover:bg-[var(--s4)] sm:grid-cols-[1fr_150px_130px_76px]" style={{ ...style, paddingLeft: 16 + item.depth * 22 }}>
                   {!dndOff && (
                     <button
                       type="button"
@@ -562,21 +562,21 @@ function ContentPage() {
                         const r = e.currentTarget.getBoundingClientRect();
                         setPublishFor({ page: pg, rect: { top: Math.min(r.bottom + 6, window.innerHeight - 508), left: Math.min(r.left, window.innerWidth - 366) } });
                       }}
-                      className="inline-flex w-fit items-center gap-1.5 rounded-md px-1.5 py-1 text-[12px] transition-colors hover:bg-[color:var(--color-row-hover)]"
+                      className="inline-flex w-fit min-w-0 max-w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-[12px] transition-colors hover:bg-[color:var(--color-row-hover)]"
                       title="Publish settings"
                     >
-                      <span className={cn("h-1.5 w-1.5 rounded-full", tone.dot)} />
-                      <span className={tone.text}>{tone.label}</span>
-                      {pg.staged && <span className="rounded bg-[color:var(--s2)] px-1 text-[9.5px] font-medium text-muted-foreground">staging</span>}
+                      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", tone.dot)} />
+                      <span className={cn("truncate", tone.text)}>{tone.label}</span>
+                      {pg.staged && <span className="hidden rounded bg-[color:var(--s2)] px-1 text-[9.5px] font-medium text-muted-foreground sm:inline">staging</span>}
                     </button>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 text-[12px]">
-                      <span className={cn("h-1.5 w-1.5 rounded-full", tone.dot)} />
-                      <span className={tone.text}>{tone.label}</span>
+                    <span className="inline-flex min-w-0 items-center gap-1.5 text-[12px]">
+                      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", tone.dot)} />
+                      <span className={cn("truncate", tone.text)}>{tone.label}</span>
                     </span>
                   )}
 
-                  <span className="text-[11.5px] text-muted-foreground">{formatRelative(new Date(pg.updatedAt).toISOString())}</span>
+                  <span className="hidden text-[11.5px] text-muted-foreground sm:block">{formatRelative(new Date(pg.updatedAt).toISOString())}</span>
 
                   <span className="flex items-center justify-end gap-0.5">
                   {canBuild && (
@@ -585,14 +585,14 @@ function ContentPage() {
                       aria-label={`Page settings for ${pg.title}`}
                       title="Page settings & SEO"
                       onClick={() => setSettingsPage(pg)}
-                      className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100"
+                      className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100 max-md:opacity-100"
                     >
                       <Settings2 className="h-4 w-4" />
                     </button>
                   )}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button type="button" aria-label={`Actions for ${pg.title}`} className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100 data-[state=open]:opacity-100">
+                      <button type="button" aria-label={`Actions for ${pg.title}`} className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100 max-md:opacity-100 data-[state=open]:opacity-100">
                         <MoreHorizontal className="h-4 w-4" />
                       </button>
                     </DropdownMenuTrigger>
@@ -705,7 +705,7 @@ function ContentPage() {
                 {shown.map((c) => {
                   const count = entries.filter((e) => e.collectionId === c.id).length;
                   return (
-                    <li key={c.id} className="group grid grid-cols-[1fr_150px_130px_76px] items-center gap-3 py-2.5 pl-4 pr-4 transition-colors hover:bg-[var(--s4)]">
+                    <li key={c.id} className="group grid grid-cols-[1fr_84px_64px] items-center gap-3 py-2.5 pl-4 pr-4 transition-colors hover:bg-[var(--s4)] sm:grid-cols-[1fr_150px_130px_76px]">
                       <Link
                         to="/w/$workspace/p/$project/editor"
                         params={{ workspace, project }}
@@ -720,7 +720,7 @@ function ContentPage() {
                           </div>
                         </div>
                       </Link>
-                      <span className="inline-flex items-center gap-1.5 text-[12px]">
+                      <span className="hidden items-center gap-1.5 text-[12px] sm:inline-flex">
                         <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--primary)]/70" />
                         <span className="text-muted-foreground">Dynamic</span>
                       </span>
@@ -732,12 +732,12 @@ function ContentPage() {
                             params={{ workspace, project }}
                             aria-label={`Settings for ${c.name}`}
                             title="Collection settings"
-                            className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100"
+                            className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100 max-md:opacity-100"
                           >
                             <Settings2 className="h-4 w-4" />
                           </Link>
                         )}
-                        <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                        <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 max-md:opacity-100" />
                       </span>
                     </li>
                   );

@@ -95,6 +95,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getProjectBySlug } from "@/lib/cms/use-cms";
+import { useViewportTier } from "@/lib/device";
 import { RichTextToolbar } from "@/components/cms/editor/preview/RichTextToolbar";
 
 export const Route = createFileRoute("/w/$workspace/p/$project/visual")({
@@ -183,7 +184,11 @@ function VisualEditor() {
   const projectId = pr?.id ?? project;
   const staging = `${pr?.slug ?? project}.bettercms.site`;
 
-  const [mode, setMode] = useState<"visual" | "form">("visual");
+  const [modeRaw, setMode] = useState<"visual" | "form">("visual");
+  // Phones edit content, not layout: the canvas needs pointer precision and
+  // room, so small screens pin the editor to form (content) mode.
+  const tier = useViewportTier();
+  const mode = tier === "mobile" ? "form" : modeRaw;
   const [previewMode, setPreviewMode] = useState<PreviewMode>("edit");
   const [device, setDevice] = useState<Device>("desktop");
   const [showGrid, setShowGrid] = useState(false);
@@ -538,10 +543,10 @@ function VisualEditor() {
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-[color:var(--canvas)]">
       {/* Header */}
-      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-[color:var(--topbar)] px-3">
+      <div className="flex h-12 shrink-0 items-center gap-1.5 border-b border-border bg-[color:var(--topbar)] px-2 sm:gap-3 sm:px-3">
         <div className="flex items-center gap-2">
-          <span className="text-[13px] font-semibold text-foreground">Visual Editor</span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--s2)] px-2 py-0.5 text-[11px] font-medium">
+          <span className="hidden text-[13px] font-semibold text-foreground sm:inline">Visual Editor</span>
+          <span className="hidden items-center gap-1.5 rounded-full bg-[color:var(--s2)] px-2 py-0.5 text-[11px] font-medium sm:inline-flex">
             <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
             <span className={meta.text}>{meta.label}</span>
           </span>
@@ -553,7 +558,7 @@ function VisualEditor() {
                   title={`Preview the app as a role below yours. You are ${ROLE_INFO[actual].label}.`}
                   aria-label={`View as role, currently ${ROLE_INFO[effective].label}`}
                   className={cn(
-                    "inline-flex h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 text-[11px] font-medium transition-colors",
+                    "hidden h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 text-[11px] font-medium transition-colors md:inline-flex",
                     effective !== actual
                       ? "border-indigo-300 bg-indigo-50 text-indigo-700"
                       : "border-[color:var(--color-border)] bg-[color:var(--card)] text-muted-foreground hover:text-foreground",
@@ -590,7 +595,7 @@ function VisualEditor() {
           )}
         </div>
 
-        <div className="ml-2 flex h-8 items-center gap-0.5 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--s2)] p-1">
+        <div className="ml-2 hidden h-8 items-center gap-0.5 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--s2)] p-1 md:flex">
           {canEdit && (
             <button
               type="button"
@@ -636,7 +641,7 @@ function VisualEditor() {
               : "border-[color:var(--color-border)] bg-[color:var(--card)] text-foreground hover:bg-[color:var(--color-row-hover)]",
           )}
         >
-          <MessageSquare className="h-3.5 w-3.5" /> Comments
+          <MessageSquare className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Comments</span>
           {openCount > 0 && (
             <span className="grid h-4 min-w-4 place-items-center rounded-full bg-indigo-600 px-1 text-[9.5px] font-semibold text-white">{openCount}</span>
           )}
@@ -668,7 +673,7 @@ function VisualEditor() {
           onClick={() => window.open(`https://${staging}${active.path === "/" ? "" : active.path}`, "_blank")}
           className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
         >
-          <Eye className="h-3.5 w-3.5" /> Preview
+          <Eye className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Preview</span>
         </button>
         {publishAllowed && (
           <div className="relative">
@@ -698,7 +703,7 @@ function VisualEditor() {
 
       {/* Headless explanation */}
       {showBanner && showDev && (
-        <div className="flex items-start gap-2.5 border-b border-[color:var(--border-hairline)] bg-[color:color-mix(in_oklab,var(--primary)_5%,transparent)] px-4 py-2.5">
+        <div className="hidden items-start gap-2.5 border-b border-[color:var(--border-hairline)] bg-[color:color-mix(in_oklab,var(--primary)_5%,transparent)] px-4 py-2.5 sm:flex">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <p className="flex-1 text-[12.5px] leading-relaxed text-foreground/85">
             This is a <span className="font-medium">Headless Project</span>. BetterCMS manages your content, SEO, forms,
@@ -719,8 +724,8 @@ function VisualEditor() {
       {/* Body */}
       <div className="flex min-h-0 flex-1">
         {(mode === "form" || mode === "visual") && (
-          <div className={`shrink-0 overflow-y-auto border-r border-border bg-background ${mode === "form" ? "mx-auto w-full max-w-[720px] border-r-0" : "w-[360px]"}`}>
-            <div ref={formContentRef} className={cn("relative", mode === "form" ? "px-8 py-8" : "px-5 py-5")}>
+          <div className={`shrink-0 overflow-y-auto border-r border-border bg-background ${mode === "form" ? "mx-auto w-full max-w-[720px] border-r-0" : "w-[300px] lg:w-[360px]"}`}>
+            <div ref={formContentRef} className={cn("relative", mode === "form" ? "px-4 py-6 sm:px-8 sm:py-8" : "px-5 py-5")}>
               <div className="mb-4">
                 <div className="text-[13.5px] font-semibold text-foreground">{active.title}</div>
                 <div className="text-[11.5px] text-muted-foreground">

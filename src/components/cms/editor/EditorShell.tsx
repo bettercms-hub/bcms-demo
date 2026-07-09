@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { useWorkspaceRow } from "@/lib/workspace/queries";
+import { useViewportTier } from "@/lib/device";
 import { EntryPublishMenu } from "./EntryPublishMenu";
 import {
   CommentModeProvider,
@@ -179,7 +180,9 @@ export function EditorShell() {
   // Entries edit all fields in the document itself, so the right inspector
   // would only duplicate them; publishing lives in the toolbar menu instead.
   const isEntry = effectiveNode?.kind === "entry";
-  const mode: EditorMode = isCollection ? "content" : storedMode;
+  // Phones always edit content directly; split/preview need side-by-side room.
+  const tier = useViewportTier();
+  const mode: EditorMode = isCollection || tier === "mobile" ? "content" : storedMode;
 
   // Track recently opened nodes for the command palette.
   useEffect(() => {
@@ -321,7 +324,7 @@ export function EditorShell() {
 
         {/* Center: editor mode (pages only; collections have no preview) */}
         <div className="flex items-center justify-center">
-          {!isCollection && <ModeToggle value={mode} onChange={setMode} />}
+          {!isCollection && tier !== "mobile" && <ModeToggle value={mode} onChange={setMode} />}
         </div>
 
         {/* Right: comments · view · publish · panel toggle */}
@@ -434,7 +437,7 @@ export function EditorShell() {
               )}
             </div>
           </Panel>
-          {rightVisible && !isCollection && !isEntry && !isSectionWorkspace && (
+          {rightVisible && tier !== "mobile" && !isCollection && !isEntry && !isSectionWorkspace && (
             <>
               <PanelResizeHandle className="w-px bg-border transition-colors hover:bg-border-strong" />
               <Panel defaultSize="24%" minSize="240px" maxSize="36%">

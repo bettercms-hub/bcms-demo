@@ -576,7 +576,9 @@ function FolderCollage({ seeds }: { seeds: string[] }) {
 
 /* ──────────────────────────  list view  ────────────────────────── */
 
-const LIST_COLS = "grid-cols-[minmax(0,2fr)_100px_110px_130px_90px_56px]";
+// Phones keep Name + Status + actions; Type / Updated / Plan return at md+.
+const LIST_COLS = "grid-cols-[minmax(0,1fr)_92px_44px] md:grid-cols-[minmax(0,2fr)_100px_110px_130px_90px_56px]";
+const LIST_HIDE = "hidden md:block";
 
 function ExplorerTable({
   workspace,
@@ -601,13 +603,13 @@ function ExplorerTable({
   return (
     <div>
       <div
-        className={`grid ${LIST_COLS} gap-5 px-3 py-3 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground border-b border-[color:var(--border-hairline)] sticky top-0 z-[1] bg-[color:var(--canvas)]/85 backdrop-blur`}
+        className={`grid ${LIST_COLS} gap-3 px-3 py-3 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground border-b border-[color:var(--border-hairline)] sticky top-0 z-[1] bg-[color:var(--canvas)]/85 backdrop-blur md:gap-5`}
       >
         <div>Name</div>
-        <div>Type</div>
+        <div className={LIST_HIDE}>Type</div>
         <div>Status</div>
-        <div>Last updated</div>
-        <div>Plan</div>
+        <div className={LIST_HIDE}>Last updated</div>
+        <div className={LIST_HIDE}>Plan</div>
         <div />
       </div>
 
@@ -625,7 +627,7 @@ function ExplorerTable({
                 onOpenFolder(it.folder.id);
               }
             }}
-            className={`group relative grid ${LIST_COLS} cursor-pointer items-center gap-5 border-b border-[color:var(--border-hairline)] px-3 py-4 text-[13px] transition-[background-color] duration-150 hover:bg-[color:var(--row-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60`}
+            className={`group relative grid ${LIST_COLS} cursor-pointer items-center gap-3 border-b border-[color:var(--border-hairline)] px-3 py-4 text-[13px] transition-[background-color] duration-150 hover:bg-[color:var(--row-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60 md:gap-5`}
           >
             <div className="relative z-[1] flex min-w-0 items-center gap-3">
               <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[color:var(--s3)] text-muted-foreground">
@@ -638,12 +640,12 @@ function ExplorerTable({
                 </div>
               </div>
             </div>
-            <div className="relative z-[1]"><TypeCell kind="folder" /></div>
+            <div className={`relative z-[1] ${LIST_HIDE}`}><TypeCell kind="folder" /></div>
             <div className="relative z-[1] text-[12.5px] text-muted-foreground">—</div>
-            <div className="relative z-[1] text-[12.5px] tabular-nums text-muted-foreground">
+            <div className={`relative z-[1] text-[12.5px] tabular-nums text-muted-foreground ${LIST_HIDE}`}>
               {it.lastUpdated ? relTime(it.lastUpdated) : "—"}
             </div>
-            <div className="relative z-[1] text-[12.5px] text-muted-foreground">—</div>
+            <div className={`relative z-[1] text-[12.5px] text-muted-foreground ${LIST_HIDE}`}>—</div>
             <div className="relative z-10 flex items-center justify-end">
               <FolderMenu onRename={() => onRenameFolder(it.folder)} onDelete={() => onDeleteFolder(it.folder)} />
             </div>
@@ -661,7 +663,7 @@ function ExplorerTable({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") navigate({ to: "/w/$workspace/p/$project", params: { workspace, project: p.slug } });
                 }}
-                className={`group relative grid ${LIST_COLS} cursor-pointer items-center gap-5 border-b border-[color:var(--border-hairline)] px-3 py-4 text-[13px] transition-[background-color] duration-150 hover:bg-[color:var(--row-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60`}
+                className={`group relative grid ${LIST_COLS} cursor-pointer items-center gap-3 border-b border-[color:var(--border-hairline)] px-3 py-4 text-[13px] transition-[background-color] duration-150 hover:bg-[color:var(--row-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60 md:gap-5`}
               >
                 <span
                   aria-hidden
@@ -683,11 +685,11 @@ function ExplorerTable({
                     <div className="truncate text-[11.5px] text-muted-foreground">{p.domain}</div>
                   </div>
                 </div>
-                <div><TypeCell kind="project" mode={p.mode} /></div>
+                <div className={LIST_HIDE}><TypeCell kind="project" mode={p.mode} /></div>
                 <div><StatusBadge status={p.status} /></div>
-                <div className="text-[12.5px] tabular-nums text-muted-foreground">{relTime(p.updatedAt)}</div>
-                <div><SitePlanBadge plan={p.plan} /></div>
-                <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100">
+                <div className={`text-[12.5px] tabular-nums text-muted-foreground ${LIST_HIDE}`}>{relTime(p.updatedAt)}</div>
+                <div className={LIST_HIDE}><SitePlanBadge plan={p.plan} /></div>
+                <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100 max-md:opacity-100">
                   <IconButton icon={ExternalLink} label="Open" />
                   <ProjectMenu
                     projectId={p.id}

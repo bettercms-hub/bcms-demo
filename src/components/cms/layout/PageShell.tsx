@@ -40,9 +40,9 @@ export interface PageShellProps {
 }
 
 const WIDTH: Record<NonNullable<PageShellProps["width"]>, string> = {
-  default: "max-w-[1440px] px-6 lg:px-10 xl:px-14",
-  narrow: "max-w-[960px] px-6 lg:px-8",
-  full: "max-w-none px-6 lg:px-10",
+  default: "max-w-[1440px] px-4 sm:px-6 lg:px-10 xl:px-14",
+  narrow: "max-w-[960px] px-4 sm:px-6 lg:px-8",
+  full: "max-w-none px-4 sm:px-6 lg:px-10",
 };
 
 export function PageShell({
@@ -58,8 +58,8 @@ export function PageShell({
   children,
 }: PageShellProps) {
   return (
-    <div className={cn("mx-auto w-full pb-24 pt-10", WIDTH[width], className)}>
-      <header className="mb-8">
+    <div className={cn("mx-auto w-full pb-16 pt-6 sm:pb-24 sm:pt-10", WIDTH[width], className)}>
+      <header className="mb-6 sm:mb-8">
         {breadcrumbs && breadcrumbs.length > 0 && (
           <nav
             aria-label="Breadcrumb"
@@ -94,14 +94,14 @@ export function PageShell({
           </nav>
         )}
 
-        <div className="flex flex-wrap items-end justify-between gap-6">
+        <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-6">
           <div className="min-w-0 flex-1">
             {eyebrow && (
               <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 {eyebrow}
               </div>
             )}
-            <h1 className="mt-2 text-[26px] font-semibold leading-[1.1] tracking-tight text-foreground">
+            <h1 className="mt-2 text-[22px] font-semibold leading-[1.1] tracking-tight text-foreground sm:text-[26px]">
               {title}
             </h1>
             {description && (
@@ -111,7 +111,7 @@ export function PageShell({
             )}
           </div>
           {actions && (
-            <div className="flex shrink-0 items-center gap-2">{actions}</div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
           )}
         </div>
       </header>
@@ -119,7 +119,7 @@ export function PageShell({
       {!noDivider && (
         <div
           aria-hidden
-          className="mb-10 h-px w-full bg-[color:var(--border-hairline)]"
+          className="mb-6 h-px w-full bg-[color:var(--border-hairline)] sm:mb-10"
         />
       )}
 

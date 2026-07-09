@@ -2,6 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { getDelivery } from "@/lib/cms/delivery";
 import { useCMS } from "@/lib/cms/store";
 import { useEffectiveRole, visibleTabs } from "@/lib/workspace/my-role";
+import { useViewportTier } from "@/lib/device";
+import { deviceVisibleTabs } from "@/lib/device-caps";
 
 type Scope = "pages" | "collections" | "components";
 
@@ -174,7 +176,12 @@ export function ProjectNav({ wsSlug, projectSlug, pathname, scope, view }: Props
   // content tools only, reviewers see just enough to review.
   const { effective } = useEffectiveRole(wsSlug);
   const allowed = visibleTabs(effective);
-  const tabs = (getDelivery(pr).hosted ? TABS : HEADLESS_TABS).filter((t) => allowed.has(t.key));
+  // Device filter stacks on the role filter: phones keep the editor tabs only.
+  const tier = useViewportTier();
+  const deviceAllowed = deviceVisibleTabs(tier);
+  const tabs = (getDelivery(pr).hosted ? TABS : HEADLESS_TABS).filter(
+    (t) => allowed.has(t.key) && (deviceAllowed === null || deviceAllowed.has(t.key)),
+  );
   return (
     <div className="flex h-12 items-center gap-0.5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {tabs.map((t) => {
@@ -186,7 +193,7 @@ export function ProjectNav({ wsSlug, projectSlug, pathname, scope, view }: Props
             params={{ workspace: wsSlug, project: projectSlug }}
             search={t.search as never}
             preload="intent"
-            className={`relative inline-flex h-12 shrink-0 items-center rounded-md px-3 text-[13px] transition-colors ${
+            className={`relative inline-flex h-12 shrink-0 items-center rounded-md px-2.5 text-[13px] transition-colors lg:px-3 ${
               active
                 ? "font-semibold text-foreground"
                 : "text-muted-foreground hover:text-foreground"

@@ -47,9 +47,13 @@ interface Props {
   wsSlug: string;
 }
 
+/** Settings surfaces a phone actually needs; the rest wait for md+. */
+const MOBILE_SETTINGS = new Set(["General", "Members", "Notifications", "Plans", "Billing"]);
+
 export function WorkspaceSubNav({ wsSlug }: Props) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const items = buildWorkspaceSubNavItems(wsSlug);
+  const mobileItems = items.filter((it) => MOBILE_SETTINGS.has(it.label));
 
   const groups: { label: string; items: WorkspaceSubNavItem[] }[] = [];
   for (const it of items) {
@@ -73,6 +77,30 @@ export function WorkspaceSubNav({ wsSlug }: Props) {
   };
 
   return (
+    <>
+    {/* Phones: horizontal chip bar with the on-the-go settings only. */}
+    <nav
+      aria-label="Workspace settings"
+      className="flex w-full shrink-0 items-center gap-1 overflow-x-auto border-b border-border bg-background px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden"
+    >
+      {mobileItems.map((it) => {
+        const active = isActive(it);
+        return (
+          <Link
+            key={it.href}
+            to={it.href}
+            className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
+              active
+                ? "bg-[color:color-mix(in_oklab,var(--primary)_12%,transparent)] text-foreground"
+                : "text-muted-foreground hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
+            }`}
+          >
+            <it.icon className={`h-3.5 w-3.5 shrink-0 ${active ? "text-primary" : ""}`} strokeWidth={1.75} />
+            {it.label}
+          </Link>
+        );
+      })}
+    </nav>
     <aside className="hidden w-[248px] shrink-0 border-r border-border bg-background md:block">
       <div className="px-6 pb-4 pt-7">
         <Link
@@ -116,6 +144,7 @@ export function WorkspaceSubNav({ wsSlug }: Props) {
         ))}
       </nav>
     </aside>
+    </>
   );
 }
 
@@ -128,7 +157,7 @@ export function WorkspaceLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-0 flex-1">
+    <div className="flex min-h-0 flex-1 max-md:flex-col">
       <WorkspaceSubNav wsSlug={wsSlug} />
       <div className="flex-1 overflow-auto">{children}</div>
     </div>

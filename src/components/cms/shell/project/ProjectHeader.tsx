@@ -5,6 +5,7 @@ import { useCurrentPageStatus } from "@/lib/cms/editor/use-current-page-status";
 import { formatRelative } from "@/lib/cms/format-time";
 import { agentDock, useAgentDock } from "@/lib/agent/dock-store";
 import { canEditContent, canPublish as roleCanPublish, useEffectiveRole } from "@/lib/workspace/my-role";
+import { useViewportTier } from "@/lib/device";
 
 type Scope = "pages" | "collections" | "components";
 
@@ -36,6 +37,9 @@ export function ProjectHeader({ wsSlug, projectSlug, pathname, scope, view }: Pr
   const inEditor = pathname.includes("/editor");
   const tone = STATUS_TONE[status.state] ?? STATUS_TONE.draft;
   const { effective } = useEffectiveRole(wsSlug);
+  // The dock itself is tier-gated in AppShell, so its toggle follows the
+  // same rule (a CSS breakpoint would leave a dead button on landscape phones).
+  const tier = useViewportTier();
   // Publishing is per-page: the visual editor and the Pages list each carry
   // their own PublishMenu, and collection entries publish from the editor
   // toolbar. The generic header Publish only makes sense when editing pages
@@ -86,13 +90,14 @@ export function ProjectHeader({ wsSlug, projectSlug, pathname, scope, view }: Pr
             <div className="mx-1 hidden h-4 w-px shrink-0 bg-border md:block" aria-hidden />
           </>
         )}
-        {canEditContent(effective) && !pathname.endsWith("/agent") && <AgentDockButton />}
+        {canEditContent(effective) && !pathname.endsWith("/agent") && tier !== "mobile" && <AgentDockButton />}
         <button
           type="button"
+          aria-label="View site"
           className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-[12px] text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
         >
           <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} />
-          View site
+          <span className="hidden sm:inline">View site</span>
         </button>
         {publishAllowed && (
           <>

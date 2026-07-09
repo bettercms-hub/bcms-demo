@@ -297,15 +297,15 @@ export function MarkdownManager({
         </ListToolbar>
 
         <div className="overflow-hidden rounded-xl border border-[color:var(--border-hairline)] bg-card">
-          <div className="grid grid-cols-[1fr_130px_96px_140px] items-center gap-3 border-b border-[color:var(--border-hairline)] bg-[color:var(--s2)] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="grid grid-cols-[1fr_64px_88px] items-center gap-3 border-b border-[color:var(--border-hairline)] bg-[color:var(--s2)] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid-cols-[1fr_130px_96px_140px]">
             <span>Markdown endpoint</span>
-            <span>Source</span>
+            <span className="hidden sm:block">Source</span>
             <span>Serve</span>
             <span />
           </div>
           <ul className="divide-y divide-[color:var(--border-hairline)]">
             {rows.map((r) => (
-              <li key={r.key} className={cn("group grid grid-cols-[1fr_130px_96px_140px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--s4)]", !r.served && "opacity-60")}>
+              <li key={r.key} className={cn("group grid grid-cols-[1fr_64px_88px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--s4)] sm:grid-cols-[1fr_130px_96px_140px]", !r.served && "opacity-60")}>
                 <div className="flex min-w-0 items-center gap-2.5">
                   <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <div className="min-w-0">
@@ -315,7 +315,7 @@ export function MarkdownManager({
                     </button>
                   </div>
                 </div>
-                <span className={cn("w-fit rounded-md px-1.5 py-0.5 text-[11px] font-medium", r.kind === "file" ? "bg-[color:color-mix(in_oklab,var(--primary)_9%,transparent)] text-primary" : "bg-[color:var(--s2)] text-muted-foreground")}>
+                <span className={cn("hidden w-fit rounded-md px-1.5 py-0.5 text-[11px] font-medium sm:block", r.kind === "file" ? "bg-[color:color-mix(in_oklab,var(--primary)_9%,transparent)] text-primary" : "bg-[color:var(--s2)] text-muted-foreground")}>
                   {r.source}
                 </span>
                 <span>
@@ -331,12 +331,12 @@ export function MarkdownManager({
                   </Button>
                   {r.kind === "file" && canEdit && (
                     <>
-                      <button type="button" aria-label={`Edit ${r.title}`} onClick={() => setEditing(r.file!)} className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100">
+                      <button type="button" aria-label={`Edit ${r.title}`} onClick={() => setEditing(r.file!)} className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100 max-md:opacity-100">
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button type="button" aria-label={`More actions for ${r.title}`} className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100 data-[state=open]:opacity-100">
+                          <button type="button" aria-label={`More actions for ${r.title}`} className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100 max-md:opacity-100 data-[state=open]:opacity-100">
                             <MoreHorizontal className="h-3.5 w-3.5" />
                           </button>
                         </DropdownMenuTrigger>
