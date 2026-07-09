@@ -50,13 +50,18 @@ export function buildProjectTree(workspaceSlug: string, projectSlug: string): Tr
   if (!project) return [];
   const website = getWebsiteForProject(project.id);
 
+  // Every lookup below is filtered rather than `!`-asserted: a project can
+  // reference ids whose records aren't loaded (e.g. a cloned project whose
+  // collections live only in the session, or any stale persisted state). A
+  // dangling id must skip its node, never crash the whole editor.
   const websiteNode: TreeNode = {
     id: "grp:website",
     label: "Pages",
     kind: "group",
-    children: (website?.pageIds ?? []).map((pid) => {
-      const page = getPage(pid)!;
-      return {
+    children: (website?.pageIds ?? [])
+      .map((pid) => getPage(pid))
+      .filter((p): p is NonNullable<typeof p> => !!p)
+      .map((page) => ({
         id: `page:${page.id}`,
         label: page.title,
         kind: "page",
@@ -71,18 +76,17 @@ export function buildProjectTree(workspaceSlug: string, projectSlug: string): Tr
             children: blockKids.length ? blockKids : undefined,
           };
         }),
-
-      };
-    }),
+      })),
   };
 
   const contentNode: TreeNode = {
     id: "grp:content",
     label: "Collections",
     kind: "group",
-    children: project.collectionIds.map((cid) => {
-      const col = getCollection(cid)!;
-      return {
+    children: project.collectionIds
+      .map((cid) => getCollection(cid))
+      .filter((c): c is NonNullable<typeof c> => !!c)
+      .map((col) => ({
         id: `collection:${col.id}`,
         label: col.name,
         kind: "collection",
@@ -93,38 +97,37 @@ export function buildProjectTree(workspaceSlug: string, projectSlug: string): Tr
           kind: "entry",
           refId: e.id,
         })),
-      };
-    }),
+      })),
   };
 
   const componentsNode: TreeNode = {
     id: "grp:components",
     label: "Components",
     kind: "group",
-    children: project.componentIds.map((cid) => {
-      const c = getComponent(cid)!;
-      return {
+    children: project.componentIds
+      .map((cid) => getComponent(cid))
+      .filter((c): c is NonNullable<typeof c> => !!c)
+      .map((c) => ({
         id: `component:${c.id}`,
         label: c.name,
         kind: "component",
         refId: c.id,
-      };
-    }),
+      })),
   };
 
   const mediaNode: TreeNode = {
     id: "grp:media",
     label: "Media",
     kind: "group",
-    children: project.mediaIds.map((mid) => {
-      const m = getMedia(mid)!;
-      return {
+    children: project.mediaIds
+      .map((mid) => getMedia(mid))
+      .filter((m): m is NonNullable<typeof m> => !!m)
+      .map((m) => ({
         id: `media:${m.id}`,
         label: m.name,
         kind: "media",
         refId: m.id,
-      };
-    }),
+      })),
   };
 
   return [websiteNode, contentNode, componentsNode, mediaNode];
