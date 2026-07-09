@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import { Bell, HelpCircle, Menu, Search, Settings } from "lucide-react";
 import {
   DropdownMenu,
@@ -8,6 +8,9 @@ import {
 import { ProjectBreadcrumb } from "./project/ProjectBreadcrumb";
 import { Logo } from "./Logo";
 import { UtilityIconButton } from "./UtilityIconButton";
+import { ThemeToggle } from "./ThemeToggle";
+import { NotificationsHeader, NotificationsList, useUnreadCount } from "./NotificationsList";
+import { getWorkspaceBySlug } from "@/lib/cms/use-cms";
 import { editorBus } from "@/lib/cms/editor-bus";
 
 interface Props {
@@ -93,6 +96,7 @@ export function GlobalTopBar({ onOpenPalette, onMenu, project }: Props) {
             <Search className="h-4 w-4" strokeWidth={1.75} />
           </UtilityIconButton>
         </span>
+        <ThemeToggle />
         <span className="hidden sm:contents">
           <UtilityIconButton
             label="Help & shortcuts"
@@ -119,23 +123,45 @@ export function GlobalTopBar({ onOpenPalette, onMenu, project }: Props) {
 }
 
 function NotificationsMenu() {
+  const { workspace: wsSlug } = useParams({ strict: false }) as { workspace?: string };
+  const ws = wsSlug ? getWorkspaceBySlug(wsSlug) : undefined;
+  const unread = useUnreadCount(ws?.id);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <UtilityIconButton label="Notifications">
+        <UtilityIconButton
+          label={unread > 0 ? `Notifications (${unread} unread)` : "Notifications"}
+          indicator={
+            unread > 0 ? (
+              <span className="absolute right-1 top-1 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-primary px-0.5 text-[8px] font-bold leading-none text-primary-foreground ring-2 ring-[color:var(--topbar)]">
+                {unread > 9 ? "9+" : unread}
+              </span>
+            ) : undefined
+          }
+        >
           <Bell className="h-4 w-4" />
         </UtilityIconButton>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-72 p-0">
-        <div className="border-b border-border px-3 py-2.5">
-          <div className="text-[12px] font-semibold text-foreground">Notifications</div>
-        </div>
-        <div className="px-6 py-10 text-center">
-          <div className="text-[12.5px] font-medium text-foreground">You're all caught up</div>
-          <div className="mt-1 text-[11.5px] text-muted-foreground">
-            New activity will appear here.
-          </div>
-        </div>
+      <DropdownMenuContent align="end" className="w-80 overflow-hidden p-0">
+        {ws ? (
+          <>
+            <div className="border-b border-border">
+              <NotificationsHeader workspaceId={ws.id} />
+            </div>
+            <div className="max-h-[380px] overflow-y-auto">
+              <NotificationsList workspaceId={ws.id} max={6} />
+            </div>
+            <Link
+              to="/w/$workspace/settings/notifications"
+              params={{ workspace: wsSlug! }}
+              className="block border-t border-border px-3 py-2 text-center text-[12px] font-medium text-primary transition-colors hover:bg-[color:var(--color-row-hover)]"
+            >
+              View all notifications
+            </Link>
+          </>
+        ) : (
+          <div className="px-6 py-10 text-center text-[12.5px] text-muted-foreground">You're all caught up</div>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

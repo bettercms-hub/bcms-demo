@@ -72,6 +72,7 @@ import { Route as WWorkspacePProjectSettingsCodeRouteImport } from './routes/w.$
 import { Route as WWorkspacePProjectSettingsBrandRouteImport } from './routes/w.$workspace.p.$project.settings.brand'
 import { Route as WWorkspacePProjectSettingsBackupsRouteImport } from './routes/w.$workspace.p.$project.settings.backups'
 import { Route as WWorkspacePProjectSettingsApiRouteImport } from './routes/w.$workspace.p.$project.settings.api'
+import { Route as WWorkspacePProjectSettingsAgentsRouteImport } from './routes/w.$workspace.p.$project.settings.agents'
 import { Route as WWorkspacePProjectSettingsAccessRouteImport } from './routes/w.$workspace.p.$project.settings.access'
 import { Route as WWorkspacePProjectSeoSitemapRouteImport } from './routes/w.$workspace.p.$project.seo.sitemap'
 import { Route as WWorkspacePProjectSeoSchemaRouteImport } from './routes/w.$workspace.p.$project.seo.schema'
@@ -438,6 +439,12 @@ const WWorkspacePProjectSettingsApiRoute =
     path: '/api',
     getParentRoute: () => WWorkspacePProjectSettingsRoute,
   } as any)
+const WWorkspacePProjectSettingsAgentsRoute =
+  WWorkspacePProjectSettingsAgentsRouteImport.update({
+    id: '/agents',
+    path: '/agents',
+    getParentRoute: () => WWorkspacePProjectSettingsRoute,
+  } as any)
 const WWorkspacePProjectSettingsAccessRoute =
   WWorkspacePProjectSettingsAccessRouteImport.update({
     id: '/access',
@@ -552,6 +559,7 @@ export interface FileRoutesByFullPath {
   '/w/$workspace/p/$project/seo/schema': typeof WWorkspacePProjectSeoSchemaRoute
   '/w/$workspace/p/$project/seo/sitemap': typeof WWorkspacePProjectSeoSitemapRoute
   '/w/$workspace/p/$project/settings/access': typeof WWorkspacePProjectSettingsAccessRoute
+  '/w/$workspace/p/$project/settings/agents': typeof WWorkspacePProjectSettingsAgentsRoute
   '/w/$workspace/p/$project/settings/api': typeof WWorkspacePProjectSettingsApiRoute
   '/w/$workspace/p/$project/settings/backups': typeof WWorkspacePProjectSettingsBackupsRoute
   '/w/$workspace/p/$project/settings/brand': typeof WWorkspacePProjectSettingsBrandRoute
@@ -624,6 +632,7 @@ export interface FileRoutesByTo {
   '/w/$workspace/p/$project/seo/schema': typeof WWorkspacePProjectSeoSchemaRoute
   '/w/$workspace/p/$project/seo/sitemap': typeof WWorkspacePProjectSeoSitemapRoute
   '/w/$workspace/p/$project/settings/access': typeof WWorkspacePProjectSettingsAccessRoute
+  '/w/$workspace/p/$project/settings/agents': typeof WWorkspacePProjectSettingsAgentsRoute
   '/w/$workspace/p/$project/settings/api': typeof WWorkspacePProjectSettingsApiRoute
   '/w/$workspace/p/$project/settings/backups': typeof WWorkspacePProjectSettingsBackupsRoute
   '/w/$workspace/p/$project/settings/brand': typeof WWorkspacePProjectSettingsBrandRoute
@@ -700,6 +709,7 @@ export interface FileRoutesById {
   '/w/$workspace/p/$project/seo/schema': typeof WWorkspacePProjectSeoSchemaRoute
   '/w/$workspace/p/$project/seo/sitemap': typeof WWorkspacePProjectSeoSitemapRoute
   '/w/$workspace/p/$project/settings/access': typeof WWorkspacePProjectSettingsAccessRoute
+  '/w/$workspace/p/$project/settings/agents': typeof WWorkspacePProjectSettingsAgentsRoute
   '/w/$workspace/p/$project/settings/api': typeof WWorkspacePProjectSettingsApiRoute
   '/w/$workspace/p/$project/settings/backups': typeof WWorkspacePProjectSettingsBackupsRoute
   '/w/$workspace/p/$project/settings/brand': typeof WWorkspacePProjectSettingsBrandRoute
@@ -777,6 +787,7 @@ export interface FileRouteTypes {
     | '/w/$workspace/p/$project/seo/schema'
     | '/w/$workspace/p/$project/seo/sitemap'
     | '/w/$workspace/p/$project/settings/access'
+    | '/w/$workspace/p/$project/settings/agents'
     | '/w/$workspace/p/$project/settings/api'
     | '/w/$workspace/p/$project/settings/backups'
     | '/w/$workspace/p/$project/settings/brand'
@@ -849,6 +860,7 @@ export interface FileRouteTypes {
     | '/w/$workspace/p/$project/seo/schema'
     | '/w/$workspace/p/$project/seo/sitemap'
     | '/w/$workspace/p/$project/settings/access'
+    | '/w/$workspace/p/$project/settings/agents'
     | '/w/$workspace/p/$project/settings/api'
     | '/w/$workspace/p/$project/settings/backups'
     | '/w/$workspace/p/$project/settings/brand'
@@ -924,6 +936,7 @@ export interface FileRouteTypes {
     | '/w/$workspace/p/$project/seo/schema'
     | '/w/$workspace/p/$project/seo/sitemap'
     | '/w/$workspace/p/$project/settings/access'
+    | '/w/$workspace/p/$project/settings/agents'
     | '/w/$workspace/p/$project/settings/api'
     | '/w/$workspace/p/$project/settings/backups'
     | '/w/$workspace/p/$project/settings/brand'
@@ -1402,6 +1415,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WWorkspacePProjectSettingsApiRouteImport
       parentRoute: typeof WWorkspacePProjectSettingsRoute
     }
+    '/w/$workspace/p/$project/settings/agents': {
+      id: '/w/$workspace/p/$project/settings/agents'
+      path: '/agents'
+      fullPath: '/w/$workspace/p/$project/settings/agents'
+      preLoaderRoute: typeof WWorkspacePProjectSettingsAgentsRouteImport
+      parentRoute: typeof WWorkspacePProjectSettingsRoute
+    }
     '/w/$workspace/p/$project/settings/access': {
       id: '/w/$workspace/p/$project/settings/access'
       path: '/access'
@@ -1555,6 +1575,7 @@ const WWorkspacePProjectSeoRouteWithChildren =
 
 interface WWorkspacePProjectSettingsRouteChildren {
   WWorkspacePProjectSettingsAccessRoute: typeof WWorkspacePProjectSettingsAccessRoute
+  WWorkspacePProjectSettingsAgentsRoute: typeof WWorkspacePProjectSettingsAgentsRoute
   WWorkspacePProjectSettingsApiRoute: typeof WWorkspacePProjectSettingsApiRoute
   WWorkspacePProjectSettingsBackupsRoute: typeof WWorkspacePProjectSettingsBackupsRoute
   WWorkspacePProjectSettingsBrandRoute: typeof WWorkspacePProjectSettingsBrandRoute
@@ -1580,6 +1601,8 @@ const WWorkspacePProjectSettingsRouteChildren: WWorkspacePProjectSettingsRouteCh
   {
     WWorkspacePProjectSettingsAccessRoute:
       WWorkspacePProjectSettingsAccessRoute,
+    WWorkspacePProjectSettingsAgentsRoute:
+      WWorkspacePProjectSettingsAgentsRoute,
     WWorkspacePProjectSettingsApiRoute: WWorkspacePProjectSettingsApiRoute,
     WWorkspacePProjectSettingsBackupsRoute:
       WWorkspacePProjectSettingsBackupsRoute,

@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SettingsHeader, SettingsRow, SettingsSection } from "@/components/cms/SettingsSubNav";
-import { useCMS } from "@/lib/cms/store";
-import { StatusBadge } from "@/components/cms/ui/StatusBadge";
+import { getWorkspaceBySlug } from "@/lib/cms/use-cms";
+import { notificationActions } from "@/lib/cms/store";
+import { NotificationsList, useUnreadCount } from "@/components/cms/shell/NotificationsList";
 import { Switch } from "@/components/ui/switch";
+import { CheckCheck } from "lucide-react";
 
 export const Route = createFileRoute("/w/$workspace/settings/notifications")({
   component: Notifications,
@@ -17,7 +19,9 @@ const CHANNELS = [
 ];
 
 function Notifications() {
-  const items = useCMS((s) => s.notifications.slice(0, 10));
+  const { workspace } = Route.useParams();
+  const ws = getWorkspaceBySlug(workspace);
+  const unread = useUnreadCount(ws?.id);
   return (
     <>
       <SettingsHeader title="Notifications" description="Choose what events trigger notifications and where they go." />
@@ -40,28 +44,23 @@ function Notifications() {
         ))}
       </SettingsSection>
 
-      <SettingsSection title="Recent notifications">
-        <div className="-mx-5">
-          {items.length === 0 ? (
-            <div className="px-5 py-6 text-center text-[13px] text-muted-foreground">No notifications yet.</div>
-          ) : (
-            items.map((n) => (
-              <div key={n.id} className="flex items-start gap-3 border-b border-border px-5 py-3 last:border-b-0">
-                <StatusBadge
-                  label={n.kind}
-                  tone={n.kind === "error" ? "danger" : n.kind === "warning" ? "warning" : n.kind === "success" ? "success" : "info"}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="text-[13px] font-medium text-foreground">{n.title}</div>
-                  {n.body && <div className="mt-0.5 text-[12px] text-muted-foreground">{n.body}</div>}
-                </div>
-                <div className="shrink-0 text-[11px] text-muted-foreground">
-                  {new Date(n.createdAt).toLocaleDateString()}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+      <SettingsSection
+        title="Recent notifications"
+        description={unread > 0 ? `${unread} unread` : "You're all caught up"}
+        action={
+          ws && unread > 0 ? (
+            <button
+              type="button"
+              onClick={() => notificationActions.markAllRead(ws.id)}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
+            >
+              <CheckCheck className="h-3.5 w-3.5" /> Mark all as read
+            </button>
+          ) : undefined
+        }
+        flush
+      >
+        {ws ? <NotificationsList workspaceId={ws.id} /> : <div className="px-5 py-6 text-center text-[13px] text-muted-foreground">No notifications.</div>}
       </SettingsSection>
     </>
   );

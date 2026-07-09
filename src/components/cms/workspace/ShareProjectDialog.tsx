@@ -9,7 +9,7 @@
  */
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Copy, ExternalLink, Eye, LayoutTemplate, Link2, RefreshCw, Share2, X } from "lucide-react";
+import { Check, Copy, ExternalLink, Eye, LayoutTemplate, Link2, Share2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { shareActions, shareUrl, useShare, type ShareLink } from "@/lib/cms/share-store";
@@ -172,15 +172,8 @@ function ShareCard({
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
           </div>
-          <div className="mt-1.5 flex items-center justify-between px-0.5">
+          <div className="mt-1.5 px-0.5">
             <span className="text-[10.5px] tabular-nums text-muted-foreground">{link.views} {link.views === 1 ? "view" : "views"}</span>
-            <button
-              type="button"
-              onClick={() => { shareActions.regenerate(projectId, kind); toast.success("New link generated. The old one no longer works."); }}
-              className="inline-flex items-center gap-1 text-[10.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <RefreshCw className="h-3 w-3" /> Regenerate
-            </button>
           </div>
           {children}
         </>

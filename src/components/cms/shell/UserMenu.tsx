@@ -16,19 +16,27 @@ import { editorBus } from "@/lib/cms/editor-bus";
 import { supabase } from "@/integrations/supabase/client";
 import { disableGuest } from "@/lib/guest";
 import { useSession } from "@/hooks/use-session";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useState } from "react";
+import { useProfile } from "@/lib/workspace/account-store";
+import { ProfileDialog, PreferencesDialog } from "./AccountDialogs";
 
 export function UserMenu() {
   const [appearance, setAppearance] = useAppearance();
   const { user } = useSession();
+  const profile = useProfile();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { workspace: wsSlug } = useParams({ strict: false }) as { workspace?: string };
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [prefsOpen, setPrefsOpen] = useState(false);
 
   const email = user?.email ?? "guest@bettercms.site";
   const fullName =
-    (user?.user_metadata?.full_name as string | undefined) ??
+    profile.name ||
+    (user?.user_metadata?.full_name as string | undefined) ||
     (user?.email ? user.email.split("@")[0] : "Guest");
   const initials = fullName
     .split(/[\s.]+/)
@@ -57,7 +65,10 @@ export function UserMenu() {
             className="group flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-[color:var(--color-row-hover)]"
             aria-label="Open user menu"
           >
-            <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[color:var(--color-elevated)] text-[10.5px] font-semibold text-foreground">
+            <div
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10.5px] font-semibold text-white"
+              style={{ backgroundColor: profile.avatarColor || "var(--color-elevated)" }}
+            >
               {initials}
             </div>
             <div className="min-w-0 flex-1">
@@ -75,13 +86,17 @@ export function UserMenu() {
           <DropdownMenuLabel className="px-2 pb-1 pt-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
             Account
           </DropdownMenuLabel>
-          <DropdownMenuItem className="text-[13px]">
+          <DropdownMenuItem className="text-[13px]" onSelect={() => setTimeout(() => setProfileOpen(true), 0)}>
             <User className="mr-2 h-3.5 w-3.5" /> My profile
           </DropdownMenuItem>
-          <DropdownMenuItem className="text-[13px]">
+          <DropdownMenuItem className="text-[13px]" onSelect={() => setTimeout(() => setPrefsOpen(true), 0)}>
             <Sliders className="mr-2 h-3.5 w-3.5" /> Preferences
           </DropdownMenuItem>
-          <DropdownMenuItem className="text-[13px]">
+          <DropdownMenuItem
+            className="text-[13px]"
+            disabled={!wsSlug}
+            onSelect={() => wsSlug && navigate({ to: "/w/$workspace/settings/notifications", params: { workspace: wsSlug } })}
+          >
             <Bell className="mr-2 h-3.5 w-3.5" /> Notifications
           </DropdownMenuItem>
 
@@ -126,7 +141,7 @@ export function UserMenu() {
             <Keyboard className="mr-2 h-3.5 w-3.5" /> Keyboard shortcuts
             <span className="ml-auto font-mono text-[10px] text-muted-foreground">?</span>
           </DropdownMenuItem>
-          <DropdownMenuItem className="text-[13px]">
+          <DropdownMenuItem className="text-[13px]" onSelect={() => editorBus.emit({ type: "editor:open-cheatsheet" })}>
             <HelpCircle className="mr-2 h-3.5 w-3.5" /> Help
           </DropdownMenuItem>
           <DropdownMenuSeparator />
@@ -135,6 +150,8 @@ export function UserMenu() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      {profileOpen && <ProfileDialog email={email} onClose={() => setProfileOpen(false)} />}
+      {prefsOpen && <PreferencesDialog onClose={() => setPrefsOpen(false)} />}
     </div>
   );
 }

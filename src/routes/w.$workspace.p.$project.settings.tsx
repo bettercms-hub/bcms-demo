@@ -49,6 +49,7 @@ function ProjectSettingsLayout() {
       ? [
           { label: "API", href: `${base}/api`, group: "Developer" },
           { label: "Webhooks", href: `${base}/webhooks`, group: "Developer" },
+          { label: "External agents", href: `${base}/agents`, group: "Developer" },
           { label: "Integration guide", href: `${base}/setup`, group: "Developer" },
         ]
       : []),

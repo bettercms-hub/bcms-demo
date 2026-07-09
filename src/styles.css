@@ -543,3 +543,13 @@ aside ::-webkit-scrollbar-thumb {
   pointer-events: none;
 }
 .block-editable:focus { outline: none; }
+
+/* Account preference: reduce motion. Disables animations/transitions app-wide. */
+:root[data-reduce-motion] *,
+:root[data-reduce-motion] *::before,
+:root[data-reduce-motion] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}

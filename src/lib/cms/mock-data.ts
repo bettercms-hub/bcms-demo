@@ -717,7 +717,11 @@ export const auditLog: AuditLogEntry[] = [
 ];
 
 export const notifications: Notification[] = [
-  { id: "n_1", workspaceId: "ws_acme", kind: "warning", title: "Webhook delivery failing", body: "Algolia index has failed 3 times in 24h.", createdAt: "2026-06-13T11:10:00Z" },
-  { id: "n_2", workspaceId: "ws_acme", kind: "success", title: "Domain verified", body: "northwind.acme.co is live with SSL.", createdAt: "2026-06-12T00:00:00Z", readAt: "2026-06-12T01:00:00Z" },
-  { id: "n_3", workspaceId: "ws_acme", kind: "info", title: "Team plan renews June 30", createdAt: "2026-06-10T00:00:00Z" },
+  { id: "n_1", workspaceId: "ws_acme", kind: "warning", title: "Webhook delivery failing", body: "Algolia index has failed 3 times in the last 24 hours.", createdAt: "2026-07-09T09:20:00Z" },
+  { id: "n_7", workspaceId: "ws_acme", kind: "info", title: "Northwind Studio joined as a guest team", body: "Priya Raman accepted your guest invite to BetterCMS.ai.", createdAt: "2026-07-09T08:05:00Z" },
+  { id: "n_6", workspaceId: "ws_acme", kind: "success", title: "Pricing page published", body: "Rohan Iyer published /pricing to production.", createdAt: "2026-07-08T17:42:00Z" },
+  { id: "n_5", workspaceId: "ws_acme", kind: "info", title: "Agent finished a run", body: "The SEO agent drafted 12 location pages, ready for review.", createdAt: "2026-07-08T14:15:00Z" },
+  { id: "n_2", workspaceId: "ws_acme", kind: "success", title: "Domain verified", body: "northwind.acme.co is live with SSL.", createdAt: "2026-07-06T00:00:00Z", readAt: "2026-07-06T01:00:00Z" },
+  { id: "n_4", workspaceId: "ws_acme", kind: "info", title: "New comment on Home", body: "Mika Chen mentioned you on the hero section.", createdAt: "2026-07-04T10:30:00Z", readAt: "2026-07-04T12:00:00Z" },
+  { id: "n_3", workspaceId: "ws_acme", kind: "info", title: "Agency plan renews July 30", createdAt: "2026-07-01T00:00:00Z", readAt: "2026-07-01T09:00:00Z" },
 ];

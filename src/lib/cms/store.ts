@@ -1987,6 +1987,33 @@ export const apiKeyActions = {
 
 // ---------- Webhooks ----------
 
+export const notificationActions = {
+  /** Mark one notification read (stamps readAt). No-op if already read. */
+  markRead: (id: string) => {
+    set((s) => ({
+      ...s,
+      notifications: s.notifications.map((n) => (n.id === id && !n.readAt ? { ...n, readAt: new Date().toISOString() } : n)),
+    }));
+  },
+  markUnread: (id: string) => {
+    set((s) => ({
+      ...s,
+      notifications: s.notifications.map((n) => (n.id === id ? { ...n, readAt: undefined } : n)),
+    }));
+  },
+  /** Mark every notification in a workspace read. */
+  markAllRead: (workspaceId: string) => {
+    const now = new Date().toISOString();
+    set((s) => ({
+      ...s,
+      notifications: s.notifications.map((n) => (n.workspaceId === workspaceId && !n.readAt ? { ...n, readAt: now } : n)),
+    }));
+  },
+  remove: (id: string) => {
+    set((s) => ({ ...s, notifications: s.notifications.filter((n) => n.id !== id) }));
+  },
+};
+
 export const webhookActions = {
   create: (workspaceId: string, url: string, events: WebhookEvent[]) => {
     const id = newId("wh");
