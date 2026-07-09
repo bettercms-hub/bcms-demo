@@ -13,7 +13,6 @@ import {
   Code2,
   Copy,
   ExternalLink,
-  Eye,
   Folder,
   FolderInput,
   FolderKanban,
@@ -24,7 +23,7 @@ import {
   Pencil,
   Plus,
   Search,
-  Send,
+  Share2,
   Trash2,
   type LucideIcon,
 } from "lucide-react";
@@ -55,7 +54,10 @@ import { StackIcon, StackTag, type StackKey } from "@/components/cms/icons/Stack
 import { NewProjectWizard } from "@/components/cms/project/NewProjectWizard";
 import { SitePlanBadge } from "@/components/cms/billing/PlanBadge";
 import { TransferProjectDialog } from "@/components/cms/workspace/TransferProjectDialog";
+import { ShareProjectDialog } from "@/components/cms/workspace/ShareProjectDialog";
 import { transferActions, useTransfers } from "@/lib/workspace/transfers-store";
+import { getCMSState } from "@/lib/cms/store";
+import { cloneProject } from "@/lib/cms/clone";
 import type { ProjectKind, SitePlanId, Workspace } from "@/lib/cms/types";
 import { modeOf, type DeliveryMode } from "@/lib/cms/delivery";
 
@@ -203,6 +205,7 @@ function ProjectsExplorer({
   const [sort, setSort] = useState<SortKey>("updated");
   const [view, setView] = useState<"list" | "grid">("list");
   const [transferFor, setTransferFor] = useState<ProjectRow | null>(null);
+  const [shareFor, setShareFor] = useState<ProjectRow | null>(null);
 
   const [dialog, setDialog] = useState<{ open: boolean; mode: "create" | "rename"; id?: string; name: string }>({
     open: false,
@@ -392,6 +395,7 @@ function ProjectsExplorer({
           onRenameFolder={(f) => setDialog({ open: true, mode: "rename", id: f.id, name: f.name })}
           onDeleteFolder={handleDeleteFolder}
           onTransfer={setTransferFor}
+          onShare={setShareFor}
         />
       ) : (
         <ExplorerTable
@@ -404,6 +408,7 @@ function ProjectsExplorer({
           onRenameFolder={(f) => setDialog({ open: true, mode: "rename", id: f.id, name: f.name })}
           onDeleteFolder={handleDeleteFolder}
           onTransfer={setTransferFor}
+          onShare={setShareFor}
         />
       )}
 
@@ -421,6 +426,9 @@ function ProjectsExplorer({
           fromWorkspaceName={ws.name}
           onClose={() => setTransferFor(null)}
         />
+      )}
+      {shareFor && (
+        <ShareProjectDialog project={{ id: shareFor.id, name: shareFor.name }} onClose={() => setShareFor(null)} />
       )}
     </div>
   );
@@ -606,6 +614,7 @@ function ExplorerTable({
   onRenameFolder,
   onDeleteFolder,
   onTransfer,
+  onShare,
 }: {
   workspace: string;
   items: ExplorerItem[];
@@ -616,6 +625,7 @@ function ExplorerTable({
   onRenameFolder: (f: FolderType) => void;
   onDeleteFolder: (f: FolderType) => void;
   onTransfer: (p: ProjectRow) => void;
+  onShare: (p: ProjectRow) => void;
 }) {
   const navigate = useNavigate();
   return (
@@ -715,6 +725,7 @@ function ExplorerTable({
                     currentFolderId={assignments[p.id] ?? null}
                     onMove={onMove}
                     onTransfer={() => onTransfer(p)}
+                    onShare={() => onShare(p)}
                   />
                 </div>
               </div>
@@ -738,6 +749,7 @@ function ExplorerGrid({
   onRenameFolder,
   onDeleteFolder,
   onTransfer,
+  onShare,
 }: {
   workspace: string;
   items: ExplorerItem[];
@@ -748,6 +760,7 @@ function ExplorerGrid({
   onRenameFolder: (f: FolderType) => void;
   onDeleteFolder: (f: FolderType) => void;
   onTransfer: (p: ProjectRow) => void;
+  onShare: (p: ProjectRow) => void;
 }) {
   const navigate = useNavigate();
   return (
@@ -817,6 +830,7 @@ function ExplorerGrid({
                       currentFolderId={assignments[p.id] ?? null}
                       onMove={onMove}
                       onTransfer={() => onTransfer(p)}
+                      onShare={() => onShare(p)}
                     />
                   </div>
                   <div className="mt-3.5 flex items-center justify-between gap-2">
@@ -885,12 +899,14 @@ function ProjectMenu({
   currentFolderId,
   onMove,
   onTransfer,
+  onShare,
 }: {
   projectId: string;
   folders: FolderType[];
   currentFolderId: string | null;
   onMove: (projectIds: string | string[], folderId: string | null) => void;
   onTransfer: () => void;
+  onShare: () => void;
 }) {
   const transfers = useTransfers();
   const pending = transfers.find((r) => r.projectId === projectId && r.status === "pending");
@@ -910,9 +926,20 @@ function ProjectMenu({
           every item click also fires the row's onClick and navigates away. */}
       <DropdownMenuContent align="end" className="w-[188px]" onClick={(e) => e.stopPropagation()}>
         <DropdownMenuItem className="text-[13px]"><ExternalLink className="mr-2 h-3.5 w-3.5" /> Open</DropdownMenuItem>
-        <DropdownMenuItem className="text-[13px]"><Eye className="mr-2 h-3.5 w-3.5" /> Preview</DropdownMenuItem>
-        <DropdownMenuItem className="text-[13px]"><Send className="mr-2 h-3.5 w-3.5" /> Publish</DropdownMenuItem>
-        <DropdownMenuItem className="text-[13px]"><Copy className="mr-2 h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
+        <DropdownMenuItem className="text-[13px]" data-testid="menu-share-project" onSelect={() => setTimeout(onShare, 0)}>
+          <Share2 className="mr-2 h-3.5 w-3.5" /> Share &amp; preview link
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="text-[13px]"
+          onSelect={() => {
+            const pr = getCMSState().projects.find((p) => p.id === projectId);
+            if (!pr) return;
+            const copy = cloneProject(pr.id, pr.workspaceId, `${pr.name} copy`);
+            if (copy) toast.success(`Duplicated as “${copy.name}”`);
+          }}
+        >
+          <Copy className="mr-2 h-3.5 w-3.5" /> Duplicate
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuSub>
           <DropdownMenuSubTrigger className="text-[13px]">

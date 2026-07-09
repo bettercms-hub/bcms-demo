@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkspaceNewRouteImport } from './routes/workspace.new'
 import { Route as WWorkspaceRouteImport } from './routes/w.$workspace'
+import { Route as PTokenRouteImport } from './routes/p.$token'
 import { Route as DevScrollbarsRouteImport } from './routes/dev.scrollbars'
 import { Route as WWorkspaceIndexRouteImport } from './routes/w.$workspace.index'
 import { Route as WWorkspaceSettingsRouteImport } from './routes/w.$workspace.settings'
@@ -110,6 +111,11 @@ const WorkspaceNewRoute = WorkspaceNewRouteImport.update({
 const WWorkspaceRoute = WWorkspaceRouteImport.update({
   id: '/w/$workspace',
   path: '/w/$workspace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PTokenRoute = PTokenRouteImport.update({
+  id: '/p/$token',
+  path: '/p/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DevScrollbarsRoute = DevScrollbarsRouteImport.update({
@@ -499,6 +505,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/reset-password': typeof ResetPasswordRoute
   '/dev/scrollbars': typeof DevScrollbarsRoute
+  '/p/$token': typeof PTokenRoute
   '/w/$workspace': typeof WWorkspaceRouteWithChildren
   '/workspace/new': typeof WorkspaceNewRoute
   '/w/$workspace/agent': typeof WWorkspaceAgentRoute
@@ -573,6 +580,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/reset-password': typeof ResetPasswordRoute
   '/dev/scrollbars': typeof DevScrollbarsRoute
+  '/p/$token': typeof PTokenRoute
   '/workspace/new': typeof WorkspaceNewRoute
   '/w/$workspace/agent': typeof WWorkspaceAgentRoute
   '/w/$workspace/members': typeof WWorkspaceMembersRoute
@@ -645,6 +653,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/reset-password': typeof ResetPasswordRoute
   '/dev/scrollbars': typeof DevScrollbarsRoute
+  '/p/$token': typeof PTokenRoute
   '/w/$workspace': typeof WWorkspaceRouteWithChildren
   '/workspace/new': typeof WorkspaceNewRoute
   '/w/$workspace/agent': typeof WWorkspaceAgentRoute
@@ -721,6 +730,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/reset-password'
     | '/dev/scrollbars'
+    | '/p/$token'
     | '/w/$workspace'
     | '/workspace/new'
     | '/w/$workspace/agent'
@@ -795,6 +805,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/reset-password'
     | '/dev/scrollbars'
+    | '/p/$token'
     | '/workspace/new'
     | '/w/$workspace/agent'
     | '/w/$workspace/members'
@@ -866,6 +877,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/reset-password'
     | '/dev/scrollbars'
+    | '/p/$token'
     | '/w/$workspace'
     | '/workspace/new'
     | '/w/$workspace/agent'
@@ -941,6 +953,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   DevScrollbarsRoute: typeof DevScrollbarsRoute
+  PTokenRoute: typeof PTokenRoute
   WWorkspaceRoute: typeof WWorkspaceRouteWithChildren
   WorkspaceNewRoute: typeof WorkspaceNewRoute
   ApiPublicFormsFormIdSubmitRoute: typeof ApiPublicFormsFormIdSubmitRoute
@@ -988,6 +1001,13 @@ declare module '@tanstack/react-router' {
       path: '/w/$workspace'
       fullPath: '/w/$workspace'
       preLoaderRoute: typeof WWorkspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/p/$token': {
+      id: '/p/$token'
+      path: '/p/$token'
+      fullPath: '/p/$token'
+      preLoaderRoute: typeof PTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dev/scrollbars': {
@@ -1666,6 +1686,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   DevScrollbarsRoute: DevScrollbarsRoute,
+  PTokenRoute: PTokenRoute,
   WWorkspaceRoute: WWorkspaceRouteWithChildren,
   WorkspaceNewRoute: WorkspaceNewRoute,
   ApiPublicFormsFormIdSubmitRoute: ApiPublicFormsFormIdSubmitRoute,

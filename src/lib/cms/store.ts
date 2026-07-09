@@ -540,6 +540,86 @@ export const projectActions = {
     return project;
   },
   /**
+   * Clone a project into a workspace (from a shared template link). Copies
+   * the project shell plus its collections, schemas and entries under fresh
+   * ids; pages are copied separately by the caller (they live in the pages
+   * store). The clone starts on the free site plan, unpublished.
+   */
+  clone(sourceProjectId: string, targetWorkspaceId: string, name?: string): Project | undefined {
+    const source = state.projects.find((p) => p.id === sourceProjectId);
+    const target = state.workspaces.find((w) => w.id === targetWorkspaceId);
+    if (!source || !target) return undefined;
+
+    const cloneName = (name ?? `${source.name} copy`).trim();
+    const base =
+      cloneName
+        .toLowerCase()
+        .replace(/[^a-z0-9-]+/g, "-")
+        .replace(/-{2,}/g, "-")
+        .replace(/^-+|-+$/g, "") || "project";
+    let slug = base;
+    let n = 2;
+    while (state.projects.some((p) => p.workspaceId === targetWorkspaceId && p.slug === slug)) slug = `${base}-${n++}`;
+
+    const newProjectId = newId("pr");
+
+    // Clone collections + their schemas + entries under new ids.
+    const srcCollections = state.collections.filter((c) => c.projectId === sourceProjectId);
+    const newSchemas: Schema[] = [];
+    const newCollections: Collection[] = [];
+    const newEntries: Entry[] = [];
+    for (const col of srcCollections) {
+      const srcSchema = state.schemas.find((s) => s.id === col.schemaId);
+      const newSchemaId = newId("sch");
+      if (srcSchema) newSchemas.push({ ...structuredClone(srcSchema), id: newSchemaId, ownerId: `${newProjectId}:${col.slug}` });
+      const srcEntries = state.entries.filter((e) => e.collectionId === col.id);
+      const newColId = newId("col");
+      const entryIdMap = new Map<string, string>();
+      for (const e of srcEntries) {
+        const ne = { ...structuredClone(e), id: newId("ent"), collectionId: newColId };
+        entryIdMap.set(e.id, ne.id);
+        newEntries.push(ne);
+      }
+      newCollections.push({
+        ...structuredClone(col),
+        id: newColId,
+        projectId: newProjectId,
+        schemaId: srcSchema ? newSchemaId : col.schemaId,
+        entryIds: (col.entryIds ?? []).map((id) => entryIdMap.get(id) ?? id).filter(Boolean),
+      });
+    }
+
+    const project: Project = {
+      ...structuredClone(source),
+      id: newProjectId,
+      slug,
+      name: cloneName,
+      workspaceId: targetWorkspaceId,
+      websiteId: "",
+      collectionIds: newCollections.map((c) => c.id),
+      componentIds: [],
+      mediaIds: [],
+      sitePlan: "free",
+      publishState: "draft",
+      clientSite: false,
+      updatedAt: new Date().toISOString(),
+    };
+
+    set((s) => ({
+      ...s,
+      projects: [project, ...s.projects],
+      schemas: [...s.schemas, ...newSchemas],
+      collections: [...s.collections, ...newCollections],
+      entries: [...s.entries, ...newEntries],
+      workspaces: s.workspaces.map((w) =>
+        w.id === targetWorkspaceId ? { ...w, projectIds: [project.id, ...w.projectIds] } : w,
+      ),
+    }));
+    persistCreatedProjects();
+    recordAudit(targetWorkspaceId, "project.cloned", "project", `${cloneName} from ${source.name}`, project.id);
+    return project;
+  },
+  /**
    * Move a project to another workspace (Webflow-style transfer). Content,
    * pages, schemas and media travel with the project; the site plan resets
    * to the base tier and the slug dedupes against the destination.

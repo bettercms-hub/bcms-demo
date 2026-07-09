@@ -121,6 +121,24 @@ export const pagesActions = {
   },
 };
 
+/**
+ * Copy a project's pages into a target project (used when cloning a project
+ * from a shared template link). Fresh page + section ids so the two projects
+ * never alias. Must run before anything reads the target — otherwise ensure()
+ * would seed it with the default marketing pages instead.
+ */
+export function clonePagesTo(sourceProjectId: string, targetProjectId: string) {
+  const source = ensure(sourceProjectId);
+  const cloned = source.map((p) => ({
+    ...p,
+    id: newPageId(),
+    updatedAt: Date.now(),
+    sections: p.sections.map((s) => ({ ...s, id: `s_${Date.now().toString(36)}${(seq++).toString(36)}` })),
+  }));
+  byProject.set(targetProjectId, cloned);
+  emit();
+}
+
 /** Build a page from a section spec list, giving each section a fresh id. */
 export function buildPage(
   meta: { path: string; title: string; state: PageState },
