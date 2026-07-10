@@ -29,7 +29,7 @@ import {
 import { toast } from "sonner";
 import { useWorkspaceRow } from "@/lib/workspace/queries";
 import { useViewportTier } from "@/lib/device";
-import { EntryPublishMenu } from "./EntryPublishMenu";
+import { EntryWorkflowBar } from "./EntryWorkflowBar";
 import {
   CommentModeProvider,
   CommentSidebar,
@@ -331,12 +331,6 @@ export function EditorShell() {
         <div className="flex items-center justify-end gap-1.5">
           <CommentsTopButton workspaceId={workspaceId} variant="inline" />
           {!isCollection && <ViewMenu />}
-          {isEntry && effectiveNode?.refId && (
-            <>
-              <div className="mx-0.5 h-5 w-px shrink-0 bg-border/70" aria-hidden />
-              <EntryPublishMenu entryId={effectiveNode.refId} wsSlug={workspace} />
-            </>
-          )}
           {!isCollection && !isEntry && !isSectionWorkspace && (
             <>
               <div className="mx-0.5 h-5 w-px shrink-0 bg-border/70" aria-hidden />
@@ -450,6 +444,10 @@ export function EditorShell() {
 
         </PanelGroup>
       </div>
+
+      {isEntry && effectiveNode?.refId && (
+        <EntryWorkflowBar entryId={effectiveNode.refId} wsSlug={workspace} />
+      )}
 
       <AlertDialog open={publishOpen} onOpenChange={setPublishOpen}>
         <AlertDialogContent>

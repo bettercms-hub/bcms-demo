@@ -1,22 +1,21 @@
 /**
- * Publishing panel: status transitions, scheduling, and publish/unpublish.
+ * Publishing panel: lifecycle status, the editorial workflow card
+ * (stage, assignees, due date, approve / request changes), scheduling,
+ * and publish/unpublish quick actions.
  */
-import { entryActions } from "@/lib/cms/store";
-import type { Entry, PublishState } from "@/lib/cms/types";
+import { entryActions, getWorkflow, stageOfEntry, useCMS, workflowActions } from "@/lib/cms/store";
+import { diffEntry } from "@/lib/cms/snapshots";
+import type { Entry, Member, WorkflowStage } from "@/lib/cms/types";
 import { PublishBadge } from "@/components/cms/ui/StatusBadge";
+import { AssigneeStack, DueChip, MemberAvatar } from "@/components/cms/workflow/WorkflowBits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Check, GitCompareArrows, MessageSquareWarning, ThumbsUp, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-
-const TRANSITIONS: Array<{ to: PublishState; label: string }> = [
-  { to: "draft", label: "Move to draft" },
-  { to: "review", label: "Submit for review" },
-  { to: "approved", label: "Approve" },
-  { to: "published", label: "Publish now" },
-  { to: "archived", label: "Archive" },
-];
+import { cn } from "@/lib/utils";
 
 function toLocalInputValue(iso?: string) {
   if (!iso) return "";
@@ -25,15 +24,13 @@ function toLocalInputValue(iso?: string) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function EntryPublishingPanel({ entry }: { entry: Entry }) {
+export function EntryPublishingPanel({ entry, onCompare }: { entry: Entry; onCompare?: () => void }) {
   const [scheduleAt, setScheduleAt] = useState(toLocalInputValue(entry.scheduledAt));
   const status = entry.status ?? "draft";
-
-  const transition = (to: PublishState) => {
-    const ok = entryActions.transition(entry.id, to);
-    if (!ok) toast.error(`Can't move from ${status} to ${to}`);
-    else toast.success(`Moved to ${to}`);
-  };
+  const changed = entry.publishedSnapshot
+    ? diffEntry(entry, entry.publishedSnapshot).changedFields.size +
+      (entry.publishedSnapshot.entry.title !== entry.title ? 1 : 0)
+    : 0;
 
   const schedule = () => {
     if (!scheduleAt) {
@@ -66,25 +63,19 @@ export function EntryPublishingPanel({ entry }: { entry: Entry }) {
             Scheduled for {new Date(entry.scheduledAt).toLocaleString()}
           </div>
         ) : null}
+        {entry.publishedSnapshot && changed > 0 && onCompare && (
+          <button
+            type="button"
+            onClick={onCompare}
+            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-primary hover:underline"
+          >
+            <GitCompareArrows className="h-3.5 w-3.5" />
+            {changed} {changed === 1 ? "field differs" : "fields differ"} from the published version · Compare
+          </button>
+        )}
       </section>
 
-      <section className="space-y-2">
-        <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
-          Workflow
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {TRANSITIONS.filter((t) => t.to !== status).map((t) => (
-            <Button
-              key={t.to}
-              variant={t.to === "published" ? "default" : "outline"}
-              size="sm"
-              onClick={() => transition(t.to)}
-            >
-              {t.label}
-            </Button>
-          ))}
-        </div>
-      </section>
+      <WorkflowCard entry={entry} />
 
       <section className="space-y-2">
         <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -144,5 +135,211 @@ export function EntryPublishingPanel({ entry }: { entry: Entry }) {
         </div>
       </section>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------- workflow */
+
+function WorkflowCard({ entry }: { entry: Entry }) {
+  const collection = useCMS((s) => s.collections.find((c) => c.id === entry.collectionId));
+  const projectId = collection?.projectId ?? "";
+  const customStages = useCMS((s) => s.workflows.find((w) => w.projectId === projectId)?.stages);
+  const stages = customStages ?? getWorkflow(projectId);
+  const members = useCMS((s) => s.members);
+  const workspace = useCMS((s) => {
+    const pr = s.projects.find((p) => p.id === projectId);
+    return s.workspaces.find((w) => w.id === pr?.workspaceId);
+  });
+  const teammates = members.filter((m) => workspace?.memberIds.includes(m.id) && m.status !== "invited");
+
+  const stage = stageOfEntry(entry, stages);
+  const published = entry.status === "published";
+  const [requesting, setRequesting] = useState(false);
+  const [comment, setComment] = useState("");
+
+  const changesStage = stages.find((s) => s.id === "wfs_changes") ?? stages.find((s) => /change/i.test(s.name));
+  const gateStage = stages.find((s) => s.publishGate) ?? stages[stages.length - 1];
+
+  function move(to: WorkflowStage, opts?: { comment?: string }) {
+    workflowActions.moveEntry(entry.id, to.id, opts);
+    toast.success(`Moved to ${to.name}`);
+  }
+
+  function requestChanges() {
+    if (!changesStage) return;
+    if (!comment.trim()) {
+      toast.error("Say what needs to change");
+      return;
+    }
+    move(changesStage, { comment: comment.trim() });
+    setComment("");
+    setRequesting(false);
+  }
+
+  const moverName = entry.workflowLastMove
+    ? (members.find((m) => m.id === entry.workflowLastMove?.by)?.name ?? "Someone")
+    : null;
+
+  return (
+    <section className="space-y-3">
+      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Workflow</div>
+
+      {published ? (
+        <p className="text-[12.5px] text-muted-foreground">
+          This entry is live. Move it to a working stage to start a new version.
+        </p>
+      ) : null}
+
+      {/* stage picker */}
+      <div className="flex flex-wrap gap-1.5">
+        {stages.map((s) => {
+          const active = !published && stage?.id === s.id;
+          return (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => (active ? undefined : move(s))}
+              aria-pressed={active}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors",
+                active
+                  ? "border-transparent"
+                  : "border-[color:var(--color-border)] text-muted-foreground hover:bg-[color:var(--color-row-hover)] hover:text-foreground",
+              )}
+              style={active ? { backgroundColor: `color-mix(in oklab, ${s.color} 14%, transparent)`, color: s.color } : undefined}
+            >
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: s.color }} />
+              {s.name}
+              {s.publishGate && <span className="text-[9px] uppercase tracking-wide opacity-70">gate</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* assignees + due */}
+      <div className="flex flex-wrap items-center gap-3">
+        <AssigneePicker
+          teammates={teammates}
+          value={entry.workflowAssigneeIds ?? []}
+          onChange={(ids) => workflowActions.assignEntry(entry.id, ids)}
+        />
+        <label className="flex items-center gap-2 text-[12px] text-muted-foreground">
+          Due
+          <Input
+            type="date"
+            className="h-8 w-[150px] text-[12px]"
+            value={entry.workflowDueDate ? entry.workflowDueDate.slice(0, 10) : ""}
+            onChange={(e) =>
+              workflowActions.setDueDate(entry.id, e.target.value ? new Date(`${e.target.value}T12:00:00`).toISOString() : undefined)
+            }
+          />
+        </label>
+        <DueChip iso={entry.workflowDueDate} />
+      </div>
+
+      {/* quick actions */}
+      {!published && (
+        <div className="flex flex-wrap items-center gap-2">
+          {gateStage && stage?.id !== gateStage.id && (
+            <Button size="sm" onClick={() => move(gateStage)}>
+              <ThumbsUp className="mr-1.5 h-3.5 w-3.5" /> Approve
+            </Button>
+          )}
+          {stage?.publishGate && (
+            <Button
+              size="sm"
+              onClick={() => {
+                entryActions.publish(entry.id);
+                toast.success("Published");
+              }}
+            >
+              <Check className="mr-1.5 h-3.5 w-3.5" /> Publish
+            </Button>
+          )}
+          {changesStage && stage?.id !== changesStage.id && (
+            <Button size="sm" variant="outline" onClick={() => setRequesting((v) => !v)}>
+              <MessageSquareWarning className="mr-1.5 h-3.5 w-3.5" /> Request changes
+            </Button>
+          )}
+        </div>
+      )}
+
+      {requesting && (
+        <div className="space-y-2 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--card)] p-3">
+          <Label className="text-[12px]">What needs to change?</Label>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            rows={2}
+            autoFocus
+            placeholder="Be specific so the author can act on it."
+            className="w-full resize-none rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 py-2 text-[12.5px] outline-none focus:border-[color:var(--primary)]"
+          />
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setRequesting(false)}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={requestChanges} disabled={!comment.trim()}>
+              Send back
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {entry.workflowLastMove && (
+        <p className="text-[11.5px] text-muted-foreground">
+          Moved by {moverName} · {new Date(entry.workflowLastMove.at).toLocaleString()}
+          {entry.workflowLastMove.comment ? <> · “{entry.workflowLastMove.comment}”</> : null}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function AssigneePicker({
+  teammates,
+  value,
+  onChange,
+}: {
+  teammates: Member[];
+  value: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  const selected = new Set(value);
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 text-[12px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
+        >
+          <UserPlus className="h-3.5 w-3.5 text-muted-foreground" />
+          {value.length === 0 ? "Assign" : <AssigneeStack ids={value} size={18} />}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[240px] p-1.5">
+        <div className="px-1.5 pb-1 pt-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Assignees
+        </div>
+        {teammates.map((m) => {
+          const on = selected.has(m.id);
+          return (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => onChange(on ? value.filter((id) => id !== m.id) : [...value, m.id])}
+              className="flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-[color:var(--color-row-hover)]"
+            >
+              <MemberAvatar member={m} size={22} />
+              <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">{m.name}</span>
+              {on && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
+            </button>
+          );
+        })}
+        {teammates.length === 0 && (
+          <div className="px-1.5 py-2 text-[12px] text-muted-foreground">No teammates in this workspace.</div>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }

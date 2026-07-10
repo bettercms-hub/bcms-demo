@@ -429,10 +429,18 @@ export const entries: Entry[] = [
     ["The team edits everything without waiting on engineering.", "Vertex"],
   ];
   const DATES = ["2026-06-28T10:00:00Z", "2026-06-21T15:30:00Z", "2026-06-12T09:15:00Z"];
+  const BODIES = [
+    "<p>Our new site is live. We rebuilt every page on structured sections, so the whole team can ship updates without waiting on a deploy.</p>",
+    "<p>We build from small, reusable sections instead of one-off pages. It keeps the brand consistent and design reviews stay fast.</p>",
+    "<p>Sections let marketers compose pages in a third of the time. This post shows the workflow end to end, from draft to publish.</p>",
+  ];
 
   for (const pr of projects) {
     if (hasContent.has(pr.id)) continue;
     const suf = pr.id.replace(/^pr_/, "");
+    // Workflow seeds pull assignees from the project's own workspace.
+    const mids = workspaces.find((w) => w.id === pr.workspaceId)?.memberIds ?? [];
+    const mid = (i: number) => mids[i % Math.max(mids.length, 1)];
 
     const cPosts: Collection = { id: `c_${suf}_posts`, projectId: pr.id, name: "Blog posts", slug: "posts", schemaId: `sch_${suf}_posts`, entryIds: [] };
     schemas.push({
@@ -452,7 +460,31 @@ export const entries: Entry[] = [
     POSTS.forEach(([title, slug, cover], i) => {
       const id = `e_${suf}_p${i}`;
       cPosts.entryIds.push(id);
-      entries.push({ id, collectionId: cPosts.id, title, fields: { slug, cover, published: i < 2 }, updatedAt: DATES[i], status: i < 2 ? "published" : "draft" });
+      // Spread posts across the workflow: one live, one sent back with a
+      // comment, one in review (assigned to the viewer, overdue).
+      const workflow =
+        i === 1
+          ? {
+              workflowStageId: "wfs_changes",
+              workflowAssigneeIds: [mid(2)],
+              workflowLastMove: { by: mid(5), at: DATES[1], comment: "Tighten the intro and add a concrete example before this ships." },
+            }
+          : i === 2
+            ? {
+                workflowStageId: "wfs_review",
+                workflowAssigneeIds: ["m_jane", mid(3)],
+                workflowDueDate: "2026-07-09T12:00:00Z",
+              }
+            : { workflowAssigneeIds: [mid(1)] };
+      entries.push({
+        id,
+        collectionId: cPosts.id,
+        title,
+        fields: { slug, cover, body: BODIES[i], published: i === 0 },
+        updatedAt: DATES[i],
+        status: i === 0 ? "published" : "draft",
+        ...workflow,
+      });
     });
     collections.push(cPosts);
 
@@ -472,7 +504,20 @@ export const entries: Entry[] = [
     PEOPLE.forEach(([name, role, photo], i) => {
       const id = `e_${suf}_t${i}`;
       cTeam.entryIds.push(id);
-      entries.push({ id, collectionId: cTeam.id, title: name, fields: { name, role, photo }, updatedAt: DATES[i], status: "published" });
+      // Maya waits in Approved so the publish-gate column has a card.
+      const workflow =
+        i === 0
+          ? { workflowStageId: "wfs_approved", workflowAssigneeIds: [mid(0)], workflowDueDate: "2026-07-12T12:00:00Z" }
+          : {};
+      entries.push({
+        id,
+        collectionId: cTeam.id,
+        title: name,
+        fields: { name, role, photo },
+        updatedAt: DATES[i],
+        status: i === 0 ? "draft" : "published",
+        ...workflow,
+      });
     });
     collections.push(cTeam);
 
@@ -491,7 +536,7 @@ export const entries: Entry[] = [
     QUOTES.forEach(([quote, company], i) => {
       const id = `e_${suf}_q${i}`;
       cQuotes.entryIds.push(id);
-      entries.push({ id, collectionId: cQuotes.id, title: quote, fields: { quote, company }, updatedAt: DATES[i], status: "published" });
+      entries.push({ id, collectionId: cQuotes.id, title: quote, fields: { quote, company }, updatedAt: DATES[i], status: i === 1 ? "draft" : "published" });
     });
     collections.push(cQuotes);
 

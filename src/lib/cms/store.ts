@@ -68,6 +68,7 @@ import type {
   Project,
   ProjectKind,
   ProjectFramework,
+  ProjectWorkflow,
   PublishState,
   Redirect,
   Revision,
@@ -87,6 +88,7 @@ import type {
   WebhookDelivery,
   WebhookEvent,
   Website,
+  WorkflowStage,
   Workspace,
   WorkspaceRole,
 } from "./types";
@@ -144,6 +146,8 @@ interface State {
   siteMembers: SiteMember[];
   revisions: Revision[];
   comments: EntryComment[];
+  /** Editorial workflows, one per project that customized its stages. */
+  workflows: ProjectWorkflow[];
 }
 
 let state: State = {
@@ -180,6 +184,7 @@ let state: State = {
   siteMembers: structuredClone(seedSiteMembers),
   revisions: [],
   comments: [],
+  workflows: [],
 };
 
 // Seed `Section.blocks` from legacy props for any section that doesn't
@@ -230,7 +235,22 @@ let state: State = {
   state.entries = state.entries.map((entry) => {
     const { publishedSnapshot: _ignore, ...entryCore } = entry;
     void _ignore;
-    const snapshot = { capturedAt: now, entry: entryCore };
+    // Give the design post an older published wording so Compare versions
+    // shows a real field diff out of the box (same trick as the page above).
+    let snapCore = entryCore;
+    if (entry.title === "How we think about design" && typeof entry.fields.body === "string") {
+      snapCore = {
+        ...structuredClone(entryCore),
+        title: "How we think about design systems",
+        fields: {
+          ...structuredClone(entryCore.fields),
+          body: String(entry.fields.body)
+            .replace("small, reusable sections", "big, flexible templates")
+            .replace("design reviews stay fast", "design reviews stay manageable"),
+        },
+      };
+    }
+    const snapshot = { capturedAt: now, entry: snapCore };
     const revId = `rv_seed_${entry.id}`;
     initialRevisions.push({
       id: revId,
@@ -1754,6 +1774,35 @@ export const entryActions = {
     }));
     return id;
   },
+  /**
+   * Paste a copied document into a collection as a new draft. Fields are
+   * matched by name against the target schema; anything the schema doesn't
+   * define is dropped and reported so nothing disappears silently.
+   */
+  pasteDocument: (collectionId: string, doc: { title: string; fields: Record<string, unknown> }) => {
+    const col = state.collections.find((c) => c.id === collectionId);
+    if (!col) return undefined;
+    const schema = state.schemas.find((sc) => sc.id === col.schemaId);
+    const allowed = new Set((schema?.fields ?? []).map((f) => f.name));
+    const fields: Record<string, unknown> = {};
+    const dropped: string[] = [];
+    for (const [k, v] of Object.entries(doc.fields)) {
+      if (allowed.has(k)) fields[k] = structuredClone(v);
+      else dropped.push(k);
+    }
+    const id = newId("e");
+    const now = new Date().toISOString();
+    set((s) => ({
+      ...s,
+      entries: [
+        ...s.entries,
+        { id, collectionId, title: doc.title, fields, status: "draft", updatedAt: now, createdBy: CURRENT_ACTOR, updatedBy: CURRENT_ACTOR },
+      ],
+      collections: s.collections.map((c) => (c.id === collectionId ? { ...c, entryIds: [...c.entryIds, id] } : c)),
+    }));
+    recordAudit(workspaceForProject(col.projectId), "entry.pasted", "entry", doc.title, id);
+    return { id, dropped };
+  },
   transition: (entryId: string, to: PublishState) => {
     const entry = state.entries.find((e) => e.id === entryId);
     if (!entry) return false;
@@ -2011,6 +2060,132 @@ export const notificationActions = {
   },
   remove: (id: string) => {
     set((s) => ({ ...s, notifications: s.notifications.filter((n) => n.id !== id) }));
+  },
+  /** Push a new notification into a workspace's feed. Returns its id. */
+  add: (workspaceId: string, input: { kind?: Notification["kind"]; title: string; body?: string }) => {
+    const id = newId("n");
+    set((s) => ({
+      ...s,
+      notifications: [
+        { id, workspaceId, kind: input.kind ?? "info", title: input.title, body: input.body, createdAt: new Date().toISOString() },
+        ...s.notifications,
+      ],
+    }));
+    return id;
+  },
+};
+
+// ---------- Editorial workflow ----------
+
+/** Default stages every project starts with. Approved gates publishing. */
+export const DEFAULT_WORKFLOW_STAGES: WorkflowStage[] = [
+  { id: "wfs_draft", name: "Draft", color: "#64748B" },
+  { id: "wfs_review", name: "In review", color: "#D97706" },
+  { id: "wfs_changes", name: "Changes requested", color: "#E11D48" },
+  { id: "wfs_approved", name: "Approved", color: "#4F46E5", publishGate: true },
+];
+
+/** Palette for custom stages: distinguishable and dark-mode safe. */
+export const WORKFLOW_STAGE_COLORS = ["#64748B", "#D97706", "#E11D48", "#4F46E5", "#0EA5E9", "#10B981", "#8B5CF6", "#14B8A6"];
+
+export function getWorkflow(projectId: string): WorkflowStage[] {
+  return state.workflows.find((w) => w.projectId === projectId)?.stages ?? DEFAULT_WORKFLOW_STAGES;
+}
+
+/** The stage an entry sits in, inferring one from legacy status when unset. */
+export function stageOfEntry(entry: Entry, stages: WorkflowStage[]): WorkflowStage | undefined {
+  if (entry.status === "published" || entry.status === "archived") return undefined;
+  const byId = entry.workflowStageId ? stages.find((s) => s.id === entry.workflowStageId) : undefined;
+  if (byId) return byId;
+  if (entry.status === "review") return stages.find((s) => s.id === "wfs_review") ?? stages[0];
+  if (entry.status === "approved") return stages.find((s) => s.id === "wfs_approved") ?? stages[0];
+  return stages[0];
+}
+
+export const workflowActions = {
+  /** Replace a project's stages (custom workflow). */
+  setStages: (projectId: string, stages: WorkflowStage[]) => {
+    if (stages.length === 0) return;
+    set((s) => {
+      const existing = s.workflows.find((w) => w.projectId === projectId);
+      return {
+        ...s,
+        workflows: existing
+          ? s.workflows.map((w) => (w.projectId === projectId ? { ...w, stages } : w))
+          : [...s.workflows, { id: newId("wf"), projectId, stages }],
+      };
+    });
+    recordAudit(workspaceForProject(projectId), "workflow.updated", "settings", "Workflow stages", projectId);
+  },
+  reset: (projectId: string) => {
+    set((s) => ({ ...s, workflows: s.workflows.filter((w) => w.projectId !== projectId) }));
+  },
+  /** Move an entry to a stage; an optional comment travels with the move
+   * (request-changes) and lands in the workspace notification feed. */
+  moveEntry: (entryId: string, stageId: string, opts?: { comment?: string }) => {
+    const entry = state.entries.find((e) => e.id === entryId);
+    if (!entry) return;
+    const col = state.collections.find((c) => c.id === entry.collectionId);
+    const projectId = col?.projectId ?? "";
+    const stages = getWorkflow(projectId);
+    const stage = stages.find((s) => s.id === stageId);
+    if (!stage) return;
+    const move = { by: CURRENT_ACTOR, at: new Date().toISOString(), comment: opts?.comment };
+    set((s) => ({
+      ...s,
+      entries: s.entries.map((e) =>
+        e.id === entryId
+          ? {
+              ...e,
+              workflowStageId: stageId,
+              workflowLastMove: move,
+              // Leaving Published for a working stage starts a new draft version.
+              status: e.status === "published" ? "draft" : e.status,
+              updatedAt: new Date().toISOString(),
+              updatedBy: CURRENT_ACTOR,
+            }
+          : e,
+      ),
+    }));
+    const wsId = workspaceForProject(projectId);
+    recordAudit(wsId, "workflow.moved", "entry", `${entry.title} → ${stage.name}`, entryId);
+    if (opts?.comment) {
+      notificationActions.add(wsId, {
+        kind: "warning",
+        title: `Changes requested on ${entry.title}`,
+        body: opts.comment,
+      });
+    }
+  },
+  /** Set assignees; newly added people get a notification. */
+  assignEntry: (entryId: string, memberIds: string[]) => {
+    const entry = state.entries.find((e) => e.id === entryId);
+    if (!entry) return;
+    const before = new Set(entry.workflowAssigneeIds ?? []);
+    const added = memberIds.filter((id) => !before.has(id));
+    set((s) => ({
+      ...s,
+      entries: s.entries.map((e) => (e.id === entryId ? { ...e, workflowAssigneeIds: memberIds } : e)),
+    }));
+    if (added.length > 0) {
+      const col = state.collections.find((c) => c.id === entry.collectionId);
+      const wsId = workspaceForProject(col?.projectId ?? "");
+      const names = added
+        .map((id) => state.members.find((m) => m.id === id)?.name)
+        .filter(Boolean)
+        .join(", ");
+      notificationActions.add(wsId, {
+        kind: "info",
+        title: `Assigned: ${entry.title}`,
+        body: `${names} ${added.length === 1 ? "is" : "are"} now assigned.`,
+      });
+    }
+  },
+  setDueDate: (entryId: string, iso: string | undefined) => {
+    set((s) => ({
+      ...s,
+      entries: s.entries.map((e) => (e.id === entryId ? { ...e, workflowDueDate: iso } : e)),
+    }));
   },
 };
 

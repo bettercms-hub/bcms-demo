@@ -2,15 +2,18 @@
  * EntrySlideOver — slide-over editor for a single entry.
  *
  * Reuses the existing <EntryView> form for the Content tab so we don't
- * re-implement field rendering. Other tabs are placeholders that
- * surface the existing publish-state controls and metadata.
+ * re-implement field rendering. A persistent EntryWorkflowBar footer keeps
+ * review and publishing one click away on every tab, not buried in one.
  */
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { useParams } from "@tanstack/react-router";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCMS } from "@/lib/cms/store";
 import { useProjectPresence } from "@/lib/workspace/presence-store";
 import { PresenceStack } from "@/components/cms/presence/Presence";
 import { PublishBadge } from "@/components/cms/ui/StatusBadge";
+import { WorkflowStageBadge } from "@/components/cms/workflow/WorkflowBits";
+import { EntryWorkflowBar } from "@/components/cms/editor/EntryWorkflowBar";
 import { EntryView } from "./EntryView";
 import { EntrySeoPanel } from "./entry-tabs/EntrySeoPanel";
 import { EntryPublishingPanel } from "./entry-tabs/EntryPublishingPanel";
@@ -25,6 +28,8 @@ interface Props {
 
 export function EntrySlideOver({ open, onOpenChange, entryId }: Props) {
   const entry = useCMS((s) => (entryId ? s.entries.find((e) => e.id === entryId) : undefined));
+  const { workspace } = useParams({ strict: false }) as { workspace?: string };
+
   const projectId = useCMS((s) => (entry ? s.collections.find((c) => c.id === entry.collectionId)?.projectId : undefined));
   const peers = useProjectPresence(projectId);
   const here = entry ? peers.filter((p) => p.entryId === entry.id && p.status === "active") : [];
@@ -37,6 +42,7 @@ export function EntrySlideOver({ open, onOpenChange, entryId }: Props) {
       >
         {entry ? (
           <Tabs defaultValue="content" className="flex h-full min-h-0 flex-col">
+            <SheetTitle className="sr-only">{entry.title || "Entry"}</SheetTitle>
             <div className="flex items-center gap-3 border-b border-border/40 px-5 pt-4 pb-3">
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[14px] font-semibold tracking-tight">
@@ -44,6 +50,7 @@ export function EntrySlideOver({ open, onOpenChange, entryId }: Props) {
                 </div>
                 <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
                   {entry.status && <PublishBadge state={entry.status} />}
+                  <WorkflowStageBadge entry={entry} />
                   <span>Updated {new Date(entry.updatedAt).toLocaleDateString()}</span>
                 </div>
               </div>
@@ -73,6 +80,7 @@ export function EntrySlideOver({ open, onOpenChange, entryId }: Props) {
                 <EntryCommentsPanel entryId={entry.id} />
               </TabsContent>
             </div>
+            <EntryWorkflowBar entryId={entry.id} wsSlug={workspace ?? ""} />
           </Tabs>
         ) : null}
       </SheetContent>

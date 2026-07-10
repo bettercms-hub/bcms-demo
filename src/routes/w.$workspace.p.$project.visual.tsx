@@ -99,6 +99,8 @@ import { useViewportTier } from "@/lib/device";
 import { useProjectPresence } from "@/lib/workspace/presence-store";
 import { PresenceCanvasLayer } from "@/components/cms/presence/PresenceCanvasLayer";
 import { RichTextToolbar } from "@/components/cms/editor/preview/RichTextToolbar";
+import { ComparePageDialog, pageDiffCount } from "@/components/cms/editor/preview/ComparePageDialog";
+import { GitCompareArrows } from "lucide-react";
 
 export const Route = createFileRoute("/w/$workspace/p/$project/visual")({
   validateSearch: (s: Record<string, unknown>): { page?: string; new?: boolean } => ({
@@ -226,6 +228,7 @@ function VisualEditor() {
   const [libraryAt, setLibraryAt] = useState<number | null>(null);
   const [flashId, setFlashId] = useState<string | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [comparePageOpen, setComparePageOpen] = useState(false);
   const [pageSettingsOpen, setPageSettingsOpen] = useState(false);
 
   // Page templates: the create-page picker + templates saved from pages.
@@ -682,6 +685,21 @@ function VisualEditor() {
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Saved
           </span>
         )}
+        {active.publishedSnapshot && (
+          <button
+            type="button"
+            onClick={() => setComparePageOpen(true)}
+            title="Compare the draft with the published page"
+            className="relative inline-flex h-8 items-center gap-1.5 rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
+          >
+            <GitCompareArrows className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Compare</span>
+            {pageDiffCount(active) > 0 && (
+              <span className="grid h-4 min-w-4 place-items-center rounded-full bg-amber-500/20 px-1 text-[10px] font-semibold tabular-nums text-amber-700 dark:text-amber-400">
+                {pageDiffCount(active)}
+              </span>
+            )}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => window.open(`https://${staging}${active.path === "/" ? "" : active.path}`, "_blank")}
@@ -1011,6 +1029,10 @@ function VisualEditor() {
           onClose={() => setPageSettingsOpen(false)}
           onPathChange={(next) => setActivePath(next)}
         />
+      )}
+
+      {comparePageOpen && (
+        <ComparePageDialog projectId={projectId} page={active} canEdit={canEdit} onClose={() => setComparePageOpen(false)} />
       )}
 
       {/* save current page as a template */}

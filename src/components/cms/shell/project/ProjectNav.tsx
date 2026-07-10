@@ -41,6 +41,12 @@ const HEADLESS_TABS: Tab[] = [
     match: (p, s, v) => (/\/content$/.test(p) && v === "content") || (p.includes("/editor") && s !== "components"),
   },
   {
+    key: "workflow",
+    label: "Workflow",
+    to: "/w/$workspace/p/$project/workflow",
+    match: (p) => p.includes("/workflow"),
+  },
+  {
     key: "schema",
     label: "Schema",
     to: "/w/$workspace/p/$project/schema",
@@ -110,6 +116,12 @@ const TABS: Tab[] = [
     to: "/w/$workspace/p/$project/content",
     search: { view: "content" },
     match: (p, s, v) => (/\/content$/.test(p) && v === "content") || (p.includes("/editor") && s !== "components"),
+  },
+  {
+    key: "workflow",
+    label: "Workflow",
+    to: "/w/$workspace/p/$project/workflow",
+    match: (p) => p.includes("/workflow"),
   },
   {
     key: "visual",

@@ -47,6 +47,7 @@ import { Route as WWorkspacePProjectIndexRouteImport } from './routes/w.$workspa
 import { Route as WWorkspaceSettingsBillingUsageRouteImport } from './routes/w.$workspace.settings.billing.usage'
 import { Route as WWorkspaceSettingsBillingPaymentRouteImport } from './routes/w.$workspace.settings.billing.payment'
 import { Route as WWorkspaceSettingsBillingInvoicesRouteImport } from './routes/w.$workspace.settings.billing.invoices'
+import { Route as WWorkspacePProjectWorkflowRouteImport } from './routes/w.$workspace.p.$project.workflow'
 import { Route as WWorkspacePProjectVisualRouteImport } from './routes/w.$workspace.p.$project.visual'
 import { Route as WWorkspacePProjectSettingsRouteImport } from './routes/w.$workspace.p.$project.settings'
 import { Route as WWorkspacePProjectSeoRouteImport } from './routes/w.$workspace.p.$project.seo'
@@ -292,6 +293,12 @@ const WWorkspaceSettingsBillingInvoicesRoute =
     id: '/invoices',
     path: '/invoices',
     getParentRoute: () => WWorkspaceSettingsBillingRoute,
+  } as any)
+const WWorkspacePProjectWorkflowRoute =
+  WWorkspacePProjectWorkflowRouteImport.update({
+    id: '/workflow',
+    path: '/workflow',
+    getParentRoute: () => WWorkspacePProjectRoute,
   } as any)
 const WWorkspacePProjectVisualRoute =
   WWorkspacePProjectVisualRouteImport.update({
@@ -594,6 +601,7 @@ export interface FileRoutesByFullPath {
   '/w/$workspace/p/$project/seo': typeof WWorkspacePProjectSeoRouteWithChildren
   '/w/$workspace/p/$project/settings': typeof WWorkspacePProjectSettingsRouteWithChildren
   '/w/$workspace/p/$project/visual': typeof WWorkspacePProjectVisualRoute
+  '/w/$workspace/p/$project/workflow': typeof WWorkspacePProjectWorkflowRoute
   '/w/$workspace/settings/billing/invoices': typeof WWorkspaceSettingsBillingInvoicesRoute
   '/w/$workspace/settings/billing/payment': typeof WWorkspaceSettingsBillingPaymentRoute
   '/w/$workspace/settings/billing/usage': typeof WWorkspaceSettingsBillingUsageRoute
@@ -673,6 +681,7 @@ export interface FileRoutesByTo {
   '/w/$workspace/p/$project/seo': typeof WWorkspacePProjectSeoRouteWithChildren
   '/w/$workspace/p/$project/settings': typeof WWorkspacePProjectSettingsRouteWithChildren
   '/w/$workspace/p/$project/visual': typeof WWorkspacePProjectVisualRoute
+  '/w/$workspace/p/$project/workflow': typeof WWorkspacePProjectWorkflowRoute
   '/w/$workspace/settings/billing/invoices': typeof WWorkspaceSettingsBillingInvoicesRoute
   '/w/$workspace/settings/billing/payment': typeof WWorkspaceSettingsBillingPaymentRoute
   '/w/$workspace/settings/billing/usage': typeof WWorkspaceSettingsBillingUsageRoute
@@ -757,6 +766,7 @@ export interface FileRoutesById {
   '/w/$workspace/p/$project/seo': typeof WWorkspacePProjectSeoRouteWithChildren
   '/w/$workspace/p/$project/settings': typeof WWorkspacePProjectSettingsRouteWithChildren
   '/w/$workspace/p/$project/visual': typeof WWorkspacePProjectVisualRoute
+  '/w/$workspace/p/$project/workflow': typeof WWorkspacePProjectWorkflowRoute
   '/w/$workspace/settings/billing/invoices': typeof WWorkspaceSettingsBillingInvoicesRoute
   '/w/$workspace/settings/billing/payment': typeof WWorkspaceSettingsBillingPaymentRoute
   '/w/$workspace/settings/billing/usage': typeof WWorkspaceSettingsBillingUsageRoute
@@ -842,6 +852,7 @@ export interface FileRouteTypes {
     | '/w/$workspace/p/$project/seo'
     | '/w/$workspace/p/$project/settings'
     | '/w/$workspace/p/$project/visual'
+    | '/w/$workspace/p/$project/workflow'
     | '/w/$workspace/settings/billing/invoices'
     | '/w/$workspace/settings/billing/payment'
     | '/w/$workspace/settings/billing/usage'
@@ -921,6 +932,7 @@ export interface FileRouteTypes {
     | '/w/$workspace/p/$project/seo'
     | '/w/$workspace/p/$project/settings'
     | '/w/$workspace/p/$project/visual'
+    | '/w/$workspace/p/$project/workflow'
     | '/w/$workspace/settings/billing/invoices'
     | '/w/$workspace/settings/billing/payment'
     | '/w/$workspace/settings/billing/usage'
@@ -1004,6 +1016,7 @@ export interface FileRouteTypes {
     | '/w/$workspace/p/$project/seo'
     | '/w/$workspace/p/$project/settings'
     | '/w/$workspace/p/$project/visual'
+    | '/w/$workspace/p/$project/workflow'
     | '/w/$workspace/settings/billing/invoices'
     | '/w/$workspace/settings/billing/payment'
     | '/w/$workspace/settings/billing/usage'
@@ -1322,6 +1335,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/w/$workspace/settings/billing/invoices'
       preLoaderRoute: typeof WWorkspaceSettingsBillingInvoicesRouteImport
       parentRoute: typeof WWorkspaceSettingsBillingRoute
+    }
+    '/w/$workspace/p/$project/workflow': {
+      id: '/w/$workspace/p/$project/workflow'
+      path: '/workflow'
+      fullPath: '/w/$workspace/p/$project/workflow'
+      preLoaderRoute: typeof WWorkspacePProjectWorkflowRouteImport
+      parentRoute: typeof WWorkspacePProjectRoute
     }
     '/w/$workspace/p/$project/visual': {
       id: '/w/$workspace/p/$project/visual'
@@ -1805,6 +1825,7 @@ interface WWorkspacePProjectRouteChildren {
   WWorkspacePProjectSeoRoute: typeof WWorkspacePProjectSeoRouteWithChildren
   WWorkspacePProjectSettingsRoute: typeof WWorkspacePProjectSettingsRouteWithChildren
   WWorkspacePProjectVisualRoute: typeof WWorkspacePProjectVisualRoute
+  WWorkspacePProjectWorkflowRoute: typeof WWorkspacePProjectWorkflowRoute
   WWorkspacePProjectIndexRoute: typeof WWorkspacePProjectIndexRoute
   WWorkspacePProjectFormsFormIdRoute: typeof WWorkspacePProjectFormsFormIdRoute
   WWorkspacePProjectFormsIndexRoute: typeof WWorkspacePProjectFormsIndexRoute
@@ -1823,6 +1844,7 @@ const WWorkspacePProjectRouteChildren: WWorkspacePProjectRouteChildren = {
   WWorkspacePProjectSeoRoute: WWorkspacePProjectSeoRouteWithChildren,
   WWorkspacePProjectSettingsRoute: WWorkspacePProjectSettingsRouteWithChildren,
   WWorkspacePProjectVisualRoute: WWorkspacePProjectVisualRoute,
+  WWorkspacePProjectWorkflowRoute: WWorkspacePProjectWorkflowRoute,
   WWorkspacePProjectIndexRoute: WWorkspacePProjectIndexRoute,
   WWorkspacePProjectFormsFormIdRoute: WWorkspacePProjectFormsFormIdRoute,
   WWorkspacePProjectFormsIndexRoute: WWorkspacePProjectFormsIndexRoute,

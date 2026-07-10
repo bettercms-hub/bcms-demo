@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { appearanceBootScript } from "../lib/cms/appearance";
 import { Toaster } from "../components/ui/sonner";
+import { TooltipProvider } from "../components/ui/tooltip";
 import { AppErrorBoundary } from "../components/AppErrorBoundary";
 import { ChunkErrorListener } from "../components/ChunkErrorListener";
 
@@ -133,11 +134,13 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AppErrorBoundary>
-        <Outlet />
-      </AppErrorBoundary>
-      <ChunkErrorListener />
-      <Toaster />
+      <TooltipProvider delayDuration={300}>
+        <AppErrorBoundary>
+          <Outlet />
+        </AppErrorBoundary>
+        <ChunkErrorListener />
+        <Toaster />
+      </TooltipProvider>
     </QueryClientProvider>
   );
 }
