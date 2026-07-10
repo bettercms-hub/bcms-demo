@@ -250,12 +250,12 @@ function ViewToggle({
       aria-pressed={active}
       title={`${label} view`}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium transition-colors",
+        "grid h-7 w-7 place-items-center rounded-md transition-colors",
         active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
       )}
     >
       <Icon className="h-3.5 w-3.5" />
-      {label}
+      <span className="sr-only">{label}</span>
     </button>
   );
 }
