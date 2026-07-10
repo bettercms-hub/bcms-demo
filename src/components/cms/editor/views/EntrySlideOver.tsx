@@ -13,6 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCMS } from "@/lib/cms/store";
 import { diffEntry } from "@/lib/cms/snapshots";
 import { canEditContent, useEffectiveRole } from "@/lib/workspace/my-role";
+import { useProjectPresence } from "@/lib/workspace/presence-store";
+import { PresenceStack } from "@/components/cms/presence/Presence";
 import { PublishBadge } from "@/components/cms/ui/StatusBadge";
 import { WorkflowStageBadge } from "@/components/cms/workflow/WorkflowBits";
 import { EntryView } from "./EntryView";
@@ -40,6 +42,10 @@ export function EntrySlideOver({ open, onOpenChange, entryId }: Props) {
       (entry.publishedSnapshot.entry.title !== entry.title ? 1 : 0)
     : 0;
 
+  const projectId = useCMS((s) => (entry ? s.collections.find((c) => c.id === entry.collectionId)?.projectId : undefined));
+  const peers = useProjectPresence(projectId);
+  const here = entry ? peers.filter((p) => p.entryId === entry.id && p.status === "active") : [];
+
   return (
     <Sheet open={open && !!entryId} onOpenChange={onOpenChange}>
       <SheetContent
@@ -60,6 +66,7 @@ export function EntrySlideOver({ open, onOpenChange, entryId }: Props) {
                   <span>Updated {new Date(entry.updatedAt).toLocaleDateString()}</span>
                 </div>
               </div>
+              <PresenceStack peers={here} size={24} max={3} />
               {entry.publishedSnapshot && (
                 <button
                   type="button"

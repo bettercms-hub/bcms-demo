@@ -12,11 +12,18 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AccountIndexRouteImport } from './routes/account.index'
 import { Route as WorkspaceNewRouteImport } from './routes/workspace.new'
 import { Route as WWorkspaceRouteImport } from './routes/w.$workspace'
 import { Route as PTokenRouteImport } from './routes/p.$token'
 import { Route as DevScrollbarsRouteImport } from './routes/dev.scrollbars'
+import { Route as AccountSecurityRouteImport } from './routes/account.security'
+import { Route as AccountProfileRouteImport } from './routes/account.profile'
+import { Route as AccountPreferencesRouteImport } from './routes/account.preferences'
+import { Route as AccountEmailRouteImport } from './routes/account.email'
+import { Route as AccountConnectionsRouteImport } from './routes/account.connections'
 import { Route as WWorkspaceIndexRouteImport } from './routes/w.$workspace.index'
 import { Route as WWorkspaceSettingsRouteImport } from './routes/w.$workspace.settings'
 import { Route as WWorkspaceRolesRouteImport } from './routes/w.$workspace.roles'
@@ -100,10 +107,20 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AccountIndexRoute = AccountIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AccountRoute,
 } as any)
 const WorkspaceNewRoute = WorkspaceNewRouteImport.update({
   id: '/workspace/new',
@@ -124,6 +141,31 @@ const DevScrollbarsRoute = DevScrollbarsRouteImport.update({
   id: '/dev/scrollbars',
   path: '/dev/scrollbars',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AccountSecurityRoute = AccountSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => AccountRoute,
+} as any)
+const AccountProfileRoute = AccountProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AccountRoute,
+} as any)
+const AccountPreferencesRoute = AccountPreferencesRouteImport.update({
+  id: '/preferences',
+  path: '/preferences',
+  getParentRoute: () => AccountRoute,
+} as any)
+const AccountEmailRoute = AccountEmailRouteImport.update({
+  id: '/email',
+  path: '/email',
+  getParentRoute: () => AccountRoute,
+} as any)
+const AccountConnectionsRoute = AccountConnectionsRouteImport.update({
+  id: '/connections',
+  path: '/connections',
+  getParentRoute: () => AccountRoute,
 } as any)
 const WWorkspaceIndexRoute = WWorkspaceIndexRouteImport.update({
   id: '/',
@@ -515,13 +557,20 @@ const WWorkspacePProjectPagesPageIdSeoRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account': typeof AccountRouteWithChildren
   '/auth': typeof AuthRoute
   '/onboarding': typeof OnboardingRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/account/connections': typeof AccountConnectionsRoute
+  '/account/email': typeof AccountEmailRoute
+  '/account/preferences': typeof AccountPreferencesRoute
+  '/account/profile': typeof AccountProfileRoute
+  '/account/security': typeof AccountSecurityRoute
   '/dev/scrollbars': typeof DevScrollbarsRoute
   '/p/$token': typeof PTokenRoute
   '/w/$workspace': typeof WWorkspaceRouteWithChildren
   '/workspace/new': typeof WorkspaceNewRoute
+  '/account/': typeof AccountIndexRoute
   '/w/$workspace/agent': typeof WWorkspaceAgentRoute
   '/w/$workspace/members': typeof WWorkspaceMembersRoute
   '/w/$workspace/projects': typeof WWorkspaceProjectsRoute
@@ -595,9 +644,15 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/onboarding': typeof OnboardingRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/account/connections': typeof AccountConnectionsRoute
+  '/account/email': typeof AccountEmailRoute
+  '/account/preferences': typeof AccountPreferencesRoute
+  '/account/profile': typeof AccountProfileRoute
+  '/account/security': typeof AccountSecurityRoute
   '/dev/scrollbars': typeof DevScrollbarsRoute
   '/p/$token': typeof PTokenRoute
   '/workspace/new': typeof WorkspaceNewRoute
+  '/account': typeof AccountIndexRoute
   '/w/$workspace/agent': typeof WWorkspaceAgentRoute
   '/w/$workspace/members': typeof WWorkspaceMembersRoute
   '/w/$workspace/projects': typeof WWorkspaceProjectsRoute
@@ -667,13 +722,20 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account': typeof AccountRouteWithChildren
   '/auth': typeof AuthRoute
   '/onboarding': typeof OnboardingRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/account/connections': typeof AccountConnectionsRoute
+  '/account/email': typeof AccountEmailRoute
+  '/account/preferences': typeof AccountPreferencesRoute
+  '/account/profile': typeof AccountProfileRoute
+  '/account/security': typeof AccountSecurityRoute
   '/dev/scrollbars': typeof DevScrollbarsRoute
   '/p/$token': typeof PTokenRoute
   '/w/$workspace': typeof WWorkspaceRouteWithChildren
   '/workspace/new': typeof WorkspaceNewRoute
+  '/account/': typeof AccountIndexRoute
   '/w/$workspace/agent': typeof WWorkspaceAgentRoute
   '/w/$workspace/members': typeof WWorkspaceMembersRoute
   '/w/$workspace/projects': typeof WWorkspaceProjectsRoute
@@ -746,13 +808,20 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account'
     | '/auth'
     | '/onboarding'
     | '/reset-password'
+    | '/account/connections'
+    | '/account/email'
+    | '/account/preferences'
+    | '/account/profile'
+    | '/account/security'
     | '/dev/scrollbars'
     | '/p/$token'
     | '/w/$workspace'
     | '/workspace/new'
+    | '/account/'
     | '/w/$workspace/agent'
     | '/w/$workspace/members'
     | '/w/$workspace/projects'
@@ -826,9 +895,15 @@ export interface FileRouteTypes {
     | '/auth'
     | '/onboarding'
     | '/reset-password'
+    | '/account/connections'
+    | '/account/email'
+    | '/account/preferences'
+    | '/account/profile'
+    | '/account/security'
     | '/dev/scrollbars'
     | '/p/$token'
     | '/workspace/new'
+    | '/account'
     | '/w/$workspace/agent'
     | '/w/$workspace/members'
     | '/w/$workspace/projects'
@@ -897,13 +972,20 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/account'
     | '/auth'
     | '/onboarding'
     | '/reset-password'
+    | '/account/connections'
+    | '/account/email'
+    | '/account/preferences'
+    | '/account/profile'
+    | '/account/security'
     | '/dev/scrollbars'
     | '/p/$token'
     | '/w/$workspace'
     | '/workspace/new'
+    | '/account/'
     | '/w/$workspace/agent'
     | '/w/$workspace/members'
     | '/w/$workspace/projects'
@@ -975,6 +1057,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountRoute: typeof AccountRouteWithChildren
   AuthRoute: typeof AuthRoute
   OnboardingRoute: typeof OnboardingRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -1008,12 +1091,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/account/': {
+      id: '/account/'
+      path: '/'
+      fullPath: '/account/'
+      preLoaderRoute: typeof AccountIndexRouteImport
+      parentRoute: typeof AccountRoute
     }
     '/workspace/new': {
       id: '/workspace/new'
@@ -1042,6 +1139,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/dev/scrollbars'
       preLoaderRoute: typeof DevScrollbarsRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/account/security': {
+      id: '/account/security'
+      path: '/security'
+      fullPath: '/account/security'
+      preLoaderRoute: typeof AccountSecurityRouteImport
+      parentRoute: typeof AccountRoute
+    }
+    '/account/profile': {
+      id: '/account/profile'
+      path: '/profile'
+      fullPath: '/account/profile'
+      preLoaderRoute: typeof AccountProfileRouteImport
+      parentRoute: typeof AccountRoute
+    }
+    '/account/preferences': {
+      id: '/account/preferences'
+      path: '/preferences'
+      fullPath: '/account/preferences'
+      preLoaderRoute: typeof AccountPreferencesRouteImport
+      parentRoute: typeof AccountRoute
+    }
+    '/account/email': {
+      id: '/account/email'
+      path: '/email'
+      fullPath: '/account/email'
+      preLoaderRoute: typeof AccountEmailRouteImport
+      parentRoute: typeof AccountRoute
+    }
+    '/account/connections': {
+      id: '/account/connections'
+      path: '/connections'
+      fullPath: '/account/connections'
+      preLoaderRoute: typeof AccountConnectionsRouteImport
+      parentRoute: typeof AccountRoute
     }
     '/w/$workspace/': {
       id: '/w/$workspace/'
@@ -1515,6 +1647,27 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AccountRouteChildren {
+  AccountConnectionsRoute: typeof AccountConnectionsRoute
+  AccountEmailRoute: typeof AccountEmailRoute
+  AccountPreferencesRoute: typeof AccountPreferencesRoute
+  AccountProfileRoute: typeof AccountProfileRoute
+  AccountSecurityRoute: typeof AccountSecurityRoute
+  AccountIndexRoute: typeof AccountIndexRoute
+}
+
+const AccountRouteChildren: AccountRouteChildren = {
+  AccountConnectionsRoute: AccountConnectionsRoute,
+  AccountEmailRoute: AccountEmailRoute,
+  AccountPreferencesRoute: AccountPreferencesRoute,
+  AccountProfileRoute: AccountProfileRoute,
+  AccountSecurityRoute: AccountSecurityRoute,
+  AccountIndexRoute: AccountIndexRoute,
+}
+
+const AccountRouteWithChildren =
+  AccountRoute._addFileChildren(AccountRouteChildren)
+
 interface WWorkspaceSettingsBillingRouteChildren {
   WWorkspaceSettingsBillingInvoicesRoute: typeof WWorkspaceSettingsBillingInvoicesRoute
   WWorkspaceSettingsBillingPaymentRoute: typeof WWorkspaceSettingsBillingPaymentRoute
@@ -1727,6 +1880,7 @@ const WWorkspaceRouteWithChildren = WWorkspaceRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountRoute: AccountRouteWithChildren,
   AuthRoute: AuthRoute,
   OnboardingRoute: OnboardingRoute,
   ResetPasswordRoute: ResetPasswordRoute,

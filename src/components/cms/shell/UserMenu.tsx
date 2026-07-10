@@ -1,4 +1,4 @@
-import { Check, ChevronsUpDown, HelpCircle, Keyboard, LogOut, Monitor, Moon, Sun, User, Bell, Sliders } from "lucide-react";
+import { Check, ChevronsUpDown, HelpCircle, Keyboard, LogOut, Monitor, Moon, Sun, User, Bell, Sliders, ShieldCheck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,9 +19,7 @@ import { useSession } from "@/hooks/use-session";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useState } from "react";
 import { useProfile } from "@/lib/workspace/account-store";
-import { ProfileDialog, PreferencesDialog } from "./AccountDialogs";
 
 export function UserMenu() {
   const [appearance, setAppearance] = useAppearance();
@@ -30,10 +28,8 @@ export function UserMenu() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { workspace: wsSlug } = useParams({ strict: false }) as { workspace?: string };
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [prefsOpen, setPrefsOpen] = useState(false);
 
-  const email = user?.email ?? "guest@bettercms.site";
+  const email = profile.email || user?.email || "guest@bettercms.site";
   const fullName =
     profile.name ||
     (user?.user_metadata?.full_name as string | undefined) ||
@@ -65,12 +61,16 @@ export function UserMenu() {
             className="group flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-[color:var(--color-row-hover)]"
             aria-label="Open user menu"
           >
-            <div
-              className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10.5px] font-semibold text-white"
-              style={{ backgroundColor: profile.avatarColor || "var(--color-elevated)" }}
-            >
-              {initials}
-            </div>
+            {profile.avatarUrl ? (
+              <img src={profile.avatarUrl} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" />
+            ) : (
+              <div
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10.5px] font-semibold text-white"
+                style={{ backgroundColor: profile.avatarColor || "var(--color-elevated)" }}
+              >
+                {initials}
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               <div className="truncate text-[12.5px] font-medium leading-tight text-foreground">
                 {fullName}
@@ -86,10 +86,13 @@ export function UserMenu() {
           <DropdownMenuLabel className="px-2 pb-1 pt-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
             Account
           </DropdownMenuLabel>
-          <DropdownMenuItem className="text-[13px]" onSelect={() => setTimeout(() => setProfileOpen(true), 0)}>
-            <User className="mr-2 h-3.5 w-3.5" /> My profile
+          <DropdownMenuItem className="text-[13px]" onSelect={() => navigate({ to: "/account/profile" })}>
+            <User className="mr-2 h-3.5 w-3.5" /> Account settings
           </DropdownMenuItem>
-          <DropdownMenuItem className="text-[13px]" onSelect={() => setTimeout(() => setPrefsOpen(true), 0)}>
+          <DropdownMenuItem className="text-[13px]" onSelect={() => navigate({ to: "/account/security" })}>
+            <ShieldCheck className="mr-2 h-3.5 w-3.5" /> Login & security
+          </DropdownMenuItem>
+          <DropdownMenuItem className="text-[13px]" onSelect={() => navigate({ to: "/account/preferences" })}>
             <Sliders className="mr-2 h-3.5 w-3.5" /> Preferences
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -150,8 +153,6 @@ export function UserMenu() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      {profileOpen && <ProfileDialog email={email} onClose={() => setProfileOpen(false)} />}
-      {prefsOpen && <PreferencesDialog onClose={() => setPrefsOpen(false)} />}
     </div>
   );
 }

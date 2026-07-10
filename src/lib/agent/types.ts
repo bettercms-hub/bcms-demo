@@ -102,7 +102,9 @@ export type RunStatus =
 export type UndoOp =
   | { kind: "removeEntry"; entryId: string; label: string }
   | { kind: "removePage"; path: string; label: string }
-  | { kind: "restorePageField"; path: string; field: "seoTitle" | "seoDescription"; before: string; after: string; label: string };
+  | { kind: "restorePageField"; path: string; field: "seoTitle" | "seoDescription"; before: string; after: string; label: string }
+  | { kind: "restoreEntryField"; entryId: string; field: string; before: string; after: string; label: string }
+  | { kind: "restoreSectionField"; path: string; sectionId: string; field: string; before: string; after: string; label: string };
 
 /* ----------------------------------------------------------------- runs */
 
@@ -123,6 +125,8 @@ export interface AgentRun {
   steps: RunStep[];
   plan?: AgentPlan;
   proposals: ProposedChange[];
+  /** Short agent aside shown above the change set, e.g. what it left out. */
+  note?: string;
   findings: AuditFinding[];
   creditsSpent: number;
   /** Count of proposals applied, set when the run completes. */

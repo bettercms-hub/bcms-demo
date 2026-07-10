@@ -12,6 +12,8 @@ import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Image as ImageIcon, X } from "lucide-react";
 import { entryActions, useCMS } from "@/lib/cms/store";
 import type { Entry, Schema, SchemaField } from "@/lib/cms/types";
+import { useProjectPresence, type PresencePeer } from "@/lib/workspace/presence-store";
+import { PresenceAvatar } from "@/components/cms/presence/Presence";
 import { FieldControl, validateField } from "../fields/FieldControl";
 import { BlockEditor } from "../document/BlockEditor";
 
@@ -28,6 +30,16 @@ export function EntryView({ entryId }: { entryId: string }) {
   // Structured fields stay visible: hiding them behind a closed accordion made
   // editors miss required fields entirely. Collapse is still there if wanted.
   const [detailsOpen, setDetailsOpen] = useState(true);
+
+  // Field-level presence (Sanity-style): who has their focus in which field.
+  const peers = useProjectPresence(collection?.projectId);
+  const fieldPeers = useMemo(() => {
+    const map: Record<string, PresencePeer> = {};
+    for (const p of peers) {
+      if (p.entryId === entryId && p.status === "active" && p.fieldName) map[p.fieldName] = p;
+    }
+    return map;
+  }, [peers, entryId]);
 
   if (!entry || !schema) return null;
 
@@ -143,7 +155,7 @@ export function EntryView({ entryId }: { entryId: string }) {
           {detailsOpen && (
             <div className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2">
               {layout.detailFields.map((f) => (
-                <FieldRow key={f.id} field={f} entry={entry} />
+                <FieldRow key={f.id} field={f} entry={entry} peer={fieldPeers[f.name]} />
               ))}
             </div>
           )}
@@ -278,16 +290,22 @@ function CoverField({
    Detail field row (Details accordion)
    ========================================================================= */
 
-function FieldRow({ field, entry }: { field: SchemaField; entry: Entry }) {
+function FieldRow({ field, entry, peer }: { field: SchemaField; entry: Entry; peer?: PresencePeer }) {
   const value = entry.fields[field.name];
   const error = validateField(field, value);
   return (
     <div>
-      <div className="mb-1 flex items-baseline gap-2">
+      <div className="mb-1 flex items-center gap-2">
         <label className="text-[11.5px] font-medium uppercase tracking-wider text-muted-foreground">
           {field.label}
         </label>
         {field.required && <span className="text-[10px] text-primary">required</span>}
+        {peer && (
+          <span className="ml-auto flex items-center gap-1">
+            <PresenceAvatar peer={peer} size={16} ring={false} title={`${peer.name} is editing this field`} />
+            <span className="text-[10px] font-medium" style={{ color: peer.color }}>{peer.name.split(" ")[0]}</span>
+          </span>
+        )}
       </div>
       <FieldControl
         field={field}

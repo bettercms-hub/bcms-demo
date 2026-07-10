@@ -10,6 +10,7 @@ import { Logo } from "./Logo";
 import { UtilityIconButton } from "./UtilityIconButton";
 import { ThemeToggle } from "./ThemeToggle";
 import { NotificationsHeader, NotificationsList, useUnreadCount } from "./NotificationsList";
+import { TopBarPresence } from "@/components/cms/presence/Presence";
 import { getWorkspaceBySlug } from "@/lib/cms/use-cms";
 import { editorBus } from "@/lib/cms/editor-bus";
 
@@ -91,6 +92,9 @@ export function GlobalTopBar({ onOpenPalette, onMenu, project }: Props) {
 
       {/* RIGHT — utility cluster */}
       <div className="flex items-center justify-end gap-0.5">
+        <span className="mr-1 hidden sm:block">
+          <TopBarPresence />
+        </span>
         <span className="sm:hidden">
           <UtilityIconButton label="Search" onClick={onOpenPalette}>
             <Search className="h-4 w-4" strokeWidth={1.75} />

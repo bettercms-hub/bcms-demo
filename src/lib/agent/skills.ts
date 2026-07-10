@@ -5,7 +5,7 @@
  * (draft, backfill, migrate) and three read-only reports (audit, AEO,
  * internal links). Free-form prompts route to the closest skill.
  */
-import { FileText, Globe, Link2, Radar, ScanSearch, Search, type LucideIcon } from "lucide-react";
+import { FileText, Globe, Link2, Radar, Replace, ScanSearch, Search, type LucideIcon } from "lucide-react";
 import type { AiTier } from "@/lib/billing/pricing";
 
 export interface AgentSkill {
@@ -44,6 +44,15 @@ export const AGENT_SKILLS: AgentSkill[] = [
     icon: ScanSearch,
     actionId: "meta",
     suggestion: "Backfill missing meta titles and descriptions across this site",
+  },
+  {
+    id: "rename",
+    command: "/rename",
+    label: "Rename across content",
+    blurb: "Find every mention of a name and update it, quoted context left alone",
+    icon: Replace,
+    actionId: "meta",
+    suggestion: 'Rename "headless CMS" to "content platform" across the site',
   },
   {
     id: "audit",
@@ -96,6 +105,7 @@ export function skillFromPrompt(prompt: string): AgentSkill {
   const p = prompt.toLowerCase();
   const by = (id: string) => AGENT_SKILLS.find((s) => s.id === id)!;
   if (/(aeo|answer engine|ai search|ai overview)/.test(p)) return by("aeo");
+  if (/(rename|renaming|changing (its|their) name|change the name|replace .* with|find and replace)/.test(p)) return by("rename");
   if (/(migrate|import site|rebuild|https?:\/\/)/.test(p)) return by("migrate");
   if (/(internal link|linking|link pass)/.test(p)) return by("links");
   // An explicit ask to look before touching wins over the write skills.
