@@ -15,10 +15,12 @@ import {
   ChevronDown,
   CircleAlert,
   Database,
+  FilePlus2,
   FileText,
   Loader2,
   ShieldCheck,
   Sparkles,
+  Trash2,
   Undo2,
   Wrench,
 } from "lucide-react";
@@ -26,7 +28,14 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { agentRunActions } from "@/lib/agent/runs-store";
+import { docAccepted, groupChanges, type ChangeDoc, type ChangeDocKind } from "@/lib/agent/change-set";
 import type { AgentRun, ProposedChange } from "@/lib/agent/types";
+
+const DOC_ICON: Record<ChangeDocKind, typeof FileText> = {
+  entry: Database,
+  page: FileText,
+  newEntry: FilePlus2,
+};
 
 interface Props {
   run: AgentRun;
@@ -147,41 +156,56 @@ export function AgentThread({ run, onFollowUp, compact, canAct = true }: Props) 
 
 function ProposalReview({ run, canAct }: { run: AgentRun; canAct: boolean }) {
   const accepted = run.proposals.filter((p) => p.status === "accepted").length;
+  const docs = groupChanges(run);
   return (
     <div className="overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-[color:var(--card)]">
       <div className="flex items-center gap-2 border-b border-[color:var(--border-hairline)] px-4 py-2.5">
         <span className="text-[12.5px] font-semibold text-foreground">Proposed changes</span>
         <span className="text-[11.5px] tabular-nums text-muted-foreground">
-          {accepted} of {run.proposals.length} selected
+          {docs.length} {docs.length === 1 ? "document" : "documents"}
         </span>
         {canAct && (
-          <div className="ml-auto flex items-center gap-2 text-[11.5px]">
+          <div className="ml-auto flex items-center gap-1.5">
             <button
               type="button"
-              onClick={() => agentRunActions.setAllProposals(run.id, "accepted")}
-              className="font-medium text-muted-foreground transition-colors hover:text-foreground"
+              onClick={() => {
+                agentRunActions.discard(run.id);
+                toast("Changes discarded", { description: "Nothing was written." });
+              }}
+              className="inline-flex h-6 items-center gap-1 rounded-md border border-[color:var(--color-border)] px-2 text-[11.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
             >
-              Select all
+              <Trash2 className="h-3 w-3" /> Discard
             </button>
             <button
               type="button"
-              onClick={() => agentRunActions.setAllProposals(run.id, "rejected")}
-              className="font-medium text-muted-foreground transition-colors hover:text-foreground"
+              disabled={accepted === 0}
+              onClick={() => {
+                agentRunActions.confirmAll(run.id);
+                toast.success("Changes applied", { description: "Saved as drafts. Publishing stays with you." });
+              }}
+              className="inline-flex h-6 items-center gap-1 rounded-md bg-emerald-600 px-2 text-[11.5px] font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-40"
             >
-              Clear
+              <Check className="h-3 w-3" /> Confirm all
             </button>
           </div>
         )}
       </div>
 
-      <div className="max-h-[340px] overflow-y-auto">
-        {run.proposals.map((p) => (
-          <ProposalRow key={p.id} runId={run.id} p={p} disabled={!canAct} />
+      {run.note && (
+        <div className="flex items-start gap-1.5 border-b border-[color:var(--border-hairline)] bg-[color:var(--s2)]/40 px-4 py-2">
+          <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
+          <p className="text-[11.5px] leading-relaxed text-muted-foreground">{run.note}</p>
+        </div>
+      )}
+
+      <div className="max-h-[360px] overflow-y-auto">
+        {docs.map((doc) => (
+          <DocGroup key={doc.key} runId={run.id} doc={doc} disabled={!canAct} />
         ))}
       </div>
 
       <div className="flex items-center justify-between gap-2 border-t border-[color:var(--border-hairline)] bg-[color:var(--s2)]/50 px-4 py-2.5">
-        <span className="text-[11.5px] text-muted-foreground">Accepted changes save as drafts. Publishing stays with you.</span>
+        <span className="text-[11.5px] text-muted-foreground">Saved as drafts. Publishing stays with you.</span>
         <button
           type="button"
           disabled={accepted === 0 || !canAct}
@@ -192,6 +216,40 @@ function ProposalReview({ run, canAct }: { run: AgentRun; canAct: boolean }) {
           <Check className="h-3.5 w-3.5" /> Apply {accepted} {accepted === 1 ? "change" : "changes"}
         </button>
       </div>
+    </div>
+  );
+}
+
+function DocGroup({ runId, doc, disabled }: { runId: string; doc: ChangeDoc; disabled?: boolean }) {
+  const Icon = DOC_ICON[doc.kind];
+  const on = docAccepted(doc);
+  const applied = doc.changes.every((c) => c.status === "applied");
+  return (
+    <div className="border-b border-[color:var(--border-hairline)] last:border-b-0">
+      <div className="flex items-center gap-2 bg-[color:var(--s2)]/30 px-4 py-1.5">
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={on}
+          aria-label={`Include changes to ${doc.label}`}
+          disabled={disabled || applied}
+          onClick={() => agentRunActions.setProposals(runId, doc.changes.map((c) => c.id), on ? "rejected" : "accepted")}
+          className={cn(
+            "grid h-4 w-4 shrink-0 place-items-center rounded border transition-colors disabled:opacity-60",
+            on ? "border-primary bg-primary text-primary-foreground" : "border-[color:var(--color-border)] bg-[color:var(--card)]",
+          )}
+        >
+          {on && <Check className="h-3 w-3" strokeWidth={3} />}
+        </button>
+        <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-foreground">{doc.label}</span>
+        <span className="shrink-0 text-[10.5px] text-muted-foreground">
+          {doc.changes.length} {doc.changes.length === 1 ? "change" : "changes"}
+        </span>
+      </div>
+      {doc.changes.map((p) => (
+        <ProposalRow key={p.id} runId={runId} p={p} disabled={disabled} />
+      ))}
     </div>
   );
 }
@@ -288,6 +346,10 @@ function DoneCard({ run, onFollowUp }: { run: AgentRun; onFollowUp?: (skillId: s
           {run.model ? "Billed to your key" : `${run.creditsSpent} credits`}
         </span>
       </div>
+
+      {run.note && run.appliedCount === 0 && run.findings.length === 0 && (
+        <p className="border-t border-[color:var(--border-hairline)] px-4 py-2.5 text-[12px] leading-relaxed text-muted-foreground">{run.note}</p>
+      )}
 
       {run.findings.length > 0 && (
         <div className="max-h-[300px] overflow-y-auto border-t border-[color:var(--border-hairline)]">

@@ -23,6 +23,7 @@ import { AgentRoster } from "@/components/agent/AgentRoster";
 import { AgentHistory } from "@/components/agent/AgentHistory";
 import { ConnectedAgents } from "@/components/agent/ConnectedAgents";
 import { AgentThread } from "@/components/agent/AgentThread";
+import { ChangeReview } from "@/components/agent/ChangeReview";
 
 export const Route = createFileRoute("/w/$workspace/p/$project/agent")({
   component: AgentPage,
@@ -62,6 +63,21 @@ function AgentPage() {
   /* --------------------------------------------------------- thread view */
 
   if (active) {
+    // A change set gets the full-width three-panel review with a live preview.
+    if (active.status === "review") {
+      return (
+        <ChangeReview
+          run={active}
+          canAct={canRun}
+          onBack={() => setActiveRunId(null)}
+          onAsk={(text) => {
+            if (!canRun) return;
+            const id = agentRunActions.start({ projectId: pr.id, prompt: text, tier: active.tier, context: [] });
+            setActiveRunId(id);
+          }}
+        />
+      );
+    }
     return (
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-[720px] px-6 py-6">

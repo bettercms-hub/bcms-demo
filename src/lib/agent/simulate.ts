@@ -143,6 +143,33 @@ export function buildPlan({ projectId, skill, prompt, tier, context }: SimPlanIn
     };
   }
 
+  if (skill.id === "rename") {
+    const r = parseRename(prompt);
+    const per = aiAction("meta")?.costs.lite ?? 1;
+    if (!r) {
+      return {
+        goal: "Rename a name across your content",
+        items: ['Tell me the old and new name, e.g. Rename "The Satellites" to "Satellites"'],
+        boundaries,
+        estimate: { min: 1, max: 2 },
+      };
+    }
+    const scan = renameScan(projectId, r.from, r.to);
+    const docs = new Set(scan.proposals.map((p) => p.targetId)).size;
+    return {
+      goal: `Update "${r.from}" to "${r.to}" everywhere it appears`,
+      items: [
+        `Scan every page section and collection entry for "${r.from}"`,
+        scan.mentions > 0
+          ? `Found ${scan.mentions} mention${scan.mentions === 1 ? "" : "s"} across ${docs} document${docs === 1 ? "" : "s"}`
+          : `No mentions found yet`,
+        "Leave quoted and historical mentions untouched",
+      ],
+      boundaries,
+      estimate: { min: Math.max(per, 1), max: Math.max(scan.proposals.length * per, per) },
+    };
+  }
+
   if (skill.id === "aeo") {
     const cost = aiAction("aeo")?.costs.max ?? 400;
     return {
@@ -329,6 +356,151 @@ function field(col: CollectionInfo, title: string, name: string, value: string, 
     risk: "low",
     status: "pending",
   };
+}
+
+/* --------------------------------------------------------------- rename */
+
+function stripQuotes(s: string): string {
+  return s.replace(/^["'“”\s]+|["'“”\s.?!]+$/g, "").trim();
+}
+
+/** Pull the old and new name from a free-form ask. */
+export function parseRename(prompt: string): { from: string; to: string } | null {
+  const quoted = [...prompt.matchAll(/["'“”]([^"'“”]+)["'“”]/g)].map((m) => m[1].trim()).filter(Boolean);
+  if (quoted.length >= 2) return { from: quoted[0], to: quoted[1] };
+  let m = prompt.match(/\brename\s+(.+?)\s+to\s+(.+)/i);
+  if (m) return { from: stripQuotes(m[1]), to: stripQuotes(m[2]) };
+  m = prompt.match(/\breplace\s+(.+?)\s+with\s+(.+)/i);
+  if (m) return { from: stripQuotes(m[1]), to: stripQuotes(m[2]) };
+  m = prompt.match(/["'“”]?(.+?)["'“”]?\s+(?:is\s+)?(?:changing|changed).+?name.+?to\s+["'“”]?(.+?)["'“”]?$/i);
+  if (m) return { from: stripQuotes(m[1]), to: stripQuotes(m[2]) };
+  return null;
+}
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** How many times `from` appears in a value, and how many of those sit inside quotes. */
+function countMentions(value: string, from: string): { total: number; quoted: number } {
+  const re = new RegExp(escapeRe(from), "gi");
+  const total = value.match(re)?.length ?? 0;
+  let quoted = 0;
+  const spans = value.match(/["'“”][^"'“”]{0,240}?["'“”]/g) ?? [];
+  for (const span of spans) quoted += span.match(new RegExp(escapeRe(from), "gi"))?.length ?? 0;
+  return { total, quoted };
+}
+
+function replaceMentions(value: string, from: string, to: string): string {
+  return value.replace(new RegExp(escapeRe(from), "gi"), to);
+}
+
+export interface RenameScan {
+  proposals: ProposedChange[];
+  /** Fields left untouched because every mention sat inside quotes. */
+  skipped: number;
+  /** Total mentions found across the project (updated + quoted). */
+  mentions: number;
+}
+
+/**
+ * Find every mention of `from` across this project's page sections and
+ * collection entries and stage a before→after change for each field.
+ * Fields where the name appears only inside quotes are left alone and
+ * counted, so the agent can say it respected editorial intent.
+ */
+export function renameScan(projectId: string, from: string, to: string): RenameScan {
+  const proposals: ProposedChange[] = [];
+  let skipped = 0;
+  let mentions = 0;
+  if (!from.trim() || !to.trim()) return { proposals, skipped, mentions };
+
+  // Pages: every section content field.
+  for (const pg of getPages(projectId)) {
+    for (const sec of pg.sections) {
+      for (const [key, raw] of Object.entries(sec.content ?? {})) {
+        if (typeof raw !== "string" || !raw) continue;
+        const { total, quoted } = countMentions(raw, from);
+        if (total === 0) continue;
+        mentions += total;
+        if (quoted === total) {
+          skipped++;
+          continue;
+        }
+        proposals.push({
+          id: pid(),
+          operation: "page.section",
+          targetType: "page",
+          targetId: pg.path,
+          targetLabel: pg.title,
+          fieldPath: `${sec.id}.${key}`,
+          before: raw,
+          after: replaceMentions(raw, from, to),
+          reason: `Update "${from}" in the ${sec.type} section`,
+          risk: "low",
+          status: "pending",
+        });
+      }
+    }
+  }
+
+  // Entries: the title plus every string field.
+  const s = getCMSState();
+  const cols = s.collections.filter((c) => c.projectId === projectId);
+  for (const col of cols) {
+    for (const eid of col.entryIds) {
+      const e = s.entries.find((x) => x.id === eid);
+      if (!e) continue;
+      const scanField = (fieldPath: string, raw: string) => {
+        const { total, quoted } = countMentions(raw, from);
+        if (total === 0) return;
+        mentions += total;
+        if (quoted === total) {
+          skipped++;
+          return;
+        }
+        proposals.push({
+          id: pid(),
+          operation: "entry.patch",
+          targetType: "entry",
+          targetId: e.id,
+          targetLabel: `${col.name} / ${e.title}`,
+          fieldPath,
+          before: raw,
+          after: replaceMentions(raw, from, to),
+          reason: fieldPath === "title" ? `Update the entry title` : `Update "${from}" in ${fieldPath}`,
+          risk: "low",
+          status: "pending",
+        });
+      };
+      if (typeof e.title === "string") scanField("title", e.title);
+      for (const [key, raw] of Object.entries(e.fields ?? {})) {
+        if (typeof raw === "string" && raw) scanField(key, raw);
+      }
+    }
+  }
+
+  return { proposals, skipped, mentions };
+}
+
+/** Rename proposals plus a short note on what was found and left out. */
+export function buildRenameProposals(input: SimPlanInput): { proposals: ProposedChange[]; note?: string } {
+  const r = parseRename(input.prompt);
+  if (!r) {
+    return { proposals: [], note: 'Tell me the old and new name, e.g. Rename "The Satellites" to "Satellites".' };
+  }
+  const scan = renameScan(input.projectId, r.from, r.to);
+  const docs = new Set(scan.proposals.map((p) => p.targetId)).size;
+  let note: string;
+  if (scan.proposals.length === 0 && scan.skipped === 0) {
+    note = `I couldn't find any mentions of "${r.from}" in this project.`;
+  } else {
+    note = `Found ${scan.mentions} mention${scan.mentions === 1 ? "" : "s"} of "${r.from}" across ${docs} document${docs === 1 ? "" : "s"}.`;
+    if (scan.skipped > 0) {
+      note += ` I left ${scan.skipped} quoted or historical ${scan.skipped === 1 ? "mention" : "mentions"} unchanged — tell me to include those too.`;
+    }
+  }
+  return { proposals: scan.proposals, note };
 }
 
 /* -------------------------------------------------------------- findings */
@@ -547,6 +719,31 @@ export function applyProposals(projectId: string, proposals: ProposedChange[]): 
       pagesActions.update(projectId, p.targetId, (pg) => ({ ...pg, [fieldPath]: p.after }));
       appliedIds.push(p.id);
       undo.push({ kind: "restorePageField", path: p.targetId, field: fieldPath, before: p.before ?? "", after: p.after, label: p.targetLabel });
+    } else if (p.operation === "entry.patch" && p.targetType === "entry" && p.fieldPath) {
+      // Patch an existing entry's title or a string field. Skip if the value
+      // changed since the proposal was built, so we never clobber a human edit.
+      const e = getCMSState().entries.find((x) => x.id === p.targetId);
+      if (!e) continue;
+      const current = p.fieldPath === "title" ? e.title : e.fields[p.fieldPath];
+      if (String(current ?? "") !== (p.before ?? "")) continue;
+      if (p.fieldPath === "title") entryActions.update(p.targetId, { title: p.after });
+      else entryActions.setField(p.targetId, p.fieldPath, p.after);
+      appliedIds.push(p.id);
+      undo.push({ kind: "restoreEntryField", entryId: p.targetId, field: p.fieldPath, before: p.before ?? "", after: p.after, label: p.targetLabel });
+    } else if (p.operation === "page.section" && p.targetType === "page" && p.fieldPath) {
+      // Patch one field inside a page section: fieldPath is "sectionId.key".
+      const dot = p.fieldPath.indexOf(".");
+      const sectionId = p.fieldPath.slice(0, dot);
+      const key = p.fieldPath.slice(dot + 1);
+      const pg = getPages(projectId).find((x) => x.path === p.targetId);
+      const sec = pg?.sections.find((x) => x.id === sectionId);
+      if (!pg || !sec || String(sec.content?.[key] ?? "") !== (p.before ?? "")) continue;
+      pagesActions.update(projectId, p.targetId, (page) => ({
+        ...page,
+        sections: page.sections.map((x) => (x.id === sectionId ? { ...x, content: { ...x.content, [key]: p.after } } : x)),
+      }));
+      appliedIds.push(p.id);
+      undo.push({ kind: "restoreSectionField", path: p.targetId, sectionId, field: key, before: p.before ?? "", after: p.after, label: p.targetLabel });
     } else if (p.operation === "page.compose" && p.targetType === "page") {
       // Never overwrite a page someone created at this path meanwhile.
       if (getPages(projectId).some((pg) => pg.path === p.targetId)) continue;
@@ -593,6 +790,29 @@ export function revertRun(projectId: string, undo: UndoOp[]): { reverted: number
       const pg = getPages(projectId).find((x) => x.path === op.path);
       if (pg && pg.state === "draft") {
         pagesActions.remove(projectId, op.path);
+        reverted++;
+      } else {
+        skipped++;
+      }
+    } else if (op.kind === "restoreEntryField") {
+      const e = getCMSState().entries.find((x) => x.id === op.entryId);
+      const current = op.field === "title" ? e?.title : e?.fields[op.field];
+      // Only roll back if the field still holds what the agent wrote.
+      if (e && String(current ?? "") === op.after) {
+        if (op.field === "title") entryActions.update(op.entryId, { title: op.before });
+        else entryActions.setField(op.entryId, op.field, op.before);
+        reverted++;
+      } else {
+        skipped++;
+      }
+    } else if (op.kind === "restoreSectionField") {
+      const pg = getPages(projectId).find((x) => x.path === op.path);
+      const sec = pg?.sections.find((x) => x.id === op.sectionId);
+      if (pg && sec && String(sec.content?.[op.field] ?? "") === op.after) {
+        pagesActions.update(projectId, op.path, (p) => ({
+          ...p,
+          sections: p.sections.map((x) => (x.id === op.sectionId ? { ...x, content: { ...x.content, [op.field]: op.before } } : x)),
+        }));
         reverted++;
       } else {
         skipped++;
