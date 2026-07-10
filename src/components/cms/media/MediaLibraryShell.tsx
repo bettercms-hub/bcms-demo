@@ -846,7 +846,7 @@ function TrashView({
         title="Delete forever?"
         description={
           confirmAsset
-            ? `“${confirmAsset.name}” will be permanently deleted. This cannot be undone.`
+            ? `“${confirmAsset.name}” will be permanently deleted. This can't be undone.`
             : ""
         }
         confirmLabel="Delete forever"
@@ -860,7 +860,7 @@ function TrashView({
         open={confirmAll}
         onOpenChange={setConfirmAll}
         title="Empty trash?"
-        description={`${assets.length} item${assets.length === 1 ? "" : "s"} will be permanently deleted. This cannot be undone.`}
+        description={`${assets.length} item${assets.length === 1 ? "" : "s"} will be permanently deleted. This can't be undone.`}
         confirmLabel="Empty trash"
         onConfirm={() => {
           onEmptyTrash();
@@ -1199,9 +1199,9 @@ function FolderNode({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
-            <DropdownMenuItem onSelect={() => toast("Rename — coming soon")}>Rename</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => toast("Move — coming soon")}>Move…</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => toast.success("Added to favorites")}>Bookmark</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => toast("Coming soon")}>Rename</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => toast("Coming soon")}>Move…</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => toast.success("Bookmarked")}>Bookmark</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
           </DropdownMenuContent>
@@ -1497,7 +1497,7 @@ function AssetCard({
           {asset.mimeType === "application/pdf" && asset.url ? (
             <CardIconBtn icon={ExternalLink} label="Open in new tab" onClick={() => window.open(asset.url, "_blank", "noopener")} />
           ) : (
-            <CardIconBtn icon={Search} label="Preview" onClick={() => toast("Preview — coming soon")} />
+            <CardIconBtn icon={Search} label="Preview" onClick={() => toast("Coming soon")} />
           )}
           <CardIconBtn
             icon={Copy}
@@ -1507,7 +1507,7 @@ function AssetCard({
               toast.success("URL copied");
             }}
           />
-          <CardIconBtn icon={ArrowLeftRight} label="Replace" onClick={() => toast("Replace — coming soon")} />
+          <CardIconBtn icon={ArrowLeftRight} label="Replace" onClick={() => toast("Coming soon")} />
           <CardIconBtn icon={Download} label="Download" onClick={() => toast("Download starting")} />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -1520,9 +1520,9 @@ function AssetCard({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44" onClick={(e) => e.stopPropagation()}>
-              <DropdownMenuItem onSelect={() => toast("Rename — coming soon")}>Rename</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => toast("Coming soon")}>Rename</DropdownMenuItem>
               <DropdownMenuItem onSelect={onMove}>Move to folder…</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => toast("Duplicate — coming soon")}>Duplicate</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => toast("Coming soon")}>Duplicate</DropdownMenuItem>
               {asset.kind === "image" && asset.mimeType !== "image/svg+xml" && (
                 <DropdownMenuItem onSelect={onConvert}>Convert format…</DropdownMenuItem>
               )}
@@ -1904,7 +1904,7 @@ function AssetInspector({
               toast.success("URL copied");
             }}
           />
-          <QuickAction icon={ArrowLeftRight} label="Replace" onClick={() => toast("Replace — coming soon")} />
+          <QuickAction icon={ArrowLeftRight} label="Replace" onClick={() => toast("Coming soon")} />
           <QuickAction icon={Download} label="Download" onClick={() => toast("Download starting")} />
           {asset.kind === "image" && asset.mimeType !== "image/svg+xml" ? (
             <QuickAction icon={Zap} label="Convert" onClick={onConvert} />
@@ -1913,7 +1913,7 @@ function AssetInspector({
           ) : (
             <QuickAction icon={Zap} label="Convert" onClick={onConvert} />
           )}
-          <QuickAction icon={Trash2} label="Delete" onClick={onDelete} danger />
+          <QuickAction icon={Trash2} label="Trash" onClick={onDelete} danger />
         </div>
 
         <Tabs defaultValue="details" className="px-0">
@@ -2059,7 +2059,7 @@ function AssetInspector({
                       </div>
                     </div>
                     <button
-                      onClick={() => toast.success(`Copied ${v.label.toLowerCase()} URL`)}
+                      onClick={() => toast.success(`${v.label} URL copied`)}
                       aria-label={`Copy ${v.label} URL`}
                       className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors duration-120 hover:bg-muted/60 hover:text-foreground"
                     >
@@ -2328,7 +2328,7 @@ function BulkActionBar({
         </div>
         <span className="h-4 w-px bg-border" />
         <BulkBtn icon={Folder} label="Move" onClick={onMove} />
-        <BulkBtn icon={Tag} label="Tag" onClick={() => toast("Tag — coming soon")} />
+        <BulkBtn icon={Tag} label="Tag" onClick={() => toast("Coming soon")} />
         <BulkBtn icon={Download} label="Download" onClick={() => toast("Preparing download…")} />
         <BulkBtn icon={Trash2} label="Trash" onClick={onDelete} danger />
         <span className="h-4 w-px bg-border" />
@@ -2383,7 +2383,7 @@ function MediaEmptyState({ onUpload }: { onUpload: () => void }) {
           Drop files to upload
         </h3>
         <p className="mx-auto mt-1.5 max-w-xs text-[12.5px] text-muted-foreground">
-          PNG, JPG, WEBP, AVIF, SVG, MP4, MOV — up to 100 MB per file.
+          PNG, JPG, WEBP, AVIF, SVG, MP4, MOV, up to 100 MB per file.
         </p>
         <div className="mt-5 flex items-center justify-center gap-2">
           <Button size="sm" className="h-9 rounded-[10px] text-[13px]" onClick={onUpload}>

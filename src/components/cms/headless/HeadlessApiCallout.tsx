@@ -11,7 +11,7 @@ const KEY_TONE: Record<KeyType, string> = {
 
 const KEY_HINT: Record<KeyType, string> = {
   Public: "Safe to use in frontend browser code.",
-  Preview: "Reads drafts — keep server-side only.",
+  Preview: "Reads drafts. Keep server-side only.",
   Server: "Never expose in the browser.",
 };
 

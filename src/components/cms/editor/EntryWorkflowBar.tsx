@@ -190,8 +190,8 @@ export function EntryWorkflowBar({ entryId, wsSlug, className }: { entryId: stri
                 </DropdownMenuSub>
                 {(published || scheduled) && <DropdownMenuSeparator />}
                 {scheduled && (
-                  <DropdownMenuItem onSelect={() => { entryActions.unschedule(entry.id); toast.success("Schedule canceled"); }} className="gap-2">
-                    Cancel schedule
+                  <DropdownMenuItem onSelect={() => { entryActions.unschedule(entry.id); toast.success("Unscheduled"); }} className="gap-2">
+                    Unschedule
                   </DropdownMenuItem>
                 )}
                 {published && (

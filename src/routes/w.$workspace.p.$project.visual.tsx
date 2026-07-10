@@ -562,7 +562,7 @@ function VisualEditor() {
       {/* Header */}
       <div className="flex h-12 shrink-0 items-center gap-1.5 border-b border-border bg-[color:var(--topbar)] px-2 sm:gap-3 sm:px-3">
         <div className="flex items-center gap-2">
-          <span className="hidden text-[13px] font-semibold text-foreground sm:inline">Visual Editor</span>
+          <span className="hidden text-[13px] font-semibold text-foreground sm:inline">Visual editor</span>
           <span className="hidden items-center gap-1.5 rounded-full bg-[color:var(--s2)] px-2 py-0.5 text-[11px] font-medium sm:inline-flex">
             <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
             <span className={meta.text}>{meta.label}</span>
@@ -738,7 +738,7 @@ function VisualEditor() {
         <div className="hidden items-start gap-2.5 border-b border-[color:var(--border-hairline)] bg-[color:color-mix(in_oklab,var(--primary)_5%,transparent)] px-4 py-2.5 sm:flex">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <p className="flex-1 text-[12.5px] leading-relaxed text-foreground/85">
-            This is a <span className="font-medium">Headless Project</span>. BetterCMS manages your content, SEO, forms,
+            This is a <span className="font-medium">headless project</span>. BetterCMS manages your content, SEO, forms,
             analytics, schema, redirects, sitemap, APIs, and visual editing. Your production frontend connects to
             BetterCMS using APIs or SDK.
           </p>

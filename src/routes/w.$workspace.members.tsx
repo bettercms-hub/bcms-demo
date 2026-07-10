@@ -148,7 +148,7 @@ function Members() {
           ]}
           eyebrow="Workspace"
           title="Seats and members"
-          description="Owners and free seats never bill. Paid seats are priced by role, and removing one is as easy as adding one."
+          description="Owners and free seats never bill. Paid seats are priced by role."
           width="full"
           actions={
             <Button onClick={() => setAddOpen(true)} size="sm" className="h-8 gap-1.5 text-[13px]">

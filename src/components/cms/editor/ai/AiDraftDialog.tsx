@@ -113,7 +113,7 @@ export function AiDraftDialog({
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="e.g. Hero for a calm sleep tracker — emphasise privacy and battery life"
+            placeholder="e.g. Hero for a calm sleep tracker, emphasize privacy and battery life"
             rows={3}
             disabled={busy}
             autoFocus

@@ -55,9 +55,7 @@ function PagesSeoTable() {
         <div>
           <h1 className="text-[20px] font-semibold tracking-tight">Pages</h1>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            Meta title, description and social image for every page — injected into each page's{" "}
-            <code className="rounded bg-[color:var(--s2)] px-1 py-0.5 font-mono text-[11px]">&lt;head&gt;</code> and served
-            over the SEO API.
+            Meta title, description, and social image for every page.
           </p>
         </div>
         <div className="flex items-center gap-2">

@@ -493,14 +493,14 @@ function Plans() {
 
       {/* ── Add ons and credit packs ── */}
       <SettingsSection
-        title="Add ons and AI credit packs"
+        title="Add-ons and AI credit packs"
         description="Top up exactly what you need. Every price is flat and listed here."
         flush
       >
         <div className="grid grid-cols-1 gap-4 p-4 lg:grid-cols-2">
           <div className="overflow-hidden rounded-lg border border-[color:var(--border-hairline)]">
             <div className="border-b border-[color:var(--border-hairline)] bg-[color:var(--s1)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-              Add ons
+              Add-ons
             </div>
             {ADDONS.map((a, i) => (
               <div

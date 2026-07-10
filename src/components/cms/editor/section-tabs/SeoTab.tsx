@@ -54,9 +54,9 @@ export function SeoTab({ section }: { section: Section }) {
               value={seo.headingLevel ?? "h2"}
               onChange={(v) => patch({ headingLevel: v })}
               options={[
-                { value: "h1", label: "H1 — page title" },
-                { value: "h2", label: "H2 — section" },
-                { value: "h3", label: "H3 — subsection" },
+                { value: "h1", label: "H1 · page title" },
+                { value: "h2", label: "H2 · section" },
+                { value: "h3", label: "H3 · subsection" },
               ]}
             />
           </Field>

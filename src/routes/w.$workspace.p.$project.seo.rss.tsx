@@ -68,10 +68,9 @@ function RssPage() {
   return (
     <>
       <header className="mb-5">
-        <h1 className="text-[20px] font-semibold tracking-tight">RSS Feed</h1>
+        <h1 className="text-[20px] font-semibold tracking-tight">RSS feed</h1>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          Publish an RSS 2.0 feed of your CMS content so readers, newsletters, and aggregators can subscribe to new
-          entries automatically.
+          Publish an RSS 2.0 feed so readers and aggregators can subscribe to new entries.
         </p>
       </header>
 

@@ -122,7 +122,7 @@ export function SelectionToolbar({ surface, pageId, resolveAnchor }: Props) {
       <ToolButton
         onClick={() => {
           navigator.clipboard.writeText(text);
-          toast.success("Copied");
+          toast.success("Text copied");
           setPos(null);
         }}
         icon={<Copy className="h-3 w-3" />}

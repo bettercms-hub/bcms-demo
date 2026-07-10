@@ -47,7 +47,7 @@ export function DataTable<T>({
       <div
         className={`rounded-md border border-dashed border-[color:var(--border)] p-8 text-center text-[13px] text-muted-foreground ${className}`}
       >
-        {empty ?? "No data yet."}
+        {empty ?? "No rows yet."}
       </div>
     );
   }

@@ -109,7 +109,7 @@ function RefRow({
         }`}
       >
         <TargetIcon className="h-3.5 w-3.5 opacity-70" />
-        <span className="font-medium">{targetName ?? "Unlinked — click to pick"}</span>
+        <span className="font-medium">{targetName ?? "Unlinked · click to pick"}</span>
       </button>
     </>
   );

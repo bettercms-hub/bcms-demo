@@ -55,7 +55,7 @@ export function EntrySeoPanel({ entry }: { entry: Entry }) {
   );
   const derivedCanonical =
     collection && derivedSlug
-      ? `https://example.com/${collection.slug}/${derivedSlug}`
+      ? `https://your-site.com/${collection.slug}/${derivedSlug}`
       : "";
 
   const title = entry.metaTitle ?? entry.title ?? "";
@@ -65,7 +65,7 @@ export function EntrySeoPanel({ entry }: { entry: Entry }) {
   const indexing = entry.indexing ?? "index";
 
   const previewUrl = useMemo(
-    () => canonical || `https://example.com/${entry.id}`,
+    () => canonical || `https://your-site.com/${entry.id}`,
     [canonical, entry.id],
   );
 
@@ -116,7 +116,7 @@ export function EntrySeoPanel({ entry }: { entry: Entry }) {
         <Input
           value={canonical}
           onChange={(e) => entryActions.update(entry.id, { canonical: e.target.value })}
-          placeholder="https://example.com/posts/my-post"
+          placeholder="https://your-site.com/posts/my-post"
         />
       </Field>
 

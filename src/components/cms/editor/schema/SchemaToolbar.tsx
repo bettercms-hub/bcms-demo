@@ -152,7 +152,7 @@ export function SchemaToolbar({
         <IconBtn icon={Undo2} label="Undo" onClick={onUndo} disabled={!canUndo} />
         <IconBtn icon={Redo2} label="Redo" onClick={onRedo} disabled={!canRedo} />
         <div className="mx-1 h-4 w-px bg-border/40" />
-        <ToolBtn icon={History} label="History" onClick={() => toast.message("History coming soon")} />
+        <ToolBtn icon={History} label="History" onClick={() => toast.message("Coming soon")} />
         <ToolBtn icon={FileJson} label="Preview API" onClick={onOpenApi} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -174,20 +174,20 @@ export function SchemaToolbar({
             <DropdownMenuItem onSelect={onOpenJson}>
               <FileJson className="mr-1.5 h-3.5 w-3.5" /> View JSON…
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => toast.message("Type generation coming soon")}>
+            <DropdownMenuItem onSelect={() => toast.message("Coming soon")}>
               <Code2 className="mr-1.5 h-3.5 w-3.5" /> Generate types
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={onOpenShortcuts}>
               <Keyboard className="mr-1.5 h-3.5 w-3.5" /> Keyboard shortcuts…
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => toast.message("Duplicate coming soon")}>
+            <DropdownMenuItem onSelect={() => toast.message("Coming soon")}>
               Duplicate schema
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => toast.message("Import coming soon")}>
+            <DropdownMenuItem onSelect={() => toast.message("Coming soon")}>
               Import schema…
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => toast.message("Export coming soon")}>
+            <DropdownMenuItem onSelect={() => toast.message("Coming soon")}>
               Export JSON
             </DropdownMenuItem>
           </DropdownMenuContent>

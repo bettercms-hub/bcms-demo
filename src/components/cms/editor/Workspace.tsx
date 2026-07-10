@@ -48,8 +48,8 @@ export function WorkspaceContent({ node, onSelect, focusedSectionId, onFocusSect
     return (
       <CenteredEmpty
         icon={FileText}
-        title="Nothing here yet"
-        description="Pick a page, collection or component from the tree on the left to start editing."
+        title="No content here yet"
+        description="Pick a page, collection, or component from the tree on the left to start editing."
       />
     );
   }

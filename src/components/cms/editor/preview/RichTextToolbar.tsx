@@ -285,7 +285,7 @@ export function RichTextToolbar({
   // ---- AI ------------------------------------------------------------------
   function runAi(label: string) {
     restoreSelection();
-    toast.success(`${label.replace(/…$/, "")} — AI edit (demo)`);
+    toast.success(`${label.replace(/…$/, "")} (demo)`);
     closeMenu();
     setAiPrompt("");
   }
@@ -520,7 +520,7 @@ export function RichTextToolbar({
                         applyLink();
                       }
                     }}
-                    placeholder="https://example.com  or  /pricing"
+                    placeholder="https://your-site.com  or  /pricing"
                     className="h-8 w-full rounded-md border border-slate-200 pl-7 pr-2 text-[12.5px] outline-none transition-shadow focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                   />
                 </div>

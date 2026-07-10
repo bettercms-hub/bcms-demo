@@ -180,7 +180,7 @@ export function SubmissionsPanel({ form }: { form: FormDetail }) {
                 className="h-8 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive disabled:text-destructive/40"
                 disabled={!hasSel}
                 onClick={() => {
-                  if (confirm(`Delete ${selected.size} submission(s)? This cannot be undone.`)) bulkDelMut.mutate(ids());
+                  if (confirm(`Delete ${selected.size} submission(s)? This can't be undone.`)) bulkDelMut.mutate(ids());
                 }}
               >
                 <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Delete
@@ -316,7 +316,7 @@ export function SubmissionsPanel({ form }: { form: FormDetail }) {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    if (confirm("Delete this submission?")) delOneMut.mutate(openRow.id);
+                    if (confirm("Delete this submission? This can't be undone.")) delOneMut.mutate(openRow.id);
                   }}
                   className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
                 >
@@ -378,7 +378,7 @@ function EmptyState({ tab }: { tab: Tab }) {
         <p className="mt-2 text-xs text-muted-foreground">
           {tab === "spam"
             ? "Anything you report as spam lands here, out of your main view."
-            : "Publish the form and embed it on a page, or use Preview to send a test — entries appear here as a table."}
+            : "Publish the form and embed it on a page, or use Preview to send a test. Entries appear here as a table."}
         </p>
       </div>
     </div>

@@ -50,11 +50,11 @@ function General() {
     e.target.value = ""; // allow re-selecting the same file
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast.error("Please choose an image file");
+      toast.error("Choose an image file");
       return;
     }
     if (file.size > 1_500_000) {
-      toast.error("Image is too large — please use one under 1.5 MB");
+      toast.error("Image is too large", { description: "Use a file under 1.5 MB." });
       return;
     }
     const reader = new FileReader();

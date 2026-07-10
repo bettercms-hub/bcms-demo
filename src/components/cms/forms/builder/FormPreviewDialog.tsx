@@ -114,7 +114,7 @@ export function FormPreviewDialog({ open, onOpenChange, form, onSubmit }: Props)
             <Eye className="h-4 w-4 text-muted-foreground" /> Preview
           </DialogTitle>
           <DialogDescription>
-            Live render of {form.name}. Try it — a test submission lands in the Submissions tab.
+            Live render of {form.name}. Try it: a test submission lands in the Submissions tab.
           </DialogDescription>
         </DialogHeader>
 

@@ -54,7 +54,7 @@ export function auditPage(page: Page, opts: AuditOptions = {}): SeoAudit {
       id: "title",
       label: "Page title",
       status: "fail",
-      detail: "No title set — search results have nothing to display.",
+      detail: "No title set. Search results have nothing to display.",
       fix: "Set a descriptive page title.",
     });
   } else if (effectiveTitle.length < 20) {
@@ -62,7 +62,7 @@ export function auditPage(page: Page, opts: AuditOptions = {}): SeoAudit {
       id: "title",
       label: "Page title",
       status: "warn",
-      detail: `Only ${effectiveTitle.length} characters — aim for 30–60.`,
+      detail: `Only ${effectiveTitle.length} characters. Aim for 30 to 60.`,
       fix: "Expand the title with the page's main topic.",
     });
   } else if (effectiveTitle.length > 60) {
@@ -70,7 +70,7 @@ export function auditPage(page: Page, opts: AuditOptions = {}): SeoAudit {
       id: "title",
       label: "Page title",
       status: "warn",
-      detail: `${effectiveTitle.length} characters — Google truncates around 60.`,
+      detail: `${effectiveTitle.length} characters. Google truncates around 60.`,
       fix: "Shorten the title to 60 characters or fewer.",
     });
   } else {
@@ -78,7 +78,7 @@ export function auditPage(page: Page, opts: AuditOptions = {}): SeoAudit {
       id: "title",
       label: "Page title",
       status: "pass",
-      detail: `${effectiveTitle.length} characters — fits search results.`,
+      detail: `${effectiveTitle.length} characters, fits search results.`,
     });
   }
 
@@ -88,15 +88,15 @@ export function auditPage(page: Page, opts: AuditOptions = {}): SeoAudit {
       id: "description",
       label: "Meta description",
       status: "fail",
-      detail: "No description — Google generates one from page content.",
-      fix: "Write a meta description that summarises the page.",
+      detail: "No description. Google generates one from page content.",
+      fix: "Write a meta description that summarizes the page.",
     });
   } else if (effectiveDescription.length < 70) {
     checks.push({
       id: "description",
       label: "Meta description",
       status: "warn",
-      detail: `Only ${effectiveDescription.length} characters — aim for 120–160.`,
+      detail: `Only ${effectiveDescription.length} characters. Aim for 120 to 160.`,
       fix: "Expand the description with a clear value proposition.",
     });
   } else if (effectiveDescription.length > 160) {
@@ -104,7 +104,7 @@ export function auditPage(page: Page, opts: AuditOptions = {}): SeoAudit {
       id: "description",
       label: "Meta description",
       status: "warn",
-      detail: `${effectiveDescription.length} characters — Google truncates around 160.`,
+      detail: `${effectiveDescription.length} characters. Google truncates around 160.`,
       fix: "Tighten the description to 160 characters or fewer.",
     });
   } else {
@@ -112,7 +112,7 @@ export function auditPage(page: Page, opts: AuditOptions = {}): SeoAudit {
       id: "description",
       label: "Meta description",
       status: "pass",
-      detail: `${effectiveDescription.length} characters — fits search snippets.`,
+      detail: `${effectiveDescription.length} characters, fits search snippets.`,
     });
   }
 
@@ -122,7 +122,7 @@ export function auditPage(page: Page, opts: AuditOptions = {}): SeoAudit {
       id: "slug",
       label: "URL slug",
       status: "pass",
-      detail: "Root path — fine for the homepage.",
+      detail: "Root path, fine for the homepage.",
     });
   } else if (/[^a-z0-9/\-]/i.test(page.slug)) {
     checks.push({
@@ -148,13 +148,13 @@ export function auditPage(page: Page, opts: AuditOptions = {}): SeoAudit {
           id: "canonical",
           label: "Canonical URL",
           status: "pass",
-          detail: "Canonical set — duplicates won't dilute ranking.",
+          detail: "Canonical set. Duplicates won't dilute ranking.",
         }
       : {
           id: "canonical",
           label: "Canonical URL",
           status: "warn",
-          detail: "No canonical — falls back to the page URL.",
+          detail: "No canonical. Falls back to the page URL.",
           fix: "Set a canonical when this page can be reached from multiple URLs.",
         },
   );
@@ -184,13 +184,13 @@ export function auditPage(page: Page, opts: AuditOptions = {}): SeoAudit {
           id: "ogImage",
           label: "Social image",
           status: "pass",
-          detail: "OG image set — link previews will render with a card.",
+          detail: "OG image set. Link previews render with a card.",
         }
       : {
           id: "ogImage",
           label: "Social image",
           status: "warn",
-          detail: "No OG image — link previews fall back to plain text.",
+          detail: "No OG image. Link previews fall back to plain text.",
           fix: "Add a 1200×630 image to og:image.",
         },
   );

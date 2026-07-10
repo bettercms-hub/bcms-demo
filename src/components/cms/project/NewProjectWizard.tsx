@@ -234,7 +234,7 @@ function TypeStep({ onPick }: { onPick: (kind: ProjectKind) => void }) {
           title="BetterCMS Cloud"
           badge="Managed"
           highlight
-          desc="Bring your code from GitHub or a ZIP, or start from a template. We build, host, publish, and handle SEO — all in one place."
+          desc="Bring your code from GitHub or a ZIP, or start from a template. We build, host, publish, and handle SEO, all in one place."
           bullets={["Hosting + continuous deploys", "Visual editor & one-click publish", "Technical SEO handled for you"]}
           onClick={() => onPick("managed")}
         />

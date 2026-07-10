@@ -68,7 +68,7 @@ async function callGateway(messages: Array<{ role: "system" | "user"; content: s
     throw new Error("AI rate limit reached. Please wait a moment and try again.");
   }
   if (res.status === 402) {
-    throw new Error("Out of AI credits — top up in workspace billing to continue.");
+    throw new Error("Out of AI credits. Top up in workspace billing to continue.");
   }
   if (!res.ok) {
     const body = await res.text().catch(() => "");

@@ -214,7 +214,7 @@ export function PublishMenu({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-[color:var(--border-hairline)] px-4 py-2.5 text-[11.5px]">
         {(isLive || page.state === "scheduled") && (
           <button type="button" onClick={unpublish} className="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground">
-            <X className="h-3 w-3" /> {page.state === "scheduled" ? "Cancel schedule" : "Unpublish"}
+            <X className="h-3 w-3" /> {page.state === "scheduled" ? "Unschedule" : "Unpublish"}
           </button>
         )}
         {onSaveTemplate && (

@@ -43,12 +43,12 @@ function ProjectWebhooks() {
     <>
       <SettingsHeader
         title="Webhooks"
-        description="Notify external services when content changes — trigger a frontend rebuild, sync a search index, or ping a channel."
+        description="Notify external services when content changes: trigger a frontend rebuild, sync a search index, or ping a channel."
       />
 
       <div className="mb-6 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--s2)] px-4 py-3 text-[12.5px] leading-relaxed text-muted-foreground">
         For a <span className="font-medium text-foreground">headless project</span>, webhooks fire when content is
-        published or updated in the production API — that's how your externally-hosted frontend knows to rebuild.
+        published or updated in the production API. That's how your externally-hosted frontend knows to rebuild.
       </div>
 
       <SettingsSection
@@ -128,7 +128,7 @@ function ProjectWebhooks() {
 
       {pr?.kind && pr.kind !== "headless" && (
         <p className="text-[12px] text-muted-foreground">
-          This is a managed site — deploys are handled by BetterCMS, so external rebuild hooks are optional.
+          This is a managed site. Deploys are handled by BetterCMS, so external rebuild hooks are optional.
         </p>
       )}
     </>

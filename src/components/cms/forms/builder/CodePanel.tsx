@@ -49,7 +49,7 @@ export function CodePanel({ formId }: { formId: string }) {
 
         {!form || form.status !== "published" ? (
           <div className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-            This form is in draft. Publish it before sending real submissions — the endpoint
+            This form is in draft. Publish it before sending real submissions. The endpoint
             will reject posts with a 403 until you do.
           </div>
         ) : null}

@@ -266,7 +266,7 @@ function LibraryItem({
       }}
       role="button"
       tabIndex={0}
-      title={`${meta.label} — ${meta.desc}`}
+      title={`${meta.label}: ${meta.desc}`}
       className="group/lib flex cursor-grab items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-[color:var(--row-hover)] active:cursor-grabbing focus-visible:bg-[color:var(--row-hover)] focus-visible:outline-none"
     >
       <span

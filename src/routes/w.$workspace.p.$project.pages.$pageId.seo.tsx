@@ -135,7 +135,7 @@ function PageSeoEditor() {
       </Link>
       <header className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-[20px] font-semibold tracking-tight">{page.title} — SEO</h1>
+          <h1 className="text-[20px] font-semibold tracking-tight">{page.title} · SEO</h1>
           <div className="mt-1 font-mono text-[12px] text-muted-foreground">{form.slug}</div>
           {saved.data?.updated_at && (
             <div className="mt-1 text-[11px] text-muted-foreground">

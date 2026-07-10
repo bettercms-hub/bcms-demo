@@ -87,10 +87,10 @@ function FormSettings({
           <Input
             key="redirect-url"
             defaultValue={action.url ?? ""}
-            placeholder="https://example.com/thank-you"
+            placeholder="https://your-site.com/thank-you"
             onBlur={(e) => onChange({ submit_action: { ...action, kind: "redirect", url: e.target.value } })}
           />
-          <Hint>Visitors land here after a successful submit — your thank-you page.</Hint>
+          <Hint>Visitors land here after a successful submit: your thank-you page.</Hint>
         </Field>
       ) : (
         <Field label="Thank-you message">

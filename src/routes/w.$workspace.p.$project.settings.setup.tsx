@@ -97,7 +97,7 @@ return (
       },
       {
         title: "6 · Submit a form",
-        note: "Post to the form endpoint — validation, spam checks, storage, email & webhooks run in BetterCMS.",
+        note: "Post to the form endpoint. Validation, spam checks, storage, email & webhooks run in BetterCMS.",
         lang: "app/contact/Form.tsx",
         code: `"use client";
 export function ContactForm({ formId }) {
@@ -267,7 +267,7 @@ const seo = await bcms(\`/seo?path=\${location.pathname}\`);
     ],
     html: [
       {
-        title: "1 · Analytics — one tag",
+        title: "1 · Analytics, one tag",
         note: "Cookie-less. Nothing else required for pageviews.",
         lang: "index.html",
         code: `<script src="https://cdn.bettercms.site/analytics.js" data-project-id="${projectId}" defer></script>`,
@@ -319,7 +319,7 @@ function SetupGuide() {
   return (
     <div className="mx-auto w-full max-w-3xl">
       <header className="mb-6">
-        <h1 className="text-[20px] font-semibold tracking-tight">Integration Guide</h1>
+        <h1 className="text-[20px] font-semibold tracking-tight">Integration guide</h1>
         <p className="mt-1 text-[13px] text-muted-foreground">
           Connect {pr?.name ?? "your project"} to BetterCMS. Copy-paste setup for content, SEO, schema,
           analytics, forms, redirects, and sitemap.

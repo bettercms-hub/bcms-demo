@@ -128,7 +128,7 @@ export function ComingSoonCard({ label = "Coming soon" }: { label?: string }) {
     <div className="rounded-md border border-dashed border-[color:var(--border-hairline)] bg-card px-6 py-8 text-center">
       <div className="text-[13px] font-medium text-foreground">{label}</div>
       <p className="mx-auto mt-1 max-w-sm text-[13px] text-muted-foreground">
-        The structure is in place. Functionality arrives in a future release.
+        The structure is in place. Functionality is coming soon.
       </p>
     </div>
   );

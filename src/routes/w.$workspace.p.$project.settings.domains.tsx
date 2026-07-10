@@ -146,7 +146,7 @@ function Domains() {
                         <DropdownMenuItem className="text-[13px]" disabled={!verified} onSelect={() => makePrimary(d)}>
                           <Star className="mr-2 h-3.5 w-3.5" /> Set as primary
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-[13px]" onSelect={() => { navigator.clipboard.writeText(d.host); toast.success("Copied"); }}>
+                        <DropdownMenuItem className="text-[13px]" onSelect={() => { navigator.clipboard.writeText(d.host); toast.success("Domain copied"); }}>
                           <Copy className="mr-2 h-3.5 w-3.5" /> Copy domain
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
@@ -199,7 +199,7 @@ function DnsRow({ type, name, value }: { type: string; name: string; value: stri
       <Badge variant="outline" className="justify-center font-mono text-[10px]">{type}</Badge>
       <Input readOnly value={name} className="font-mono" />
       <Input readOnly value={value} className="font-mono" />
-      <Button variant="outline" size="icon" className="h-9 w-9" title="Copy" onClick={() => { navigator.clipboard.writeText(value); toast.success("Copied"); }}>
+      <Button variant="outline" size="icon" className="h-9 w-9" title="Copy" onClick={() => { navigator.clipboard.writeText(value); toast.success("Value copied"); }}>
         <Copy className="h-3.5 w-3.5" />
       </Button>
     </div>

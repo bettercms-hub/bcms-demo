@@ -52,7 +52,7 @@ export function StyleTab({ section }: { section: Section }) {
         )}
         <Field
           label="Background image URL"
-          hint="Optional — overlays the background colour."
+          hint="Optional. Overlays the background color."
         >
           <TextInput
             value={style.backgroundImage ?? ""}

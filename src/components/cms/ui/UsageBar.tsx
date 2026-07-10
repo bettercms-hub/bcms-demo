@@ -10,8 +10,9 @@ interface Props {
 
 export function UsageBar({ value, limit, label, unit, format, showPercent = true, size = "md" }: Props) {
   const pct = Math.min(100, Math.round((value / Math.max(1, limit)) * 100));
+  // Usage is never shown in red: escalate through amber, never destructive.
   const tone =
-    pct >= 90 ? "bg-destructive" : pct >= 70 ? "bg-amber-500" : "bg-primary";
+    pct >= 90 ? "bg-amber-600" : pct >= 70 ? "bg-amber-500" : "bg-primary";
   const fmt = (n: number) => (format ? format(n) : n.toLocaleString());
   const h = size === "sm" ? "h-1" : "h-1.5";
 

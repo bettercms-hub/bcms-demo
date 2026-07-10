@@ -151,7 +151,7 @@ export function AdvancedTab({ section }: { section: Section }) {
         </Field>
       </Group>
 
-      <Group title="Developer notes" description="Internal — never rendered publicly.">
+      <Group title="Developer notes" description="Internal. Never rendered publicly.">
         <Field label="Notes">
           <textarea
             value={adv.notes ?? ""}

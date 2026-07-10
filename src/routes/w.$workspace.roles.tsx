@@ -69,10 +69,10 @@ function Roles() {
                 Workspace
               </div>
               <h1 className="mt-1.5 text-[20px] font-semibold tracking-tight leading-none text-foreground">
-                Roles & Permissions
+                Roles & permissions
               </h1>
               <p className="mt-1.5 text-[13px] text-muted-foreground">
-                Built-in roles cover most teams. Create custom roles from grouped capabilities for specialist workflows.
+                Built-in roles cover most teams. Create custom roles when you need finer control.
               </p>
             </div>
             <Button onClick={() => setEditing("new")}>
@@ -225,7 +225,7 @@ function RoleEditor({
         <SheetHeader>
           <SheetTitle>{isNew ? "New custom role" : "Edit role"}</SheetTitle>
           <SheetDescription>
-            Pick the capabilities this role unlocks across each area.
+            Pick the capabilities this role grants in each area.
           </SheetDescription>
         </SheetHeader>
         <div className="grid gap-4 py-4">

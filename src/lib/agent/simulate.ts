@@ -497,7 +497,7 @@ export function buildRenameProposals(input: SimPlanInput): { proposals: Proposed
   } else {
     note = `Found ${scan.mentions} mention${scan.mentions === 1 ? "" : "s"} of "${r.from}" across ${docs} document${docs === 1 ? "" : "s"}.`;
     if (scan.skipped > 0) {
-      note += ` I left ${scan.skipped} quoted or historical ${scan.skipped === 1 ? "mention" : "mentions"} unchanged — tell me to include those too.`;
+      note += ` I left ${scan.skipped} quoted or historical ${scan.skipped === 1 ? "mention" : "mentions"} unchanged. Tell me to include those too.`;
     }
   }
   return { proposals: scan.proposals, note };

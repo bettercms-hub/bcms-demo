@@ -60,7 +60,7 @@ const HEADLESS_TABS: Tab[] = [
   },
   {
     key: "visual",
-    label: "Visual Editor",
+    label: "Visual editor",
     to: "/w/$workspace/p/$project/visual",
     match: (p) => p.includes("/visual"),
   },
@@ -125,7 +125,7 @@ const TABS: Tab[] = [
   },
   {
     key: "visual",
-    label: "Visual Editor",
+    label: "Visual editor",
     to: "/w/$workspace/p/$project/visual",
     match: (p) => p.includes("/visual"),
   },

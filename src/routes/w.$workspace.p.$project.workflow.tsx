@@ -119,7 +119,7 @@ function WorkflowPage() {
     const entry = allEntries.find((e) => e.id === entryId);
     if (!entry) return;
     if (!publishAllowed) {
-      toast.error("Your seat can't publish", { description: "Ask a marketer, developer or owner to publish." });
+      toast.error("Your seat can't publish", { description: "Ask a marketer, developer, or owner to publish." });
       return;
     }
     const stage = stageOfEntry(entry, stages);
@@ -131,7 +131,7 @@ function WorkflowPage() {
       return;
     }
     entryActions.publish(entryId);
-    toast.success("Published");
+    toast.success("Entry published");
   }
 
   function moveTo(entryId: string, stageId: string) {

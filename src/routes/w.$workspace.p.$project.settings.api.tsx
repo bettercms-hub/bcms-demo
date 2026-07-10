@@ -92,7 +92,7 @@ function ApiSettings() {
       name: "Preview",
       tone: "warning",
       value: stableKey("bcms_prev", projectId + "prev"),
-      caps: "Read draft content and draft SEO for previews. Keep server-side only — never expose in the browser.",
+      caps: "Read draft content and draft SEO for previews. Keep server-side only, never expose in the browser.",
     },
     {
       name: "Server",
@@ -147,12 +147,12 @@ function ApiSettings() {
 
       {pr?.kind !== "headless" ? (
         <div className="mb-6 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--s2)] px-4 py-3 text-[12.5px] text-muted-foreground">
-          This is a <span className="font-medium text-foreground">managed</span> site — hosting and publishing are handled
+          This is a <span className="font-medium text-foreground">managed</span> site. Hosting and publishing are handled
           for you. The content API below is available too if you want to read data elsewhere.
         </div>
       ) : (
         <div className="mb-6 rounded-lg border border-primary/25 bg-[color:color-mix(in_oklab,var(--primary)_5%,transparent)] px-4 py-3 text-[12.5px] leading-relaxed text-foreground/85">
-          This is a <span className="font-medium">Headless Project</span>. BetterCMS manages your content, SEO, forms,
+          This is a <span className="font-medium">headless project</span>. BetterCMS manages your content, SEO, forms,
           analytics, schema, redirects, sitemap, APIs, and visual editing. Your production frontend connects to BetterCMS
           using APIs or SDK.
         </div>
@@ -185,7 +185,7 @@ function ApiSettings() {
       {/* Project keys — the three scoped keys */}
       <SettingsSection
         title="Project keys"
-        description="Three scoped keys per project. Only the public key may appear in browser code — preview and server keys are secrets."
+        description="Three scoped keys per project. Only the public key may appear in browser code. Preview and server keys are secrets."
       >
         <div className="space-y-2">
           {keys.map((k) => (
@@ -228,7 +228,7 @@ function ApiSettings() {
       {/* Tokens */}
       <SettingsSection
         title="Access tokens"
-        description="Bearer tokens for the API. Store them as secrets — never commit them."
+        description="Bearer tokens for the API. Store them as secrets, never commit them."
         action={
           <button
             type="button"
@@ -461,7 +461,7 @@ function NewTokenDialog({
       <DialogContent className="sm:max-w-[420px]">
         <DialogHeader>
           <DialogTitle>New API token</DialogTitle>
-          <DialogDescription>You'll only see the full token once — copy it somewhere safe.</DialogDescription>
+          <DialogDescription>You'll only see the full token once, so copy it somewhere safe.</DialogDescription>
         </DialogHeader>
         <form
           onSubmit={(e) => {

@@ -49,7 +49,7 @@ function ProfilePage() {
       return;
     }
     if (file.size > MAX_PHOTO_BYTES) {
-      toast.error("Image is too large", { description: "Keep it under 4 MB." });
+      toast.error("Image is too large", { description: "Use a file under 4 MB." });
       return;
     }
     const reader = new FileReader();
@@ -104,14 +104,14 @@ function ProfilePage() {
             </div>
 
             <div>
-              <Label hint={photo ? "used when there's no photo" : undefined}>Colour</Label>
+              <Label hint={photo ? "used when there's no photo" : undefined}>Color</Label>
               <div className="flex flex-wrap gap-2">
                 {AVATAR_COLORS.map((c) => (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setColor(c)}
-                    aria-label={`Colour ${c}`}
+                    aria-label={`Color ${c}`}
                     className={cn(
                       "grid h-7 w-7 place-items-center rounded-full ring-offset-2 ring-offset-[color:var(--card)] transition-transform hover:scale-110",
                       color === c && "ring-2 ring-[color:var(--foreground)]",

@@ -808,7 +808,7 @@ function NavLinksActions({
         <div className="flex flex-col gap-1">
           {links.length === 0 && (
             <div className="rounded-[4px] border border-dashed border-border px-2 py-3 text-center text-[11px] text-muted-foreground">
-              No links yet — click Add.
+              No links yet. Click Add.
             </div>
           )}
           {links.map((link, i) => (

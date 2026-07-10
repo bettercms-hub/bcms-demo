@@ -308,7 +308,7 @@ function Testimonials({ section }: { section: Section }) {
       <div className="mt-4 grid w-full grid-cols-1 gap-3 md:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
           <blockquote key={i} className="rounded-[8px] border border-border bg-white p-4 text-[13px] text-muted-foreground">
-            “This product changed how our team ships.” <div className="mt-2 text-[12px] text-foreground">— Customer {i + 1}</div>
+            “This product changed how our team ships.” <div className="mt-2 text-[12px] text-foreground">Customer {i + 1}</div>
           </blockquote>
         ))}
       </div>

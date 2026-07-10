@@ -505,7 +505,7 @@ function ValidationTab({ schema, field }: { schema: Schema; field: SchemaField }
       {(field.type === "image" || field.type === "file") && (
         <Group title="File restrictions">
           <div className="text-[12px] text-muted-foreground">
-            Coming soon — accepted MIME types and max upload size.
+            Coming soon: accepted MIME types and max upload size.
           </div>
         </Group>
       )}
@@ -513,7 +513,7 @@ function ValidationTab({ schema, field }: { schema: Schema; field: SchemaField }
       {(field.type === "reference" || field.type === "multiReference") && (
         <Group title="Reference limits">
           <div className="text-[12px] text-muted-foreground">
-            Coming soon — min / max referenced entries.
+            Coming soon: min/max referenced entries.
           </div>
         </Group>
       )}
@@ -746,7 +746,7 @@ function SchemaMetaInspector({ schema, ownerKind, ownerId }: { schema: Schema; o
           </div>
         </Group>
         <Group title="Permissions">
-          <div className="text-[12px] text-muted-foreground">Coming soon — role-based per-field access.</div>
+          <div className="text-[12px] text-muted-foreground">Coming soon: role-based per-field access.</div>
         </Group>
       </div>
     </div>

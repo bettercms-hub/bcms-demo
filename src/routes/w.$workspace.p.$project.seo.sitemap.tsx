@@ -103,7 +103,7 @@ function SitemapPage() {
         <div className="space-y-3">
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3.5 py-2.5 text-[12px] text-muted-foreground">
             <span className="font-medium text-foreground">Custom sitemap is served instead of the auto one.</span> You own
-            it now — new pages won't be added automatically.
+            it now, so new pages won't be added automatically.
           </div>
           <div className="overflow-hidden rounded-xl border border-[color:var(--color-border)]">
             <div className="flex items-center justify-between border-b border-[color:var(--border-hairline)] bg-[color:var(--s2)] px-3 py-2">

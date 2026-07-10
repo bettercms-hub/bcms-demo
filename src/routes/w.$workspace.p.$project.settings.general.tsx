@@ -137,7 +137,7 @@ function General() {
           <Input
             value={seoForm.default_title}
             onChange={(e) => setSeoForm((f) => ({ ...f, default_title: e.target.value }))}
-            placeholder="Acme — Modern websites"
+            placeholder="Acme · Modern websites"
             className="w-[360px]"
           />
         </SettingsRow>

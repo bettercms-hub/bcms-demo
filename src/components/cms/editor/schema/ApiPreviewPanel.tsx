@@ -117,8 +117,8 @@ function sampleValue(f: SchemaField): unknown {
     case "boolean": return true;
     case "date": return new Date().toISOString();
     case "image":
-    case "file": return "https://example.com/asset.jpg";
-    case "url": return "https://example.com";
+    case "file": return "https://your-site.com/asset.jpg";
+    case "url": return "https://your-site.com";
     case "email": return "user@example.com";
     case "color": return "#3b82f6";
     case "select": return (f.options ?? ["option_a"])[0];

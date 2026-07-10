@@ -57,7 +57,7 @@ function ProjectSettingsLayout() {
     // at the edge, headless frontends fetch it over the API and inject it.
     ...(showDev
       ? [
-          { label: "Custom Code", href: `${base}/code`, group: "Developer" },
+          { label: "Custom code", href: `${base}/code`, group: "Developer" },
           { label: "Environment", href: `${base}/env`, group: "Developer" },
         ]
       : []),

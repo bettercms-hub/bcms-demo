@@ -197,7 +197,7 @@ function Recommendations({ checks }: { checks: SeoCheck[] }) {
       <section>
         <GroupHeader title="Recommendations" />
         <div className="rounded-[8px] border border-dashed border-border bg-[color:var(--color-panel)] px-3 py-3 text-[12px] text-muted-foreground">
-          Nothing to fix — this page is ready to share.
+          Nothing to fix. This page is ready to share.
         </div>
       </section>
     );

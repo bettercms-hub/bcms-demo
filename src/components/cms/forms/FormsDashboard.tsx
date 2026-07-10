@@ -102,7 +102,7 @@ export function FormsDashboard() {
             <HeadlessApiCallout
               path={`/api/public/projects/${pr.id}/forms/:formSlug`}
               keyType="Public"
-              description="Your frontend fetches a form's config to render it, then posts submissions to POST /api/forms/:formId/submit — BetterCMS validates, stores, emails, and fires webhooks."
+              description="Your frontend fetches a form's config to render it, then posts submissions to POST /api/forms/:formId/submit. BetterCMS validates, stores, emails, and fires webhooks."
             />
           </div>
         )}
@@ -139,7 +139,7 @@ export function FormsDashboard() {
                     onSubmissions={() => go("submissions")}
                     onCode={() => go("code")}
                     onDelete={() => {
-                      if (confirm(`Delete "${f.name}"? This cannot be undone.`)) {
+                      if (confirm(`Delete "${f.name}"? This can't be undone.`)) {
                         delMut.mutate(f.id);
                       }
                     }}

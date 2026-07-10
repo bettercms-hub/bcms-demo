@@ -154,7 +154,7 @@ export function PageSettingsDialog({
               <input
                 value={ogImage}
                 onChange={(e) => setOgImage(e.target.value)}
-                placeholder="https://cdn.yoursite.com/og/page.png"
+                placeholder="https://cdn.your-site.com/og/page.png"
                 className="h-9 w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 font-mono text-[12px] outline-none transition-colors focus:border-[color:var(--primary)]"
               />
             </div>

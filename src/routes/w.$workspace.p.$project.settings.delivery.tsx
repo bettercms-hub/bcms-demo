@@ -48,7 +48,7 @@ function DeliveryPage() {
     <>
       <SettingsHeader
         title="Delivery"
-        description="One content core, pluggable delivery. Choose who renders and serves this site. Switching never moves content."
+        description="Choose who renders and serves this site. Switching never moves your content."
       />
 
       {/* Mode presets */}

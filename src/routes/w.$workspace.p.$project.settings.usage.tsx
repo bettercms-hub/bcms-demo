@@ -134,7 +134,7 @@ function Usage() {
     <>
       <SettingsHeader
         title="Usage"
-        description={`Live consumption for ${domain} this billing period. Click any metric to go deeper.`}
+        description={`This billing period for ${domain}. Select a metric for detail.`}
         action={
           <div className="flex items-center gap-2.5">
             <DateRangePicker value={range} onChange={setRange} />
@@ -658,7 +658,7 @@ function ComputeDetail({
         <Cpu className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <p className="text-[12.5px] leading-relaxed text-muted-foreground">
           <span className="font-medium text-foreground">Compute runs your site on BetterCMS Cloud.</span> CPU time and
-          function requests are billed here, separate from CDN bandwidth. Only sites we host consume compute — pure
+          function requests are billed here, separate from CDN bandwidth. Only sites we host consume compute. Pure
           static delivery does not.
         </p>
       </div>

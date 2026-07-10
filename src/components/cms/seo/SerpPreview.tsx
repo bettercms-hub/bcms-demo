@@ -29,7 +29,7 @@ export function SerpPreview({ title, description, url, engine = "google" }: Prop
         {title || "Untitled page"}
       </a>
       <p className="mt-1 line-clamp-2 text-[13px] text-muted-foreground">
-        {description || "No description set — Google will generate one from page content."}
+        {description || "No description set. Google will generate one from page content."}
       </p>
     </div>
   );

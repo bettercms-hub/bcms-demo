@@ -202,7 +202,7 @@ function ConfigForm({
     return (
       <ConfigField
         label="Webhook URL"
-        placeholder="https://example.com/hooks/forms"
+        placeholder="https://your-site.com/hooks/forms"
         value={(row.config.url as string) ?? ""}
         onSave={(v) => onSave({ ...row.config, url: v })}
         help="Receives { formId, submissionId, data } as JSON."
@@ -226,7 +226,7 @@ function ConfigForm({
       placeholder="you@company.com"
       value={(row.config.to as string) ?? ""}
       onSave={(v) => onSave({ ...row.config, to: v })}
-      help="Sending requires connecting an email provider — coming next."
+      help="Sending requires connecting an email provider. Coming soon."
     />
   );
 }

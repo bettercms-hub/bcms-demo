@@ -203,7 +203,7 @@ function ApiCard({ endpoint, headless, hosted }: { endpoint: string; headless: b
         </button>
       </div>
       <p className="mt-2 font-mono text-[11px] leading-relaxed text-muted-foreground">
-        {"→ { head, bodyStart, bodyEnd }"} — site-wide code merged with the page at <span className="text-foreground">path</span>.
+        {"→ { head, bodyStart, bodyEnd }"} · site-wide code merged with the page at <span className="text-foreground">path</span>.
       </p>
     </div>
   );

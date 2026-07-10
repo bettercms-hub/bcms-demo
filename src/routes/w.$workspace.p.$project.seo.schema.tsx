@@ -54,11 +54,9 @@ function SchemaPage() {
   return (
     <>
       <header className="mb-5">
-        <h1 className="text-[20px] font-semibold tracking-tight">Schema Markup</h1>
+        <h1 className="text-[20px] font-semibold tracking-tight">Schema markup</h1>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          Attach JSON-LD structured data to pages. It's injected into the{" "}
-          <code className="rounded bg-[color:var(--s2)] px-1 py-0.5 font-mono text-[11px]">&lt;head&gt;</code> so search
-          engines and AI answer engines read it on the first pass.
+          Add JSON-LD structured data so search engines and AI answer engines can read your pages.
         </p>
       </header>
 
@@ -245,7 +243,7 @@ function SchemaEditor({
           <div className="mt-3 flex items-start gap-2 rounded-lg border border-violet-500/25 bg-violet-500/5 px-3 py-2 text-[12px] text-muted-foreground">
             <Zap className="mt-0.5 h-3.5 w-3.5 shrink-0 text-violet-500" />
             <span>
-              This is a CMS template — bind fields to dynamic content with{" "}
+              This is a CMS template. Bind fields to dynamic content with{" "}
               <code className="font-mono">{"{{tokens}}"}</code>. Each field resolves per item at request time.
             </span>
           </div>
@@ -304,7 +302,7 @@ function SchemaEditor({
             </div>
           ))}
           {mapping.fields.length === 0 && (
-            <div className="py-4 text-center text-[12px] text-muted-foreground">No fields — add one to begin.</div>
+            <div className="py-4 text-center text-[12px] text-muted-foreground">No fields yet. Add one to begin.</div>
           )}
         </div>
       </div>
@@ -322,7 +320,7 @@ function SchemaEditor({
             </button>
           </div>
           <p className="mb-2.5 text-[12px] text-muted-foreground">
-            Paste or write your own markup — generate it with ChatGPT, drop it here, and we inject it as-is.
+            Paste or write your own markup. Generate it with ChatGPT, drop it here, and we inject it as-is.
             {cms ? " You can still use {{field}} tokens." : ""}
           </p>
           <textarea

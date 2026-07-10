@@ -21,14 +21,14 @@ function ApiKeys() {
   const [creating, setCreating] = useState<TokenKind | null>(null);
   const [reveal, setReveal] = useState<{ name: string; raw: string } | null>(null);
 
-  if (!ws) return <SettingsHeader title="API Keys" description="Workspace not found." />;
+  if (!ws) return <SettingsHeader title="API keys" description="Workspace not found." />;
 
   const personal = dev.tokens.filter((t) => t.kind === "personal");
   const machine = dev.tokens.filter((t) => t.kind === "machine");
 
   return (
     <>
-      <SettingsHeader title="API Keys" description="Personal and machine tokens for programmatic access. Values are shown once, at creation." />
+      <SettingsHeader title="API keys" description="Personal and machine tokens for programmatic access. Values are shown once, at creation." />
 
       <TokenCard
         icon={User2}

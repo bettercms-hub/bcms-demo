@@ -91,7 +91,7 @@ export function EntryPublishMenu({ entryId, wsSlug }: { entryId: string; wsSlug:
   };
   const cancelSchedule = () => {
     entryActions.unschedule(entry.id);
-    toast.success("Schedule canceled");
+    toast.success("Unscheduled");
   };
   const copyStaging = () => {
     navigator.clipboard?.writeText(stagingUrl).catch(() => {});
@@ -178,7 +178,7 @@ export function EntryPublishMenu({ entryId, wsSlug }: { entryId: string; wsSlug:
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={cancelSchedule} className="gap-2">
                   <X className="h-3.5 w-3.5 text-muted-foreground" />
-                  Cancel schedule
+                  Unschedule
                 </DropdownMenuItem>
               </>
             )}

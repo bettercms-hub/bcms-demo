@@ -6,7 +6,7 @@ export const Route = createFileRoute("/w/$workspace/p/$project/settings/integrat
     <>
       <PageHeader
         title="Integrations"
-        description="Connectors for external services. Roadmap in progress."
+        description="Connect external services to this project. More connectors coming soon."
       />
       <ComingSoonCard />
     </>

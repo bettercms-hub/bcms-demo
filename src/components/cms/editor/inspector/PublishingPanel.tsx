@@ -51,7 +51,7 @@ const STATE_META: Record<PublishState, StateMeta> = {
   },
   approved: {
     label: "Approved",
-    purpose: "Ready to publish — content is locked from edits.",
+    purpose: "Ready to publish. Content is locked from edits.",
     permission: "Editors with publish rights can release or schedule.",
     icon: ShieldCheck,
     tone: "good",
@@ -233,7 +233,7 @@ function StateCard({
       {hasPending && state === "published" && (
         <div className="mx-4 mt-2.5 flex items-start gap-2 rounded-[6px] border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11.5px] text-amber-700 dark:text-amber-300">
           <AlertCircle className="mt-[1px] h-3.5 w-3.5 shrink-0" strokeWidth={ICON_STROKE} />
-          <span>Unpublished changes — re-publish to push them live.</span>
+          <span>Unpublished changes. Re-publish to push them live.</span>
         </div>
       )}
 
@@ -505,7 +505,7 @@ function ScheduleBlock({
           <button
             type="button"
             onClick={onUnschedule}
-            title="Cancel schedule"
+            title="Unschedule"
             className="inline-flex h-8 items-center justify-center rounded-[6px] border border-border bg-background px-2 text-[12px] hover:border-border-strong"
           >
             <X className="h-3.5 w-3.5" />

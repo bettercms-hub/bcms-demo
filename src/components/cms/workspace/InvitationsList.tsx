@@ -164,7 +164,7 @@ export function InvitationsList({ workspaceId }: Props) {
                   onClick={() =>
                     update
                       .mutateAsync({ id: inv.id, status: "cancelled" })
-                      .then(() => toast.success("Invitation cancelled"))
+                      .then(() => toast.success("Invitation canceled"))
                   }
                   label="Cancel"
                   danger
