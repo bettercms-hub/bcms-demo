@@ -25,6 +25,7 @@ import {
   buildLinkFindings,
   buildPlan,
   buildProposals,
+  buildRenameProposals,
   projectCollections,
   revertRun,
 } from "./simulate";
@@ -333,6 +334,7 @@ export const agentRunActions = {
       draft: ["Writing the draft", "Filling schema fields", "Writing metadata"],
       backfill: ["Reading page metadata", "Writing meta titles", "Writing meta descriptions"],
       migrate: ["Reading the source site", "Mapping to your section catalog", "Composing draft pages"],
+      rename: ["Reading pages and entries", "Finding every mention", "Staging the changes"],
     };
     const labels = writeLabels[skill.id] ?? writeLabels.backfill;
     schedule(runId, 300, () => pushStep(runId, labels[0]));
@@ -340,13 +342,17 @@ export const agentRunActions = {
     schedule(runId, 2100, () => pushStep(runId, labels[2]));
     schedule(runId, 2900, () => {
       finishSteps(runId);
-      const proposals = buildProposals(input, siteNameFor(run.projectId)).map((p) => ({
-        ...p,
-        status: "accepted" as ProposalStatus,
-      }));
+      // Rename edits existing docs and carries a note on what it left out;
+      // other write skills build after-only proposals.
+      const built =
+        skill.id === "rename"
+          ? buildRenameProposals(input)
+          : { proposals: buildProposals(input, siteNameFor(run.projectId)), note: undefined as string | undefined };
+      const proposals = built.proposals.map((p) => ({ ...p, status: "accepted" as ProposalStatus }));
       patchRun(runId, (r) => ({
         ...r,
         proposals,
+        note: built.note,
         status: proposals.length > 0 ? "review" : "done",
         creditsSpent: spend,
         finishedAt: proposals.length > 0 ? undefined : Date.now(),
@@ -387,6 +393,36 @@ export const agentRunActions = {
     patchRun(runId, (r) => ({
       ...r,
       proposals: r.proposals.map((p) => (p.status === "applied" ? p : { ...p, status })),
+    }));
+  },
+
+  /** Set status for a specific set of changes at once (per-document toggle). */
+  setProposals(runId: string, ids: string[], status: ProposalStatus) {
+    const set = new Set(ids);
+    patchRun(runId, (r) => ({
+      ...r,
+      proposals: r.proposals.map((p) => (set.has(p.id) && p.status !== "applied" ? { ...p, status } : p)),
+    }));
+  },
+
+  /** Accept everything still open and apply in one step ("Confirm all"). */
+  confirmAll(runId: string) {
+    const run = getRun(runId);
+    if (!run || run.status !== "review" || !roleCanAct(run.projectId)) return;
+    agentRunActions.setAllProposals(runId, "accepted");
+    agentRunActions.apply(runId);
+  },
+
+  /** Reject the whole change set and close the run without writing anything. */
+  discard(runId: string) {
+    const run = getRun(runId);
+    if (!run || run.status !== "review" || !roleCanAct(run.projectId)) return;
+    patchRun(runId, (r) => ({
+      ...r,
+      proposals: r.proposals.map((p) => (p.status === "applied" ? p : { ...p, status: "rejected" })),
+      status: "done",
+      appliedCount: 0,
+      finishedAt: Date.now(),
     }));
   },
 
