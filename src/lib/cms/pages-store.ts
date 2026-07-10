@@ -14,6 +14,15 @@ import { createSection, type SectionInstance } from "@/components/cms/editor/sec
 
 export type PageState = "draft" | "published" | "modified" | "scheduled" | "archived";
 
+/** What the page looked like the last time it was published. Drives Compare. */
+export interface PageDocSnapshot {
+  capturedAt: number;
+  title: string;
+  sections: SectionInstance[];
+  seoTitle?: string;
+  seoDescription?: string;
+}
+
 export interface PageDoc {
   id: string;
   path: string;
@@ -22,6 +31,8 @@ export interface PageDoc {
   sections: SectionInstance[];
   scheduledAt?: string;
   updatedAt: number;
+  /** Snapshot from the last publish, so a draft can be compared against it. */
+  publishedSnapshot?: PageDocSnapshot;
   /** SEO / page meta, editable in Page settings. */
   seoTitle?: string;
   seoDescription?: string;
@@ -119,6 +130,17 @@ export const pagesActions = {
     );
     emit();
   },
+  /** Publish a page and capture a snapshot of what went live (drives Compare). */
+  publish(projectId: string, path: string, opts?: { scheduledAt?: string }) {
+    this.update(projectId, path, (p) => ({
+      ...p,
+      state: opts?.scheduledAt ? "scheduled" : "published",
+      scheduledAt: opts?.scheduledAt,
+      publishedSnapshot: opts?.scheduledAt
+        ? p.publishedSnapshot
+        : { capturedAt: Date.now(), title: p.title, sections: structuredClone(p.sections), seoTitle: p.seoTitle, seoDescription: p.seoDescription },
+    }));
+  },
 };
 
 /**
@@ -178,6 +200,20 @@ function seed(_projectId: string): PageDoc[] {
   ]);
   // Keep the home hero id stable so the seeded comment thread anchors to it.
   home.sections[0] = { ...home.sections[0], id: "s_home_hero" };
+  // Home carries unpublished changes vs. what's live, so Compare has something
+  // to show out of the box: the live headline is the older wording.
+  home.state = "modified";
+  home.publishedSnapshot = {
+    capturedAt: Date.now() - 1000 * 60 * 60 * 24 * 3,
+    title: home.title,
+    seoTitle: home.seoTitle,
+    seoDescription: home.seoDescription,
+    sections: home.sections.map((s, i) =>
+      i === 0
+        ? { ...structuredClone(s), content: { ...s.content, headline: "The all-in-one workspace for product teams", subheadline: "Model your content once and ship it anywhere. A headless CMS for developers and editors." } }
+        : structuredClone(s),
+    ),
+  };
 
   const about = buildPage({ path: "/about", title: "About", state: "published" }, [
     {

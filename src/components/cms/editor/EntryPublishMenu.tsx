@@ -219,7 +219,7 @@ function StatusPill({ status }: { status: PublishState }) {
   );
 }
 
-function ScheduleDialog({
+export function ScheduleDialog({
   initial,
   onClose,
   onConfirm,

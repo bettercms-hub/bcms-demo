@@ -90,12 +90,12 @@ export function PublishMenu({
     onClose();
   }
   function publishNow() {
-    patch((p) => ({ ...p, state: "published", scheduledAt: undefined }));
+    pagesActions.publish(projectId, page.path);
     toast.success(`“${page.title}” is live at ${domain ?? staging}`);
     onClose();
   }
   function schedule() {
-    patch((p) => ({ ...p, state: "scheduled", scheduledAt: new Date(dt).toISOString() }));
+    pagesActions.publish(projectId, page.path, { scheduledAt: new Date(dt).toISOString() });
     toast.success(`“${page.title}” scheduled for ${fmtWhen(new Date(dt).toISOString())}`);
     onClose();
   }
