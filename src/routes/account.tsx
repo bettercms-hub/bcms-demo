@@ -85,13 +85,17 @@ function AccountLayout() {
         <span className="text-[13px] font-semibold tracking-tight">Account</span>
         <div className="flex-1" />
         <ThemeToggle />
-        <div
-          className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10.5px] font-semibold text-white"
-          style={{ backgroundColor: profile.avatarColor }}
-          title={name}
-        >
-          {initialsOf(name)}
-        </div>
+        {profile.avatarUrl ? (
+          <img src={profile.avatarUrl} alt="" title={name} className="h-7 w-7 shrink-0 rounded-full object-cover" />
+        ) : (
+          <div
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10.5px] font-semibold text-white"
+            style={{ backgroundColor: profile.avatarColor }}
+            title={name}
+          >
+            {initialsOf(name)}
+          </div>
+        )}
       </header>
 
       <div className="flex min-h-0 flex-1 max-md:flex-col">

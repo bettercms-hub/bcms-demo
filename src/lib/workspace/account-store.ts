@@ -17,6 +17,8 @@ export interface AccountProfile {
   name: string;
   title: string;
   avatarColor: string;
+  /** Uploaded photo as a data URL. Falls back to the color initials when unset. */
+  avatarUrl?: string;
   bio: string;
   email: string;
 }

@@ -61,12 +61,16 @@ export function UserMenu() {
             className="group flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-[color:var(--color-row-hover)]"
             aria-label="Open user menu"
           >
-            <div
-              className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10.5px] font-semibold text-white"
-              style={{ backgroundColor: profile.avatarColor || "var(--color-elevated)" }}
-            >
-              {initials}
-            </div>
+            {profile.avatarUrl ? (
+              <img src={profile.avatarUrl} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" />
+            ) : (
+              <div
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10.5px] font-semibold text-white"
+                style={{ backgroundColor: profile.avatarColor || "var(--color-elevated)" }}
+              >
+                {initials}
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               <div className="truncate text-[12.5px] font-medium leading-tight text-foreground">
                 {fullName}
