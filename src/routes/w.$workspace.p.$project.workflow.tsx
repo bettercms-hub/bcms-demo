@@ -18,7 +18,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { CheckCircle2, Database, LayoutGrid, Rows3, Settings2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, Database, LayoutGrid, Rows3, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getProjectBySlug } from "@/lib/cms/use-cms";
@@ -32,6 +32,13 @@ import { AssigneeStack, DueChip, StageChip } from "@/components/cms/workflow/Wor
 import { CustomizeStagesDialog } from "@/components/cms/workflow/CustomizeStagesDialog";
 import { EntrySlideOver } from "@/components/cms/editor/views/EntrySlideOver";
 import { PublishBadge } from "@/components/cms/ui/StatusBadge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { Collection, Entry, Schema, WorkflowStage } from "@/lib/cms/types";
 
 export const Route = createFileRoute("/w/$workspace/p/$project/workflow")({
@@ -108,32 +115,46 @@ function WorkflowPage() {
     );
   }
 
+  function publishFrom(entryId: string) {
+    const entry = allEntries.find((e) => e.id === entryId);
+    if (!entry) return;
+    if (!publishAllowed) {
+      toast.error("Your seat can't publish", { description: "Ask a marketer, developer or owner to publish." });
+      return;
+    }
+    const stage = stageOfEntry(entry, stages);
+    if (stage && !stage.publishGate) {
+      const gate = stages.find((s) => s.publishGate);
+      toast.error(`Publish from ${gate?.name ?? "the approval stage"}`, {
+        description: `Entries publish from the gate stage, so approval stays meaningful. Move it to ${gate?.name ?? "Approved"} first.`,
+      });
+      return;
+    }
+    entryActions.publish(entryId);
+    toast.success("Published");
+  }
+
+  function moveTo(entryId: string, stageId: string) {
+    const entry = allEntries.find((e) => e.id === entryId);
+    if (!entry) return;
+    const stage = stageOfEntry(entry, stages);
+    if (entry.status !== "published" && stage?.id === stageId) return;
+    workflowActions.moveEntry(entryId, stageId);
+    toast.success(`Moved to ${stages.find((s) => s.id === stageId)?.name ?? "stage"}`);
+  }
+
   function onDragEnd(ev: DragEndEvent) {
     const entryId = ev.active.data.current?.entryId as string | undefined;
     const target = ev.over?.data.current as { stageId?: string; published?: boolean } | undefined;
     if (!entryId || !target) return;
-    const entry = allEntries.find((e) => e.id === entryId);
-    if (!entry) return;
 
     if (target.published) {
-      if (!publishAllowed) {
-        toast.error("Your seat can't publish", { description: "Ask a marketer, developer or owner to publish." });
-        return;
-      }
-      const stage = stageOfEntry(entry, stages);
-      if (stage && !stage.publishGate) {
-        const gate = stages.find((s) => s.publishGate);
-        toast.error(`Publish from ${gate?.name ?? "the approval stage"}`, {
-          description: `Entries publish from the gate stage, so approval stays meaningful. Move it to ${gate?.name ?? "Approved"} first.`,
-        });
-        return;
-      }
-      entryActions.publish(entryId);
-      toast.success("Published");
+      publishFrom(entryId);
       return;
     }
-
     if (target.stageId) {
+      const entry = allEntries.find((e) => e.id === entryId);
+      if (!entry) return;
       const stage = stageOfEntry(entry, stages);
       if (entry.status !== "published" && stage?.id === target.stageId) return;
       workflowActions.moveEntry(entryId, target.stageId);
@@ -218,7 +239,11 @@ function WorkflowPage() {
           stages={stages}
           collections={collections}
           schemas={schemas}
+          canEdit={canEdit}
+          publishAllowed={publishAllowed}
           onOpen={setOpenEntry}
+          onMoveTo={moveTo}
+          onPublish={publishFrom}
         />
       )}
 
@@ -267,13 +292,21 @@ function WorkflowList({
   stages,
   collections,
   schemas,
+  canEdit,
+  publishAllowed,
   onOpen,
+  onMoveTo,
+  onPublish,
 }: {
   entries: Entry[];
   stages: WorkflowStage[];
   collections: Collection[];
   schemas: Schema[];
+  canEdit: boolean;
+  publishAllowed: boolean;
   onOpen: (id: string) => void;
+  onMoveTo: (entryId: string, stageId: string) => void;
+  onPublish: (entryId: string) => void;
 }) {
   // Order by the board's left-to-right flow: stage order, published last.
   const order = new Map(stages.map((s, i) => [s.id, i]));
@@ -301,7 +334,18 @@ function WorkflowList({
             <span className="text-right">Assignees</span>
           </div>
           {rows.map((e) => (
-            <WorkflowListRow key={e.id} entry={e} stages={stages} collections={collections} schemas={schemas} onOpen={onOpen} />
+            <WorkflowListRow
+              key={e.id}
+              entry={e}
+              stages={stages}
+              collections={collections}
+              schemas={schemas}
+              canEdit={canEdit}
+              publishAllowed={publishAllowed}
+              onOpen={onOpen}
+              onMoveTo={onMoveTo}
+              onPublish={onPublish}
+            />
           ))}
         </div>
       )}
@@ -314,13 +358,21 @@ function WorkflowListRow({
   stages,
   collections,
   schemas,
+  canEdit,
+  publishAllowed,
   onOpen,
+  onMoveTo,
+  onPublish,
 }: {
   entry: Entry;
   stages: WorkflowStage[];
   collections: Collection[];
   schemas: Schema[];
+  canEdit: boolean;
+  publishAllowed: boolean;
   onOpen: (id: string) => void;
+  onMoveTo: (entryId: string, stageId: string) => void;
+  onPublish: (entryId: string) => void;
 }) {
   const col = collections.find((c) => c.id === entry.collectionId);
   const schema = schemas.find((sc) => sc.id === col?.schemaId);
@@ -328,12 +380,20 @@ function WorkflowListRow({
   const cover = imageField ? (entry.fields[imageField.name] as string | undefined) : undefined;
   const stage = stageOfEntry(entry, stages);
   const published = entry.status === "published";
+  const canChangeStage = canEdit && (stage || published);
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => onOpen(entry.id)}
-      className="grid w-full grid-cols-[minmax(0,1fr)_140px_150px_120px_88px] items-center gap-3 border-b border-[color:var(--border-hairline)] px-5 py-2.5 text-left transition-colors hover:bg-[color:var(--color-row-hover)]"
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen(entry.id);
+        }
+      }}
+      className="grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_140px_150px_120px_88px] items-center gap-3 border-b border-[color:var(--border-hairline)] px-5 py-2.5 text-left transition-colors hover:bg-[color:var(--color-row-hover)]"
     >
       <span className="flex min-w-0 items-center gap-2.5">
         {cover ? (
@@ -353,8 +413,24 @@ function WorkflowListRow({
         </span>
       </span>
       <span className="truncate text-[12px] text-muted-foreground">{col?.name}</span>
-      <span className="min-w-0">
-        {published ? <PublishBadge state="published" /> : stage ? <StageChip stage={stage} /> : <PublishBadge state={entry.status} />}
+      <span className="min-w-0" onClick={(e) => e.stopPropagation()}>
+        {canChangeStage ? (
+          <StageDropdown
+            entry={entry}
+            stage={stage}
+            stages={stages}
+            published={published}
+            publishAllowed={publishAllowed}
+            onMoveTo={(stageId) => onMoveTo(entry.id, stageId)}
+            onPublish={() => onPublish(entry.id)}
+          />
+        ) : published ? (
+          <PublishBadge state="published" />
+        ) : stage ? (
+          <StageChip stage={stage} />
+        ) : (
+          <PublishBadge state={entry.status} />
+        )}
       </span>
       <span className="min-w-0">
         {published || !entry.workflowDueDate ? (
@@ -370,7 +446,56 @@ function WorkflowListRow({
           <span className="text-[11px] text-muted-foreground/60">—</span>
         )}
       </span>
-    </button>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------- stage dropdown */
+
+function StageDropdown({
+  entry,
+  stage,
+  stages,
+  published,
+  publishAllowed,
+  onMoveTo,
+  onPublish,
+}: {
+  entry: Entry;
+  stage: WorkflowStage | undefined;
+  stages: WorkflowStage[];
+  published: boolean;
+  publishAllowed: boolean;
+  onMoveTo: (stageId: string) => void;
+  onPublish: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="group inline-flex items-center gap-1 rounded-md transition-colors hover:bg-[color:var(--color-row-hover)]"
+        >
+          {published ? <PublishBadge state="published" /> : stage ? <StageChip stage={stage} /> : <PublishBadge state={entry.status} />}
+          <ChevronDown className="h-3 w-3 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-52">
+        {stages.map((s) => (
+          <DropdownMenuItem key={s.id} disabled={!published && stage?.id === s.id} onSelect={() => onMoveTo(s.id)} className="gap-2">
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} /> {s.name}
+          </DropdownMenuItem>
+        ))}
+        {!published && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem disabled={!publishAllowed || !stage?.publishGate} onSelect={onPublish} className="gap-2">
+              <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" /> Publish
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
