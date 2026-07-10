@@ -18,7 +18,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { CheckCircle2, Database, Settings2 } from "lucide-react";
+import { CheckCircle2, Database, LayoutGrid, Rows3, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getProjectBySlug } from "@/lib/cms/use-cms";
@@ -28,7 +28,7 @@ import { siteHas } from "@/lib/billing/pricing";
 import { LockedFeature } from "@/components/cms/billing/FeatureGate";
 import { Draggable, Droppable } from "@/components/cms/pages/tree-dnd";
 import { SegmentedFilter } from "@/components/cms/ListToolbar";
-import { AssigneeStack, DueChip } from "@/components/cms/workflow/WorkflowBits";
+import { AssigneeStack, DueChip, StageChip } from "@/components/cms/workflow/WorkflowBits";
 import { CustomizeStagesDialog } from "@/components/cms/workflow/CustomizeStagesDialog";
 import { EntrySlideOver } from "@/components/cms/editor/views/EntrySlideOver";
 import { PublishBadge } from "@/components/cms/ui/StatusBadge";
@@ -39,6 +39,7 @@ export const Route = createFileRoute("/w/$workspace/p/$project/workflow")({
 });
 
 type Scope = "all" | "mine" | "overdue";
+type View = "board" | "list";
 const CURRENT_MEMBER = "m_jane"; // demo viewer identity (Jane Park)
 
 function WorkflowPage() {
@@ -54,6 +55,7 @@ function WorkflowPage() {
   const customStages = useCMS((s) => s.workflows.find((w) => w.projectId === pr?.id)?.stages);
   const stages = customStages ?? getWorkflow(pr?.id ?? "");
 
+  const [view, setView] = useState<View>("board");
   const [scope, setScope] = useState<Scope>("all");
   const [collectionFilter, setCollectionFilter] = useState<string>("all");
   const [openEntry, setOpenEntry] = useState<string | null>(null);
@@ -147,6 +149,10 @@ function WorkflowPage() {
           <p className="text-[12px] text-muted-foreground">Every entry, staged from draft to published.</p>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-0.5 rounded-lg border border-[color:var(--border-hairline)] bg-[color:var(--s2)] p-0.5">
+            <ViewToggle icon={LayoutGrid} label="Board" active={view === "board"} onClick={() => setView("board")} />
+            <ViewToggle icon={Rows3} label="List" active={view === "list"} onClick={() => setView("list")} />
+          </div>
           <SegmentedFilter
             options={[
               { id: "all", label: "All" },
@@ -180,37 +186,191 @@ function WorkflowPage() {
       </div>
 
       {/* board */}
-      <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragEnd={onDragEnd}>
-        <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
-          <div className="flex h-full min-w-max gap-3 p-4">
-            {stages.map((stage) => (
-              <StageColumn
-                key={stage.id}
-                stage={stage}
-                entries={entries.filter((e) => e.status !== "published" && stageOfEntry(e, stages)?.id === stage.id)}
+      {view === "board" ? (
+        <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragEnd={onDragEnd}>
+          <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
+            <div className="flex h-full min-w-max gap-3 p-4">
+              {stages.map((stage) => (
+                <StageColumn
+                  key={stage.id}
+                  stage={stage}
+                  entries={entries.filter((e) => e.status !== "published" && stageOfEntry(e, stages)?.id === stage.id)}
+                  collections={collections}
+                  schemas={schemas}
+                  canEdit={canEdit}
+                  onOpen={setOpenEntry}
+                />
+              ))}
+              {/* built-in terminal column */}
+              <PublishedColumn
+                entries={entries.filter((e) => e.status === "published")}
                 collections={collections}
                 schemas={schemas}
                 canEdit={canEdit}
                 onOpen={setOpenEntry}
               />
-            ))}
-            {/* built-in terminal column */}
-            <PublishedColumn
-              entries={entries.filter((e) => e.status === "published")}
-              collections={collections}
-              schemas={schemas}
-              canEdit={canEdit}
-              onOpen={setOpenEntry}
-            />
+            </div>
           </div>
-        </div>
-      </DndContext>
+        </DndContext>
+      ) : (
+        <WorkflowList
+          entries={entries}
+          stages={stages}
+          collections={collections}
+          schemas={schemas}
+          onOpen={setOpenEntry}
+        />
+      )}
 
       <EntrySlideOver open={!!openEntry} onOpenChange={(v) => !v && setOpenEntry(null)} entryId={openEntry} />
       {customizeOpen && (
         <CustomizeStagesDialog projectId={pr.id} sitePlan={pr.sitePlan ?? "free"} wsSlug={workspace} onClose={() => setCustomizeOpen(false)} />
       )}
     </div>
+  );
+}
+
+/* ---------------------------------------------------------- view toggle */
+
+function ViewToggle({
+  icon: Icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: typeof LayoutGrid;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      title={`${label} view`}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium transition-colors",
+        active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      {label}
+    </button>
+  );
+}
+
+/* ------------------------------------------------------------- list view */
+
+function WorkflowList({
+  entries,
+  stages,
+  collections,
+  schemas,
+  onOpen,
+}: {
+  entries: Entry[];
+  stages: WorkflowStage[];
+  collections: Collection[];
+  schemas: Schema[];
+  onOpen: (id: string) => void;
+}) {
+  // Order by the board's left-to-right flow: stage order, published last.
+  const order = new Map(stages.map((s, i) => [s.id, i]));
+  const rank = (e: Entry) => {
+    if (e.status === "published") return stages.length + 1;
+    const st = stageOfEntry(e, stages);
+    return st ? (order.get(st.id) ?? stages.length) : stages.length;
+  };
+  const rows = [...entries].sort((a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title));
+
+  return (
+    <div className="min-h-0 flex-1 overflow-auto">
+      {rows.length === 0 ? (
+        <div className="grid flex-1 place-items-center p-12 text-[13px] text-muted-foreground">
+          No entries match these filters.
+        </div>
+      ) : (
+        <div className="min-w-[720px]">
+          {/* header */}
+          <div className="sticky top-0 z-10 grid grid-cols-[minmax(0,1fr)_140px_150px_120px_88px] items-center gap-3 border-b border-[color:var(--border-hairline)] bg-[color:var(--canvas)] px-5 py-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span>Entry</span>
+            <span>Collection</span>
+            <span>Stage</span>
+            <span>Due</span>
+            <span className="text-right">Assignees</span>
+          </div>
+          {rows.map((e) => (
+            <WorkflowListRow key={e.id} entry={e} stages={stages} collections={collections} schemas={schemas} onOpen={onOpen} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WorkflowListRow({
+  entry,
+  stages,
+  collections,
+  schemas,
+  onOpen,
+}: {
+  entry: Entry;
+  stages: WorkflowStage[];
+  collections: Collection[];
+  schemas: Schema[];
+  onOpen: (id: string) => void;
+}) {
+  const col = collections.find((c) => c.id === entry.collectionId);
+  const schema = schemas.find((sc) => sc.id === col?.schemaId);
+  const imageField = schema?.fields.find((f) => f.type === "image");
+  const cover = imageField ? (entry.fields[imageField.name] as string | undefined) : undefined;
+  const stage = stageOfEntry(entry, stages);
+  const published = entry.status === "published";
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(entry.id)}
+      className="grid w-full grid-cols-[minmax(0,1fr)_140px_150px_120px_88px] items-center gap-3 border-b border-[color:var(--border-hairline)] px-5 py-2.5 text-left transition-colors hover:bg-[color:var(--color-row-hover)]"
+    >
+      <span className="flex min-w-0 items-center gap-2.5">
+        {cover ? (
+          <img src={cover} alt="" loading="lazy" className="h-8 w-11 shrink-0 rounded-md object-cover" />
+        ) : (
+          <span className="grid h-8 w-11 shrink-0 place-items-center rounded-md bg-[color:var(--s2)] text-muted-foreground">
+            <Database className="h-3.5 w-3.5" />
+          </span>
+        )}
+        <span className="min-w-0">
+          <span className="block truncate text-[12.5px] font-medium text-foreground">{entry.title}</span>
+          {entry.status === "scheduled" && (
+            <span className="mt-0.5 inline-flex">
+              <PublishBadge state="scheduled" />
+            </span>
+          )}
+        </span>
+      </span>
+      <span className="truncate text-[12px] text-muted-foreground">{col?.name}</span>
+      <span className="min-w-0">
+        {published ? <PublishBadge state="published" /> : stage ? <StageChip stage={stage} /> : <PublishBadge state={entry.status} />}
+      </span>
+      <span className="min-w-0">
+        {published || !entry.workflowDueDate ? (
+          <span className="text-[11px] text-muted-foreground/60">—</span>
+        ) : (
+          <DueChip iso={entry.workflowDueDate} />
+        )}
+      </span>
+      <span className="flex justify-end">
+        {(entry.workflowAssigneeIds ?? []).length > 0 ? (
+          <AssigneeStack ids={entry.workflowAssigneeIds} size={20} max={3} />
+        ) : (
+          <span className="text-[11px] text-muted-foreground/60">—</span>
+        )}
+      </span>
+    </button>
   );
 }
 
