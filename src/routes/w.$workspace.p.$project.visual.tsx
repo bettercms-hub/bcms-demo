@@ -96,6 +96,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getProjectBySlug } from "@/lib/cms/use-cms";
 import { useViewportTier } from "@/lib/device";
+import { useProjectPresence } from "@/lib/workspace/presence-store";
+import { PresenceCanvasLayer } from "@/components/cms/presence/PresenceCanvasLayer";
 import { RichTextToolbar } from "@/components/cms/editor/preview/RichTextToolbar";
 
 export const Route = createFileRoute("/w/$workspace/p/$project/visual")({
@@ -202,6 +204,15 @@ function VisualEditor() {
   const active = pages.find((p) => p.path === activePath) ?? pages[0];
   const state = active.state;
 
+  // Keep the canvas in sync when ?page= changes while already mounted
+  // (e.g. jumping to a teammate from the presence popover).
+  useEffect(() => {
+    if (search.page && search.page !== activePath && pages.some((p) => p.path === search.page)) {
+      setActivePath(search.page);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.page]);
+
   // Role comes from your workspace seat, clamped by the cascading view-as.
   const { actual, effective } = useEffectiveRole(workspace);
   const canBuild = canCompose(effective);
@@ -235,6 +246,9 @@ function VisualEditor() {
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const formContentRef = useRef<HTMLDivElement>(null);
+
+  // Simulated multiplayer: teammates moving around this project's surfaces.
+  const presencePeers = useProjectPresence(pr?.id);
 
   // comments — anchored to content fields, so a thread shows in both visual and form modes.
   const [threadsByPage, setThreadsByPage] = useState<Record<string, CommentThread[]>>(SEED_THREADS);
@@ -927,6 +941,14 @@ function VisualEditor() {
                     ) : null}
                   </div>
                   {showGrid && <ColumnGuides />}
+                  {tier !== "mobile" && (
+                    <PresenceCanvasLayer
+                      peers={presencePeers}
+                      pagePath={active.path}
+                      containerRef={canvasRef}
+                      recalcKey={recalc}
+                    />
+                  )}
                   <CommentLayer
                     containerRef={canvasRef}
                     threads={threads}

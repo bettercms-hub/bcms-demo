@@ -14,6 +14,8 @@ import {
 } from "@dnd-kit/core";
 import { collections, entries, schemas } from "@/lib/cms/mock-data";
 import { getProjectBySlug } from "@/lib/cms/use-cms";
+import { useProjectPresence } from "@/lib/workspace/presence-store";
+import { PresenceStack } from "@/components/cms/presence/Presence";
 import { newPageId, pagesActions, usePages, type PageDoc, type PageState } from "@/lib/cms/pages-store";
 import { descendantIds, eligibleParents, folderActions, folderTrail, folderUrlPrefix, useFolders } from "@/lib/cms/folders-store";
 import { NewPageDialog } from "@/components/cms/pages/NewPageDialog";
@@ -68,6 +70,7 @@ function ContentPage() {
   const pr = getProjectBySlug(workspace, project)!;
   const staging = `${pr.slug}.bettercms.site`;
   const allPages = usePages(pr.id);
+  const presencePeers = useProjectPresence(pr.id);
   const batchRun = batch ? agentRunActions.get(batch) : undefined;
   const pages = batchRun ? allPages.filter((p) => p.batchId === batchRun.id) : allPages;
   const [pageQuery, setPageQuery] = useState("");
@@ -579,6 +582,11 @@ function ContentPage() {
                   <span className="hidden text-[11.5px] text-muted-foreground sm:block">{formatRelative(new Date(pg.updatedAt).toISOString())}</span>
 
                   <span className="flex items-center justify-end gap-0.5">
+                  <PresenceStack
+                    peers={presencePeers.filter((p) => p.surface === "canvas" && p.pagePath === pg.path && p.status === "active")}
+                    size={18}
+                    max={2}
+                  />
                   {canBuild && (
                     <button
                       type="button"

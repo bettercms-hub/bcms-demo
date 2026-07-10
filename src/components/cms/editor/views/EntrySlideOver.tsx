@@ -8,6 +8,8 @@
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCMS } from "@/lib/cms/store";
+import { useProjectPresence } from "@/lib/workspace/presence-store";
+import { PresenceStack } from "@/components/cms/presence/Presence";
 import { PublishBadge } from "@/components/cms/ui/StatusBadge";
 import { EntryView } from "./EntryView";
 import { EntrySeoPanel } from "./entry-tabs/EntrySeoPanel";
@@ -23,6 +25,9 @@ interface Props {
 
 export function EntrySlideOver({ open, onOpenChange, entryId }: Props) {
   const entry = useCMS((s) => (entryId ? s.entries.find((e) => e.id === entryId) : undefined));
+  const projectId = useCMS((s) => (entry ? s.collections.find((c) => c.id === entry.collectionId)?.projectId : undefined));
+  const peers = useProjectPresence(projectId);
+  const here = entry ? peers.filter((p) => p.entryId === entry.id && p.status === "active") : [];
 
   return (
     <Sheet open={open && !!entryId} onOpenChange={onOpenChange}>
@@ -42,6 +47,7 @@ export function EntrySlideOver({ open, onOpenChange, entryId }: Props) {
                   <span>Updated {new Date(entry.updatedAt).toLocaleDateString()}</span>
                 </div>
               </div>
+              <PresenceStack peers={here} size={24} max={3} />
             </div>
             <TabsList className="mx-5 mt-2 w-auto justify-start gap-1 bg-transparent p-0">
               <SlideTab value="content">Content</SlideTab>

@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { entryActions, entryCreateActions, useCMS } from "@/lib/cms/store";
+import { useProjectPresence } from "@/lib/workspace/presence-store";
+import { PresenceStack } from "@/components/cms/presence/Presence";
 import type { Collection, Entry, PublishState, Schema, SchemaField } from "@/lib/cms/types";
 import { CreateEntityModal, type CreateKind } from "@/components/cms/modals/CreateEntityModal";
 import { getReferenceLabel } from "@/lib/cms/references";
@@ -634,6 +636,9 @@ function TableView({
   publishAllowed: boolean;
   ctx: { allEntries: Entry[]; collections: Collection[]; schemas: Schema[] };
 }) {
+  // Presence: teammates with one of these entries open right now.
+  const presenceProjectId = ctx.collections.find((c) => c.id === sorted[0]?.collectionId)?.projectId;
+  const presencePeers = useProjectPresence(presenceProjectId);
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="max-h-[calc(100vh-280px)] overflow-auto">
@@ -724,6 +729,12 @@ function TableView({
                             <span className="truncate" title={e.title}>
                               {highlight(e.title, query)}
                             </span>
+                            <PresenceStack
+                              peers={presencePeers.filter((p) => p.entryId === e.id && p.status === "active")}
+                              size={16}
+                              max={2}
+                              className="ml-auto"
+                            />
                           </div>
                         )}
                       </td>
