@@ -361,6 +361,7 @@ export const FEATURE_MATRIX: FeatureRow[] = [
   { key: "custom-domain", label: "Custom domain and SSL", values: F(false, true, true, true, true) },
   { key: "branching", label: "Native branching", values: F(false, false, true, true, true) },
   { key: "workflows", label: "Publishing workflows", values: F(false, false, true, true, true) },
+  { key: "custom-workflows", label: "Custom workflow stages", values: F(false, false, false, true, true) },
   { key: "audit", label: "Site activity log and audit", values: F(false, false, "Log", "Full", "Full") },
   { key: "form-files", label: "Form file upload and well-known files", values: F(false, true, true, true, true) },
   { key: "seo", label: "SEO and AEO built in", values: F(false, true, true, true, true) },

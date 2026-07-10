@@ -520,12 +520,36 @@ export interface Entry {
   createdBy?: ID;
   updatedBy?: ID;
   publishedSnapshot?: EntryPublishedSnapshot;
+  /** Editorial workflow (stages describe the journey between draft and publish). */
+  workflowStageId?: ID;
+  workflowAssigneeIds?: ID[];
+  workflowDueDate?: ISODate;
+  workflowLastMove?: { by: ID; at: ISODate; comment?: string };
   /** SEO */
   metaTitle?: string;
   metaDescription?: string;
   canonical?: string;
   ogImage?: string;
   indexing?: "index" | "noindex";
+}
+
+// ===== Editorial workflow =====
+
+export interface WorkflowStage {
+  id: ID;
+  name: string;
+  /** Chip/dot color from the workflow palette, hex. */
+  color: string;
+  /** Publishing is offered only from stages that gate it. */
+  publishGate?: boolean;
+}
+
+/** A project's editorial workflow: ordered custom stages. Draft, Scheduled,
+ * Published and Archived remain system lifecycle; stages cover the middle. */
+export interface ProjectWorkflow {
+  id: ID;
+  projectId: ID;
+  stages: WorkflowStage[];
 }
 
 export interface EntryComment {

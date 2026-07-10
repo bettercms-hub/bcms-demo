@@ -46,6 +46,7 @@ const MOBILE_BLOCKED_PROJECT: Array<{ test: RegExp; feature: string }> = [
   { test: /\/hosting(\/|$)/, feature: "Hosting" },
   { test: /\/agent$/, feature: "The agent workspace" },
   { test: /\/brand(\/|$)/, feature: "The brand kit" },
+  { test: /\/workflow(\/|$)/, feature: "The workflow board" },
   { test: /\/settings\/publishing(\/|$)/, feature: "Publishing controls" },
 ];
 

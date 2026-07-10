@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { entryActions, entryCreateActions, useCMS } from "@/lib/cms/store";
+import { copyDocument, useCopiedDoc } from "@/lib/cms/doc-clipboard";
 import type { Collection, Entry, PublishState, Schema, SchemaField } from "@/lib/cms/types";
 import { CreateEntityModal, type CreateKind } from "@/components/cms/modals/CreateEntityModal";
 import { getReferenceLabel } from "@/lib/cms/references";
@@ -634,6 +635,7 @@ function TableView({
   publishAllowed: boolean;
   ctx: { allEntries: Entry[]; collections: Collection[]; schemas: Schema[] };
 }) {
+  const copiedDoc = useCopiedDoc();
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="max-h-[calc(100vh-280px)] overflow-auto">
@@ -753,6 +755,31 @@ function TableView({
                       <>
                         <ContextMenuItem onSelect={() => setRenamingId(e.id)}>Rename</ContextMenuItem>
                         <ContextMenuItem onSelect={() => entryActions.duplicate(e.id)}>Duplicate</ContextMenuItem>
+                        <ContextMenuItem
+                          onSelect={() => {
+                            copyDocument(e);
+                            toast.success("Document copied", { description: "Paste it into this or another collection." });
+                          }}
+                        >
+                          Copy document
+                        </ContextMenuItem>
+                        {copiedDoc && (
+                          <ContextMenuItem
+                            onSelect={() => {
+                              const result = entryActions.pasteDocument(e.collectionId, copiedDoc);
+                              if (!result) return;
+                              if (result.dropped.length > 0) {
+                                toast.success("Document pasted", {
+                                  description: `${result.dropped.length} ${result.dropped.length === 1 ? "field" : "fields"} (${result.dropped.join(", ")}) didn't fit this schema and ${result.dropped.length === 1 ? "was" : "were"} left out.`,
+                                });
+                              } else {
+                                toast.success("Document pasted as a draft");
+                              }
+                            }}
+                          >
+                            Paste document
+                          </ContextMenuItem>
+                        )}
                         <ContextMenuSeparator />
                         {publishAllowed && (
                           <ContextMenuItem onSelect={() => entryActions.publish(e.id)}>Publish</ContextMenuItem>
