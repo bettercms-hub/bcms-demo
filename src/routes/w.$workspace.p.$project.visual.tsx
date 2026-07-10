@@ -58,16 +58,11 @@ import { newPageId, pagesActions, usePages, type PageDoc } from "@/lib/cms/pages
 import { PublishMenu } from "@/components/cms/editor/PublishMenu";
 import { PageSettingsDialog } from "@/components/cms/editor/PageSettingsDialog";
 import {
-  ROLE_INFO,
-  ROLE_ORDER,
   canCompose,
   canEditContent,
   canPublish as roleCanPublish,
   canSeeDeveloper,
-  canViewAs,
-  setViewAs,
   useEffectiveRole,
-  type WorkspaceRole,
 } from "@/lib/workspace/my-role";
 import {
   CommentLayer,
@@ -216,13 +211,13 @@ function VisualEditor() {
   }, [search.page]);
 
   // Role comes from your workspace seat, clamped by the cascading view-as.
-  const { actual, effective } = useEffectiveRole(workspace);
+  // The view-as control itself lives globally in the top bar now.
+  const { effective } = useEffectiveRole(workspace);
   const canBuild = canCompose(effective);
   const canEdit = canEditContent(effective);
   const showDev = canSeeDeveloper(effective);
   const publishAllowed = roleCanPublish(effective);
   const composing = canBuild && previewMode === "edit";
-  const viewAsOptions = ROLE_ORDER.filter((r) => canViewAs(actual, r));
 
   // Section library modal: the index to insert at, or null when closed.
   const [libraryAt, setLibraryAt] = useState<number | null>(null);
@@ -567,49 +562,6 @@ function VisualEditor() {
             <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
             <span className={meta.text}>{meta.label}</span>
           </span>
-          {viewAsOptions.length > 1 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  title={`Preview the app as a role below yours. You are ${ROLE_INFO[actual].label}.`}
-                  aria-label={`View as role, currently ${ROLE_INFO[effective].label}`}
-                  className={cn(
-                    "hidden h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 text-[11px] font-medium transition-colors md:inline-flex",
-                    effective !== actual
-                      ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                      : "border-[color:var(--color-border)] bg-[color:var(--card)] text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <Eye className="h-3 w-3" />
-                  {ROLE_INFO[effective].label}
-                  <ChevronDown className="h-3 w-3 opacity-60" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-[250px]">
-                <div className="px-2 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  View as
-                </div>
-                {viewAsOptions.map((r: WorkspaceRole) => {
-                  const m = ROLE_INFO[r];
-                  const Icon = m.icon;
-                  return (
-                    <DropdownMenuItem key={r} className="items-start gap-2 text-[13px]" onSelect={() => setViewAs(r === actual ? null : r)}>
-                      <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                      <span className="flex-1">
-                        <span className="block font-medium">
-                          {m.label}
-                          {r === actual && <span className="ml-1 text-[10.5px] font-normal text-muted-foreground">(you)</span>}
-                        </span>
-                        <span className="block text-[11px] text-muted-foreground">{m.blurb}</span>
-                      </span>
-                      {effective === r && <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />}
-                    </DropdownMenuItem>
-                  );
-                })}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
         </div>
 
         <div className="ml-2 hidden h-8 items-center gap-0.5 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--s2)] p-1 md:flex">
