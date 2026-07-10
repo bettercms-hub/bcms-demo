@@ -17,7 +17,18 @@ export type DocBlockType =
   | "callout"
   | "code"
   | "divider"
-  | "image";
+  | "image"
+  // Rich blocks
+  | "embed"
+  | "bookmark"
+  | "video"
+  | "button"
+  | "table"
+  | "toggle"
+  | "component";
+
+/** Callout / accent tone shared by callouts and some rich blocks. */
+export type DocTone = "info" | "success" | "warning" | "danger" | "neutral";
 
 export interface DocBlock {
   id: string;
@@ -28,6 +39,27 @@ export interface DocBlock {
   alt?: string;
   language?: string;
   emoji?: string;
+  // Callout
+  tone?: DocTone;
+  // Embed / bookmark / video
+  url?: string;
+  provider?: string;
+  title?: string;
+  desc?: string;
+  site?: string;
+  // Button
+  label?: string;
+  href?: string;
+  variant?: string;
+  // Table
+  rows?: string[][];
+  hasHeader?: boolean;
+  // Toggle
+  open?: boolean;
+  bodyText?: string;
+  // Component instance
+  component?: string;
+  componentProps?: Record<string, string>;
 }
 
 export interface DocValue {
@@ -79,9 +111,27 @@ export function parseDoc(value: unknown): DocValue {
 export function docToPlainText(doc: DocValue): string {
   return doc.blocks
     .map((b) => {
-      if (b.type === "divider") return "";
-      if (b.type === "image") return b.alt ?? "";
-      return b.text ?? "";
+      switch (b.type) {
+        case "divider":
+          return "";
+        case "image":
+          return b.alt ?? "";
+        case "button":
+          return b.label ?? "";
+        case "bookmark":
+          return b.title || b.url || "";
+        case "embed":
+        case "video":
+          return b.title || b.url || "";
+        case "toggle":
+          return [b.text, b.bodyText].filter(Boolean).join("\n");
+        case "table":
+          return (b.rows ?? []).map((r) => r.join(" | ")).join("\n");
+        case "component":
+          return b.title || b.component || "";
+        default:
+          return b.text ?? "";
+      }
     })
     .filter(Boolean)
     .join("\n\n");
@@ -100,4 +150,11 @@ export const BLOCK_PLACEHOLDER: Record<DocBlockType, string> = {
   code: "Code",
   divider: "",
   image: "",
+  embed: "",
+  bookmark: "",
+  video: "",
+  button: "",
+  table: "",
+  toggle: "Toggle",
+  component: "",
 };

@@ -15,24 +15,50 @@ import {
   useState,
 } from "react";
 import {
+  Award,
+  Bookmark,
+  Boxes,
+  ChevronRight,
   Code as CodeIcon,
   CornerDownLeft,
+  CreditCard,
+  Figma,
+  Globe,
   GripVertical,
   Heading1,
   Heading2,
   Heading3,
   Image as ImageIcon,
+  ImagePlus,
+  Link2,
   List as ListIcon,
+  ListChecks,
   ListOrdered,
   ListTodo,
+  Mail,
+  Megaphone,
+  MessagesSquare,
   MessageSquareQuote,
+  Minimize2,
   Minus,
+  MousePointerClick,
+  PenLine,
   Plus,
+  Quote,
   Sparkles,
+  StretchHorizontal,
+  Table as TableIcon,
   Text as TextIcon,
   Trash2,
+  TrendingUp,
   Copy as CopyIcon,
+  UserRound,
+  Video,
+  Wand2,
+  X,
+  Youtube,
   Lightbulb,
+  type LucideIcon,
 } from "lucide-react";
 import {
   BLOCK_PLACEHOLDER,
@@ -43,6 +69,17 @@ import {
   type DocBlockType,
   type DocValue,
 } from "@/lib/cms/blocks/doc";
+import {
+  AI_COMMANDS,
+  COMPONENT_CATALOG,
+  CALLOUT_TONES,
+  componentDef,
+  detectEmbed,
+  fakeBookmarkMeta,
+  simulateAi,
+  toneOf,
+  type AiCommand,
+} from "@/lib/cms/blocks/rich-blocks";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,31 +107,81 @@ const RECENT_KEY = "bcms.slash.recent";
 /* Slash menu catalogue                                               */
 /* ------------------------------------------------------------------ */
 
+type SlashCategory = "AI" | "Basic" | "Lists" | "Media" | "Embeds" | "Components" | "Advanced";
+
+type SlashAction =
+  | { kind: "block"; type: DocBlockType }
+  | { kind: "widget"; type: DocBlockType }
+  | { kind: "component"; key: string }
+  | { kind: "ai"; cmd: AiCommand };
+
 type SlashItem = {
-  id: DocBlockType;
+  id: string;
   label: string;
   description: string;
-  icon: React.ComponentType<{ className?: string }>;
-  category: "Basic" | "Lists" | "Media" | "Advanced";
+  icon: LucideIcon;
+  category: SlashCategory;
   keywords?: string[];
+  action: SlashAction;
 };
 
-const SLASH_ITEMS: SlashItem[] = [
-  { id: "paragraph", label: "Text", description: "Plain paragraph text", icon: TextIcon, category: "Basic", keywords: ["body", "p"] },
-  { id: "h1", label: "Heading 1", description: "Large section heading", icon: Heading1, category: "Basic", keywords: ["title", "h1"] },
-  { id: "h2", label: "Heading 2", description: "Medium section heading", icon: Heading2, category: "Basic", keywords: ["h2"] },
-  { id: "h3", label: "Heading 3", description: "Small section heading", icon: Heading3, category: "Basic", keywords: ["h3"] },
-  { id: "bullet", label: "Bulleted list", description: "Unordered list", icon: ListIcon, category: "Lists", keywords: ["ul", "list"] },
-  { id: "numbered", label: "Numbered list", description: "Ordered list", icon: ListOrdered, category: "Lists", keywords: ["ol", "1."] },
-  { id: "todo", label: "To-do", description: "Checkbox list", icon: ListTodo, category: "Lists", keywords: ["task", "check"] },
-  { id: "quote", label: "Quote", description: "Pull quote or block quote", icon: MessageSquareQuote, category: "Basic", keywords: ["blockquote"] },
-  { id: "callout", label: "Callout", description: "Highlighted note with an icon", icon: Lightbulb, category: "Basic", keywords: ["note", "tip"] },
-  { id: "divider", label: "Divider", description: "Horizontal rule", icon: Minus, category: "Basic", keywords: ["hr", "line"] },
-  { id: "code", label: "Code", description: "Monospaced code block", icon: CodeIcon, category: "Advanced", keywords: ["pre", "snippet"] },
-  { id: "image", label: "Image", description: "Insert an image by URL", icon: ImageIcon, category: "Media" },
+const CATALOG_ICONS: Record<string, LucideIcon> = {
+  PenLine, ListChecks, Wand2, StretchHorizontal, Minimize2, ImagePlus,
+  Megaphone, Mail, CreditCard, Quote, TrendingUp, UserRound, Award, MessagesSquare,
+};
+
+const AI_ITEMS: SlashItem[] = AI_COMMANDS.map((cmd) => ({
+  id: `ai:${cmd.id}`, label: cmd.label, description: cmd.desc,
+  icon: CATALOG_ICONS[cmd.icon] ?? Sparkles, category: "AI",
+  keywords: ["ai", cmd.id], action: { kind: "ai", cmd },
+}));
+
+const BASIC_ITEMS: SlashItem[] = [
+  { id: "paragraph", label: "Text", description: "Plain paragraph text", icon: TextIcon, category: "Basic", keywords: ["body", "p"], action: { kind: "block", type: "paragraph" } },
+  { id: "h1", label: "Heading 1", description: "Large section heading", icon: Heading1, category: "Basic", keywords: ["title", "h1"], action: { kind: "block", type: "h1" } },
+  { id: "h2", label: "Heading 2", description: "Medium section heading", icon: Heading2, category: "Basic", keywords: ["h2"], action: { kind: "block", type: "h2" } },
+  { id: "h3", label: "Heading 3", description: "Small section heading", icon: Heading3, category: "Basic", keywords: ["h3"], action: { kind: "block", type: "h3" } },
+  { id: "quote", label: "Quote", description: "Pull quote or block quote", icon: MessageSquareQuote, category: "Basic", keywords: ["blockquote"], action: { kind: "block", type: "quote" } },
+  { id: "callout", label: "Callout", description: "Highlighted note with a tone", icon: Lightbulb, category: "Basic", keywords: ["note", "tip", "info"], action: { kind: "block", type: "callout" } },
+  { id: "toggle", label: "Toggle", description: "Collapsible heading and body", icon: ChevronRight, category: "Basic", keywords: ["accordion", "collapse", "details"], action: { kind: "block", type: "toggle" } },
+  { id: "divider", label: "Divider", description: "Horizontal rule", icon: Minus, category: "Basic", keywords: ["hr", "line"], action: { kind: "block", type: "divider" } },
 ];
 
-function loadRecent(): DocBlockType[] {
+const LIST_ITEMS: SlashItem[] = [
+  { id: "bullet", label: "Bulleted list", description: "Unordered list", icon: ListIcon, category: "Lists", keywords: ["ul", "list"], action: { kind: "block", type: "bullet" } },
+  { id: "numbered", label: "Numbered list", description: "Ordered list", icon: ListOrdered, category: "Lists", keywords: ["ol", "1."], action: { kind: "block", type: "numbered" } },
+  { id: "todo", label: "To-do", description: "Checkbox list", icon: ListTodo, category: "Lists", keywords: ["task", "check"], action: { kind: "block", type: "todo" } },
+];
+
+const MEDIA_ITEMS: SlashItem[] = [
+  { id: "image", label: "Image", description: "Insert an image by URL", icon: ImageIcon, category: "Media", action: { kind: "widget", type: "image" } },
+  { id: "video", label: "Video", description: "Embed a video by URL", icon: Video, category: "Media", keywords: ["mp4", "player"], action: { kind: "widget", type: "video" } },
+];
+
+const EMBED_ITEMS: SlashItem[] = [
+  { id: "embed", label: "Embed", description: "YouTube, Loom, Figma, CodePen, and more", icon: Youtube, category: "Embeds", keywords: ["youtube", "loom", "figma", "iframe", "codepen", "vimeo"], action: { kind: "widget", type: "embed" } },
+  { id: "bookmark", label: "Bookmark", description: "A rich link preview card", icon: Bookmark, category: "Embeds", keywords: ["link", "url", "preview"], action: { kind: "widget", type: "bookmark" } },
+  { id: "figma", label: "Figma", description: "Embed a Figma file or prototype", icon: Figma, category: "Embeds", keywords: ["design", "prototype"], action: { kind: "widget", type: "embed" } },
+];
+
+const ADVANCED_ITEMS: SlashItem[] = [
+  { id: "code", label: "Code", description: "Monospaced code block", icon: CodeIcon, category: "Advanced", keywords: ["pre", "snippet"], action: { kind: "block", type: "code" } },
+  { id: "table", label: "Table", description: "A simple editable table", icon: TableIcon, category: "Advanced", keywords: ["grid", "rows"], action: { kind: "widget", type: "table" } },
+  { id: "button", label: "Button", description: "A call to action link", icon: MousePointerClick, category: "Advanced", keywords: ["cta", "link"], action: { kind: "widget", type: "button" } },
+];
+
+const COMPONENT_ITEMS: SlashItem[] = COMPONENT_CATALOG.map((c) => ({
+  id: `cmp:${c.key}`, label: c.label, description: c.desc,
+  icon: CATALOG_ICONS[c.icon] ?? Boxes, category: "Components",
+  keywords: ["component", "instance", c.key], action: { kind: "component", key: c.key },
+}));
+
+const SLASH_ITEMS: SlashItem[] = [
+  ...AI_ITEMS, ...BASIC_ITEMS, ...LIST_ITEMS, ...MEDIA_ITEMS,
+  ...EMBED_ITEMS, ...ADVANCED_ITEMS, ...COMPONENT_ITEMS,
+];
+
+function loadRecent(): string[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(RECENT_KEY);
@@ -105,11 +192,42 @@ function loadRecent(): DocBlockType[] {
     return [];
   }
 }
-function pushRecent(t: DocBlockType) {
+function pushRecent(id: string) {
   if (typeof window === "undefined") return;
-  const cur = loadRecent().filter((x) => x !== t);
-  const next = [t, ...cur].slice(0, 5);
+  const cur = loadRecent().filter((x) => x !== id);
+  const next = [id, ...cur].slice(0, 5);
   window.localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+}
+
+function widgetDefaults(type: DocBlockType): Partial<DocBlock> {
+  switch (type) {
+    case "image":
+      return { type, src: "" };
+    case "video":
+      return { type, url: "" };
+    case "embed":
+      return { type, url: "" };
+    case "bookmark":
+      return { type, url: "" };
+    case "button":
+      return { type, label: "Get started", href: "#", variant: "primary" };
+    case "table":
+      return { type, rows: [["Column 1", "Column 2"], ["", ""]], hasHeader: true };
+    default:
+      return { type };
+  }
+}
+
+/** Offline placeholder image for the "generate image" AI command. */
+function gradientImageDataUri(seed: string): string {
+  const hue = (seed.charCodeAt(seed.length - 1) * 47) % 360;
+  const svg =
+    `<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='630'>` +
+    `<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>` +
+    `<stop offset='0' stop-color='hsl(${hue},80%,60%)'/>` +
+    `<stop offset='1' stop-color='hsl(${(hue + 60) % 360},80%,55%)'/>` +
+    `</linearGradient></defs><rect width='1200' height='630' fill='url(#g)'/></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -200,23 +318,10 @@ export function BlockEditor({ value, onChange, placeholder }: Props) {
   };
 
   const changeType = (id: string, type: DocBlockType) => {
-    pushRecent(type);
     if (type === "divider") {
       commit({
         ...doc,
-        blocks: doc.blocks.map((b) =>
-          b.id === id ? { ...b, type, text: "" } : b,
-        ),
-      });
-      return;
-    }
-    if (type === "image") {
-      const url = window.prompt("Image URL", "");
-      commit({
-        ...doc,
-        blocks: doc.blocks.map((b) =>
-          b.id === id ? { ...b, type, src: url ?? "", text: "" } : b,
-        ),
+        blocks: doc.blocks.map((b) => (b.id === id ? { ...b, type, text: "" } : b)),
       });
       return;
     }
@@ -227,24 +332,85 @@ export function BlockEditor({ value, onChange, placeholder }: Props) {
     });
   };
 
+  /* --- slash dispatch: the current (now empty) block becomes the target --- */
+
+  // Insert a self-contained widget for the block at `id`. If that block still
+  // holds text, keep it and drop the widget on a new line below; if it's empty
+  // (just the "/query"), replace it in place. Always leave a trailing paragraph
+  // so typing can continue.
+  const replaceWithWidget = (base: DocBlock[], id: string, patch: Partial<DocBlock>) => {
+    const idx = base.findIndex((b) => b.id === id);
+    if (idx === -1) return;
+    const hadText = (base[idx].text ?? "").trim().length > 0;
+    // Widgets that open their own URL input keep focus there; others jump the
+    // caret to the trailing paragraph so typing continues below.
+    const selfFocuses = patch.type === "embed" || patch.type === "video" || patch.type === "bookmark";
+    const trailing = emptyParagraph();
+    const blocks = [...base];
+    if (hadText) {
+      const widget: DocBlock = { id: blockId(), type: patch.type ?? "paragraph", ...patch };
+      blocks.splice(idx + 1, 0, widget, trailing);
+    } else {
+      blocks[idx] = { ...base[idx], text: "", checked: undefined, ...patch };
+      blocks.splice(idx + 1, 0, trailing);
+    }
+    if (!selfFocuses) focusAfterRenderRef.current = { id: trailing.id, toStart: true };
+    commit({ ...doc, blocks });
+  };
+
+  const runAi = (base: DocBlock[], id: string, cmd: AiCommand) => {
+    const idx = base.findIndex((b) => b.id === id);
+    if (idx === -1) return;
+    const priorText = base.slice(0, idx + 1).map((b) => b.text ?? "").filter(Boolean).join(" ");
+    const selfText = base[idx].text ?? "";
+    const out = simulateAi(cmd, cmd.mode === "replace" ? selfText : priorText);
+
+    if (cmd.mode === "image") {
+      replaceWithWidget(base, id, { type: "image", src: gradientImageDataUri(id), alt: "AI generated image", text: "AI generated image (demo)" });
+      return;
+    }
+    if (cmd.mode === "replace") {
+      focusAfterRenderRef.current = { id };
+      commit({ ...doc, blocks: base.map((b) => (b.id === id ? { ...b, text: out } : b)) });
+      return;
+    }
+    // append / callout: insert a new block after
+    const block: DocBlock =
+      cmd.mode === "callout"
+        ? { id: blockId(), type: "callout", tone: "info", text: out }
+        : { id: blockId(), type: "paragraph", text: out };
+    const blocks = [...base];
+    blocks.splice(idx + 1, 0, block);
+    focusAfterRenderRef.current = { id: block.id };
+    commit({ ...doc, blocks });
+  };
+
   const onSlashSelect = (item: SlashItem) => {
     if (!slash) return;
-    // Read the *current* text from the DOM (React state is only synced on
-    // blur / structural changes, so the in-progress slash query lives there).
-    const el = blockRefs.current.get(slash.blockId);
-    const currentText = el?.textContent ?? "";
-    const cleaned = currentText.replace(/\/[^\s\/]*$/, "");
-    // Sync DOM immediately so the useLayoutEffect's `activeElement` skip
-    // doesn't leave the stale "/query" visible.
+    const id = slash.blockId;
+    // The in-progress "/query" lives in the DOM; clean it before acting.
+    const el = blockRefs.current.get(id);
+    const cleaned = (el?.textContent ?? "").replace(/\/[^\s\/]*$/, "");
     if (el && el.textContent !== cleaned) el.textContent = cleaned;
-    commit({
-      ...doc,
-      blocks: doc.blocks.map((x) =>
-        x.id === slash.blockId ? { ...x, text: cleaned } : x,
-      ),
-    });
+    const base = doc.blocks.map((b) => (b.id === id ? { ...b, text: cleaned } : b));
     setSlash(null);
-    changeType(slash.blockId, item.id);
+    pushRecent(item.id);
+
+    const a = item.action;
+    if (a.kind === "block") {
+      commit({ ...doc, blocks: base });
+      changeType(id, a.type);
+    } else if (a.kind === "widget") {
+      replaceWithWidget(base, id, widgetDefaults(a.type));
+    } else if (a.kind === "component") {
+      const def = componentDef(a.key);
+      const d = def?.defaults() ?? {};
+      replaceWithWidget(base, id, {
+        type: "component", component: a.key, title: d.title, desc: d.desc, componentProps: d.props ?? {},
+      });
+    } else {
+      runAi(base, id, a.cmd);
+    }
   };
 
 
@@ -275,6 +441,7 @@ export function BlockEditor({ value, onChange, placeholder }: Props) {
           }}
           onCheck={(checked) => updateBlock(b.id, { checked })}
           onSrcChange={(src) => updateBlock(b.id, { src })}
+          onPatch={(patch) => updateBlock(b.id, patch)}
           onEnter={() => {
             insertAfter(b.id, emptyParagraph());
           }}
@@ -326,6 +493,7 @@ interface RowProps {
   onCommit: (text: string) => void;
   onCheck: (checked: boolean) => void;
   onSrcChange: (src: string) => void;
+  onPatch: (patch: Partial<DocBlock>) => void;
   onEnter: () => void;
   onBackspaceAtStart: () => void;
   onMove: (dir: -1 | 1) => void;
@@ -344,6 +512,7 @@ function BlockRow({
   onCommit,
   onCheck,
   onSrcChange,
+  onPatch,
   onEnter,
   onBackspaceAtStart,
   onMove,
@@ -506,6 +675,7 @@ function BlockRow({
         onBlur={onCommitText}
         onCheck={onCheck}
         onSrcChange={onSrcChange}
+        onPatch={onPatch}
       />
     </div>
   );
@@ -524,6 +694,7 @@ interface BodyProps {
   onBlur: () => void;
   onCheck: (checked: boolean) => void;
   onSrcChange: (src: string) => void;
+  onPatch: (patch: Partial<DocBlock>) => void;
 }
 
 function BlockBody({
@@ -535,7 +706,14 @@ function BlockBody({
   onBlur,
   onCheck,
   onSrcChange,
+  onPatch,
 }: BodyProps) {
+  // Rich, self-contained widget blocks (no inline text editing).
+  if (block.type === "embed" || block.type === "video") return <EmbedBlock block={block} onPatch={onPatch} />;
+  if (block.type === "bookmark") return <BookmarkBlock block={block} onPatch={onPatch} />;
+  if (block.type === "button") return <ButtonBlock block={block} onPatch={onPatch} />;
+  if (block.type === "table") return <TableBlock block={block} onPatch={onPatch} />;
+  if (block.type === "component") return <ComponentBlock block={block} onPatch={onPatch} />;
   if (block.type === "divider") {
     return (
       <div className="w-full py-3">
@@ -616,10 +794,53 @@ function BlockBody({
     );
   }
   if (block.type === "callout") {
+    const t = toneOf(block.tone);
     return (
-      <div className="flex w-full gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3">
-        <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+      <div className={`group/callout relative flex w-full gap-3 rounded-lg border ${t.ring} ${t.bg} px-4 py-3`}>
+        <span className="mt-0.5 shrink-0 text-[15px] leading-none">{block.emoji || t.emoji}</span>
         <div className="flex-1">{editable}</div>
+        <div className="absolute right-2 top-2 hidden items-center gap-0.5 rounded-md border border-border bg-popover p-0.5 shadow-sm group-hover/callout:flex">
+          {CALLOUT_TONES.map((tn) => (
+            <button
+              key={tn.id}
+              type="button"
+              title={tn.label}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onPatch({ tone: tn.id, emoji: tn.emoji });
+              }}
+              className={`grid h-5 w-5 place-items-center rounded text-[11px] transition-colors hover:bg-[color:var(--row-hover)] ${block.tone === tn.id ? "ring-1 ring-primary" : ""}`}
+            >
+              {tn.emoji}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (block.type === "toggle") {
+    const open = block.open ?? true;
+    return (
+      <div className="w-full py-0.5">
+        <div className="flex w-full items-start gap-1">
+          <button
+            type="button"
+            title={open ? "Collapse" : "Expand"}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onPatch({ open: !open });
+            }}
+            className="mt-[3px] grid h-5 w-5 shrink-0 place-items-center rounded text-muted-foreground transition-colors hover:bg-[color:var(--row-hover)] hover:text-foreground"
+          >
+            <ChevronRight className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-90" : ""}`} />
+          </button>
+          <div className="flex-1 font-medium">{editable}</div>
+        </div>
+        {open && (
+          <div className="ml-6 mt-1 border-l border-border pl-3">
+            <ToggleBody block={block} onPatch={onPatch} />
+          </div>
+        )}
       </div>
     );
   }
@@ -672,6 +893,405 @@ function Editable({
       onInput={onInput}
       onBlur={onBlur}
       className={`block-editable w-full outline-none ${cls}`}
+    />
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Rich widget blocks                                                  */
+/* ------------------------------------------------------------------ */
+
+type WidgetProps = { block: DocBlock; onPatch: (patch: Partial<DocBlock>) => void };
+
+/** Empty-state URL capture shared by embed / video / bookmark. */
+function UrlInput({
+  icon: Icon,
+  label,
+  placeholder,
+  onSubmit,
+}: {
+  icon: LucideIcon;
+  label: string;
+  placeholder: string;
+  onSubmit: (url: string) => void;
+}) {
+  const [v, setV] = useState("");
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+  const commit = () => {
+    const url = v.trim();
+    if (url) onSubmit(url);
+  };
+  return (
+    <div className="my-1 flex items-center gap-2.5 rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2.5">
+      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <span className="hidden shrink-0 text-[12px] font-medium text-muted-foreground sm:inline">{label}</span>
+      <input
+        ref={inputRef}
+        type="url"
+        value={v}
+        placeholder={placeholder}
+        onChange={(e) => setV(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            commit();
+          }
+        }}
+        onBlur={commit}
+        className="h-8 flex-1 rounded-md border border-border bg-background px-2.5 text-[12.5px] outline-none focus:border-primary"
+      />
+    </div>
+  );
+}
+
+function WidgetChrome({ label, onChange, children }: { label: string; onChange: () => void; children: React.ReactNode }) {
+  return (
+    <div className="group/widget relative my-1 w-full">
+      {children}
+      <button
+        type="button"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          onChange();
+        }}
+        className="absolute right-2 top-2 hidden rounded-md border border-border bg-popover px-2 py-1 text-[11px] font-medium text-muted-foreground shadow-sm transition-colors hover:text-foreground group-hover/widget:block"
+      >
+        {label}
+      </button>
+    </div>
+  );
+}
+
+function EmbedBlock({ block, onPatch }: WidgetProps) {
+  const isVideo = block.type === "video";
+  if (!block.url) {
+    return (
+      <UrlInput
+        icon={isVideo ? Video : Youtube}
+        label={isVideo ? "Video" : "Embed"}
+        placeholder={isVideo ? "Paste a video URL (mp4, YouTube, Loom…)" : "Paste a YouTube, Loom, Figma, or CodePen link"}
+        onSubmit={(url) => {
+          const info = detectEmbed(url);
+          onPatch({ url, provider: info.provider, title: info.label });
+        }}
+      />
+    );
+  }
+  const info = detectEmbed(block.url);
+  const fileVideo = isVideo && /\.(mp4|webm|ogg)(\?|$)/i.test(block.url);
+  const aspect = info.aspect === "auto" ? "16/9" : info.aspect;
+  return (
+    <WidgetChrome label="Change" onChange={() => onPatch({ url: "", provider: undefined })}>
+      <div className="overflow-hidden rounded-xl border border-border bg-black/5">
+        <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <Youtube className="h-3.5 w-3.5" /> {info.label}
+          </span>
+          <span className="ml-auto truncate opacity-70">{block.url}</span>
+        </div>
+        {fileVideo ? (
+          <video src={block.url} controls className="block w-full bg-black" style={{ aspectRatio: aspect }} />
+        ) : (
+          <iframe
+            src={info.embedUrl}
+            title={info.label}
+            loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="block w-full border-0"
+            style={{ aspectRatio: aspect }}
+          />
+        )}
+      </div>
+    </WidgetChrome>
+  );
+}
+
+function BookmarkBlock({ block, onPatch }: WidgetProps) {
+  if (!block.url) {
+    return (
+      <UrlInput
+        icon={Link2}
+        label="Bookmark"
+        placeholder="Paste any link to create a preview card"
+        onSubmit={(url) => {
+          const meta = fakeBookmarkMeta(url);
+          onPatch({ url, title: meta.title, desc: meta.desc, site: meta.site });
+        }}
+      />
+    );
+  }
+  const letter = (block.site || block.url).replace(/^https?:\/\//, "").charAt(0).toUpperCase();
+  return (
+    <WidgetChrome label="Change" onChange={() => onPatch({ url: "" })}>
+      <a
+        href={block.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onMouseDown={(e) => e.stopPropagation()}
+        className="flex items-stretch overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-border-strong"
+      >
+        <div className="min-w-0 flex-1 px-4 py-3">
+          <div className="truncate text-[13px] font-semibold text-foreground">{block.title || block.url}</div>
+          {block.desc && <div className="mt-0.5 line-clamp-2 text-[11.5px] text-muted-foreground">{block.desc}</div>}
+          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <span className="grid h-3.5 w-3.5 place-items-center rounded-sm bg-primary/15 text-[8px] font-bold text-primary">{letter}</span>
+            <span className="truncate">{block.site || block.url}</span>
+          </div>
+        </div>
+        <div className="hidden w-40 shrink-0 bg-gradient-to-br from-indigo-400/30 to-fuchsia-400/30 sm:block" />
+      </a>
+    </WidgetChrome>
+  );
+}
+
+const BTN_VARIANTS: Record<string, string> = {
+  primary: "bg-primary text-primary-foreground hover:bg-[var(--primary-hover)]",
+  secondary: "bg-[color:var(--s2)] text-foreground border border-border",
+  outline: "border border-border text-foreground",
+  ghost: "text-primary hover:underline",
+};
+
+function ButtonBlock({ block, onPatch }: WidgetProps) {
+  const variant = block.variant ?? "primary";
+  return (
+    <div className="my-1.5 w-full rounded-xl border border-border bg-muted/30 p-3">
+      <div className="grid place-items-center py-2">
+        <span className={`inline-flex h-9 items-center rounded-lg px-4 text-[13px] font-semibold ${BTN_VARIANTS[variant] ?? BTN_VARIANTS.primary}`}>
+          {block.label || "Button"}
+        </span>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-border pt-2">
+        <input
+          value={block.label ?? ""}
+          placeholder="Label"
+          onChange={(e) => onPatch({ label: e.target.value })}
+          className="h-7 w-28 rounded-md border border-border bg-background px-2 text-[12px] outline-none focus:border-primary"
+        />
+        <input
+          value={block.href ?? ""}
+          placeholder="https://your-site.com"
+          onChange={(e) => onPatch({ href: e.target.value })}
+          className="h-7 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-[12px] outline-none focus:border-primary"
+        />
+        <div className="flex items-center gap-0.5 rounded-md border border-border bg-background p-0.5">
+          {["primary", "secondary", "outline", "ghost"].map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => onPatch({ variant: v })}
+              className={`rounded px-1.5 py-1 text-[10.5px] font-medium capitalize transition-colors ${variant === v ? "bg-[color:var(--row-hover)] text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TableBlock({ block, onPatch }: WidgetProps) {
+  const rows = block.rows && block.rows.length ? block.rows : [["", ""], ["", ""]];
+  const hasHeader = block.hasHeader ?? true;
+  const setCell = (r: number, c: number, val: string) => {
+    const next = rows.map((row) => [...row]);
+    next[r][c] = val;
+    onPatch({ rows: next });
+  };
+  const addRow = () => onPatch({ rows: [...rows, rows[0].map(() => "")] });
+  const addCol = () => onPatch({ rows: rows.map((row) => [...row, ""]) });
+  const removeRow = (r: number) => rows.length > 1 && onPatch({ rows: rows.filter((_, i) => i !== r) });
+
+  return (
+    <div className="my-1.5 w-full">
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full border-collapse text-[12.5px]">
+          <tbody>
+            {rows.map((row, r) => (
+              <tr key={r} className="group/row">
+                {row.map((cell, c) => (
+                  <td key={c} className="border border-border p-0">
+                    <input
+                      value={cell}
+                      onChange={(e) => setCell(r, c, e.target.value)}
+                      placeholder={hasHeader && r === 0 ? `Column ${c + 1}` : ""}
+                      className={`w-full min-w-[96px] bg-transparent px-2.5 py-1.5 outline-none focus:bg-[color:var(--row-hover)] ${hasHeader && r === 0 ? "font-semibold" : ""}`}
+                    />
+                  </td>
+                ))}
+                <td className="w-6 border-y border-border bg-muted/30 align-middle">
+                  <button
+                    type="button"
+                    title="Remove row"
+                    onClick={() => removeRow(r)}
+                    className="hidden h-6 w-6 place-items-center text-muted-foreground hover:text-destructive group-hover/row:grid"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-1.5 flex items-center gap-2">
+        <button type="button" onClick={addRow} className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground">
+          <Plus className="h-3 w-3" /> Row
+        </button>
+        <button type="button" onClick={addCol} className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground">
+          <Plus className="h-3 w-3" /> Column
+        </button>
+        <label className="ml-auto inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <input type="checkbox" checked={hasHeader} onChange={(e) => onPatch({ hasHeader: e.target.checked })} className="h-3 w-3 accent-[color:var(--primary)]" />
+          Header row
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function ComponentBlock({ block, onPatch }: WidgetProps) {
+  const def = componentDef(block.component);
+  const p = block.componentProps ?? {};
+  return (
+    <div className="group/cmp my-1.5 w-full overflow-hidden rounded-xl border border-border bg-card">
+      <div className={`flex items-center gap-2 bg-gradient-to-r ${def?.accent ?? "from-slate-500 to-slate-600"} px-3 py-1.5 text-[11px] font-semibold text-white`}>
+        <Boxes className="h-3.5 w-3.5" />
+        {def?.label ?? "Component"}
+        <span className="ml-auto rounded-full bg-white/20 px-1.5 py-0.5 text-[9.5px] font-medium uppercase tracking-wide">Instance</span>
+      </div>
+      <div className="p-4">
+        <ComponentPreview keyName={block.component} title={block.title ?? ""} desc={block.desc ?? ""} props={p} />
+      </div>
+      <div className="hidden items-center gap-2 border-t border-border px-3 py-2 group-hover/cmp:flex">
+        <input
+          value={block.title ?? ""}
+          placeholder="Title"
+          onChange={(e) => onPatch({ title: e.target.value })}
+          className="h-7 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-[12px] outline-none focus:border-primary"
+        />
+        <input
+          value={block.desc ?? ""}
+          placeholder="Description"
+          onChange={(e) => onPatch({ desc: e.target.value })}
+          className="h-7 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-[12px] outline-none focus:border-primary"
+        />
+      </div>
+    </div>
+  );
+}
+
+function ComponentPreview({ keyName, title, desc, props }: { keyName?: string; title: string; desc: string; props: Record<string, string> }) {
+  switch (keyName) {
+    case "cta-banner":
+      return (
+        <div className="rounded-lg bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-5 py-4 text-center text-white">
+          <div className="text-[15px] font-semibold">{title}</div>
+          <div className="mt-0.5 text-[12px] opacity-90">{desc}</div>
+          <span className="mt-2.5 inline-flex h-8 items-center rounded-md bg-white px-3 text-[12px] font-semibold text-indigo-600">{props.button ?? "Get started"}</span>
+        </div>
+      );
+    case "newsletter":
+      return (
+        <div className="rounded-lg border border-border bg-muted/30 px-4 py-3">
+          <div className="text-[14px] font-semibold text-foreground">{title}</div>
+          <div className="text-[12px] text-muted-foreground">{desc}</div>
+          <div className="mt-2 flex gap-2">
+            <span className="flex h-8 flex-1 items-center rounded-md border border-border bg-background px-2.5 text-[12px] text-muted-foreground">{props.placeholder ?? "you@company.com"}</span>
+            <span className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-[12px] font-semibold text-primary-foreground">{props.button ?? "Subscribe"}</span>
+          </div>
+        </div>
+      );
+    case "pricing":
+      return (
+        <div className="rounded-lg border border-border px-4 py-3">
+          <div className="text-[12px] font-medium text-muted-foreground">{title}</div>
+          <div className="mt-0.5 flex items-baseline gap-1">
+            <span className="text-[26px] font-bold tracking-tight text-foreground">{props.price ?? "$29"}</span>
+            <span className="text-[12px] text-muted-foreground">{props.period ?? "/mo"}</span>
+          </div>
+          <ul className="mt-2 space-y-1">
+            {(props.features ?? "").split("\n").filter(Boolean).map((f, i) => (
+              <li key={i} className="flex items-center gap-1.5 text-[12px] text-foreground"><span className="text-emerald-500">✓</span>{f}</li>
+            ))}
+          </ul>
+          <span className="mt-2.5 inline-flex h-8 items-center rounded-md bg-primary px-3 text-[12px] font-semibold text-primary-foreground">{props.button ?? "Choose plan"}</span>
+        </div>
+      );
+    case "testimonial":
+      return (
+        <figure className="rounded-lg border border-border bg-muted/30 px-4 py-3">
+          <blockquote className="text-[14px] font-medium leading-snug text-foreground">“{title}”</blockquote>
+          <figcaption className="mt-2 flex items-center gap-2">
+            <span className="grid h-7 w-7 place-items-center rounded-full bg-amber-500/20 text-[11px] font-semibold text-amber-600">{(props.author ?? "A").charAt(0)}</span>
+            <span className="text-[11.5px]"><span className="font-semibold text-foreground">{props.author ?? "Author"}</span><span className="text-muted-foreground"> · {props.role ?? ""}</span></span>
+          </figcaption>
+        </figure>
+      );
+    case "stat":
+      return (
+        <div className="text-center">
+          <div className="bg-gradient-to-r from-violet-500 to-purple-500 bg-clip-text text-[34px] font-bold leading-none tracking-tight text-transparent">{title}</div>
+          <div className="mt-1 text-[12px] text-muted-foreground">{desc}</div>
+        </div>
+      );
+    case "profile":
+      return (
+        <div className="flex items-center gap-3">
+          <span className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-pink-500 to-rose-500 text-[15px] font-semibold text-white">{title.charAt(0)}</span>
+          <div className="min-w-0">
+            <div className="text-[13.5px] font-semibold text-foreground">{title} <span className="ml-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{props.role ?? ""}</span></div>
+            <div className="text-[12px] text-muted-foreground">{desc}</div>
+          </div>
+        </div>
+      );
+    case "product-hunt":
+      return (
+        <div className="inline-flex items-center gap-2 rounded-lg border border-orange-300/50 bg-orange-500/10 px-3 py-2">
+          <Award className="h-4 w-4 text-orange-500" />
+          <span className="text-[12.5px] font-medium text-foreground">{title}</span>
+          {props.tag && <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[9.5px] font-bold uppercase text-white">{props.tag}</span>}
+        </div>
+      );
+    case "faq":
+      return (
+        <div>
+          <div className="flex items-center gap-1.5 text-[13.5px] font-semibold text-foreground"><MessagesSquare className="h-3.5 w-3.5 text-muted-foreground" />{title}</div>
+          <div className="mt-1 pl-5 text-[12.5px] text-muted-foreground">{desc}</div>
+        </div>
+      );
+    default:
+      return (
+        <div>
+          <div className="text-[13.5px] font-semibold text-foreground">{title}</div>
+          {desc && <div className="mt-0.5 text-[12px] text-muted-foreground">{desc}</div>}
+        </div>
+      );
+  }
+}
+
+/** Secondary editable for a toggle block's body text. */
+function ToggleBody({ block, onPatch }: WidgetProps) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (document.activeElement === el) return;
+    const incoming = block.bodyText ?? "";
+    if (el.textContent !== incoming) el.textContent = incoming;
+  }, [block.bodyText]);
+  return (
+    <div
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      data-placeholder="Empty toggle. Add some content."
+      onBlur={() => onPatch({ bodyText: ref.current?.textContent ?? "" })}
+      className="block-editable min-h-[24px] text-[14px] leading-relaxed text-muted-foreground outline-none"
     />
   );
 }
