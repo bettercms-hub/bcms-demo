@@ -5,6 +5,8 @@
 import { CalendarClock } from "lucide-react";
 import { getWorkflow, stageOfEntry, useCMS } from "@/lib/cms/store";
 import { cn } from "@/lib/utils";
+import { initialsOf, toneFor } from "@/lib/cms/avatar-color";
+import { PersonTooltipForMember } from "./PersonTooltip";
 import type { Entry, Member, WorkflowStage } from "@/lib/cms/types";
 
 export function stageChipStyle(stage: WorkflowStage): React.CSSProperties {
@@ -41,34 +43,17 @@ export function WorkflowStageBadge({ entry }: { entry: Entry }) {
   return <StageChip stage={stage} />;
 }
 
-export function initialsOf(name: string): string {
-  return (
-    name
-      .split(/[\s.]+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((s) => s[0]?.toUpperCase() ?? "")
-      .join("") || "?"
-  );
-}
-
-const AVATAR_TONES = ["#6366F1", "#0EA5E9", "#10B981", "#F59E0B", "#8B5CF6", "#14B8A6", "#F43F5E", "#84CC16"];
-
-export function toneFor(id: string): string {
-  let h = 0;
-  for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return AVATAR_TONES[h % AVATAR_TONES.length];
-}
-
 export function MemberAvatar({ member, size = 20 }: { member: Member; size?: number }) {
   return (
-    <span
-      title={member.name}
-      className="grid shrink-0 select-none place-items-center rounded-full font-semibold text-white"
-      style={{ width: size, height: size, fontSize: Math.max(8, Math.round(size * 0.4)), backgroundColor: toneFor(member.id), boxShadow: "0 0 0 2px var(--card)" }}
-    >
-      {initialsOf(member.name)}
-    </span>
+    <PersonTooltipForMember member={member}>
+      <span
+        tabIndex={0}
+        className="grid shrink-0 select-none place-items-center rounded-full font-semibold text-white outline-none"
+        style={{ width: size, height: size, fontSize: Math.max(8, Math.round(size * 0.4)), backgroundColor: toneFor(member.id), boxShadow: "0 0 0 2px var(--card)" }}
+      >
+        {initialsOf(member.name)}
+      </span>
+    </PersonTooltipForMember>
   );
 }
 
