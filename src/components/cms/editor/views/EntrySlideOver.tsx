@@ -1,9 +1,12 @@
 /**
  * EntrySlideOver — slide-over editor for a single entry.
  *
- * Reuses the existing <EntryView> form for the Content tab so we don't
- * re-implement field rendering. A persistent EntryWorkflowBar footer keeps
- * review and publishing one click away on every tab, not buried in one.
+ * Reuses the existing <EntryView> form for the Content tab. Status and
+ * publishing live in the persistent EntryWorkflowBar footer (one source),
+ * so the header stays a clean title + updated stamp. Nested dialogs the
+ * footer opens (Compare, Schedule, Request changes) are portalled to the
+ * body, so the sheet is told to ignore interactions inside them — otherwise
+ * clicking those dialogs would read as an outside click and close the sheet.
  */
 import { useParams } from "@tanstack/react-router";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -11,8 +14,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCMS } from "@/lib/cms/store";
 import { useProjectPresence } from "@/lib/workspace/presence-store";
 import { PresenceStack } from "@/components/cms/presence/Presence";
-import { PublishBadge } from "@/components/cms/ui/StatusBadge";
-import { WorkflowStageBadge } from "@/components/cms/workflow/WorkflowBits";
 import { EntryWorkflowBar } from "@/components/cms/editor/EntryWorkflowBar";
 import { EntryView } from "./EntryView";
 import { EntrySeoPanel } from "./entry-tabs/EntrySeoPanel";
@@ -24,6 +25,11 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   entryId: string | null;
+}
+
+/** True when an event originated inside a hand-rolled nested dialog. */
+function inNestedDialog(target: EventTarget | null): boolean {
+  return !!(target as Element | null)?.closest?.("[data-nested-dialog]");
 }
 
 export function EntrySlideOver({ open, onOpenChange, entryId }: Props) {
@@ -39,6 +45,12 @@ export function EntrySlideOver({ open, onOpenChange, entryId }: Props) {
       <SheetContent
         side="right"
         className="w-[min(760px,94vw)] sm:max-w-[760px] !p-0 border-l border-border/40 bg-[color:var(--canvas)] flex flex-col"
+        onInteractOutside={(e) => {
+          if (inNestedDialog((e as CustomEvent).detail?.originalEvent?.target ?? e.target)) e.preventDefault();
+        }}
+        onEscapeKeyDown={(e) => {
+          if (typeof document !== "undefined" && document.querySelector("[data-nested-dialog]")) e.preventDefault();
+        }}
       >
         {entry ? (
           <Tabs defaultValue="content" className="flex h-full min-h-0 flex-col">
@@ -48,10 +60,8 @@ export function EntrySlideOver({ open, onOpenChange, entryId }: Props) {
                 <div className="truncate text-[14px] font-semibold tracking-tight">
                   {entry.title || "Untitled"}
                 </div>
-                <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                  {entry.status && <PublishBadge state={entry.status} />}
-                  <WorkflowStageBadge entry={entry} />
-                  <span>Updated {new Date(entry.updatedAt).toLocaleDateString()}</span>
+                <div className="mt-0.5 text-[11px] text-muted-foreground">
+                  Updated {new Date(entry.updatedAt).toLocaleDateString()}
                 </div>
               </div>
               <PresenceStack peers={here} size={24} max={3} />

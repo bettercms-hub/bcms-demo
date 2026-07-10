@@ -94,7 +94,7 @@ export function ComparePageDialog({ projectId, page, canEdit, onClose }: { proje
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[95]">
+    <div className="fixed inset-0 z-[95] pointer-events-auto" data-nested-dialog>
       <div className="absolute inset-0 bg-slate-900/50" onMouseDown={onClose} aria-hidden />
       <div
         role="dialog"
