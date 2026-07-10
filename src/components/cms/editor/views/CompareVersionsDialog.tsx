@@ -7,7 +7,7 @@
  * one action per row — restore the published value into the draft. Nothing
  * else. The published column is read-only by definition.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeftRight, History, RotateCcw, X } from "lucide-react";
 import { toast } from "sonner";
@@ -43,6 +43,18 @@ export function CompareVersionsDialog({ entryId, onClose, canEdit }: { entryId: 
   const collection = useCMS((s) => (entry ? s.collections.find((c) => c.id === entry.collectionId) : undefined));
   const schema = useCMS((s) => (collection ? s.schemas.find((sc) => sc.id === collection.schemaId) : undefined));
   const [showUnchanged, setShowUnchanged] = useState(false);
+
+  // Close on Escape without letting a parent dialog (the entry slide-over) act on it.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+      }
+    }
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [onClose]);
 
   const rows = useMemo<FieldRowModel[]>(() => {
     if (!entry) return [];
@@ -92,7 +104,7 @@ export function CompareVersionsDialog({ entryId, onClose, canEdit }: { entryId: 
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[95]">
+    <div className="fixed inset-0 z-[95] pointer-events-auto" data-nested-dialog>
       <div className="absolute inset-0 bg-slate-900/50" onMouseDown={onClose} aria-hidden />
       <div
         role="dialog"
