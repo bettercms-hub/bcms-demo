@@ -302,7 +302,7 @@ function FieldRow({ field, entry, peer }: { field: SchemaField; entry: Entry; pe
         {field.required && <span className="text-[10px] text-primary">required</span>}
         {peer && (
           <span className="ml-auto flex items-center gap-1">
-            <PresenceAvatar peer={peer} size={16} ring={false} title={`${peer.name} is editing this field`} />
+            <PresenceAvatar peer={peer} size={16} ring={false} />
             <span className="text-[10px] font-medium" style={{ color: peer.color }}>{peer.name.split(" ")[0]}</span>
           </span>
         )}

@@ -26,6 +26,7 @@ export function PersonTooltip({
   avatarUrl,
   initials,
   color,
+  meta,
   children,
 }: {
   name: string;
@@ -33,6 +34,8 @@ export function PersonTooltip({
   avatarUrl?: string;
   initials: string;
   color: string;
+  /** Optional third line, e.g. what a person is doing right now. */
+  meta?: string;
   children: React.ReactNode;
 }) {
   const label = typeof role === "string" && !(role in ROLE_LABEL) ? role : roleLabel(role as WorkspaceRole);
@@ -41,10 +44,10 @@ export function PersonTooltip({
       <TooltipTrigger asChild>{children}</TooltipTrigger>
       <TooltipContent side="top" className="flex items-center gap-2 px-2 py-1.5">
         {avatarUrl ? (
-          <img src={avatarUrl} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" />
+          <img src={avatarUrl} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
         ) : (
           <span
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[11px] font-semibold text-white"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[12px] font-semibold text-white"
             style={{ backgroundColor: color }}
           >
             {initials}
@@ -53,6 +56,7 @@ export function PersonTooltip({
         <span className="min-w-0">
           <span className="block truncate text-[12.5px] font-medium leading-tight text-foreground">{name}</span>
           {label && <span className="block truncate text-[11px] leading-tight text-muted-foreground">{label}</span>}
+          {meta && <span className="block truncate text-[11px] leading-tight text-muted-foreground/80">{meta}</span>}
         </span>
       </TooltipContent>
     </Tooltip>

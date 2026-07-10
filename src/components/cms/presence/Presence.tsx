@@ -11,7 +11,9 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useRouterState } from "@tanstack/react-router";
 import { getProjectBySlug } from "@/lib/cms/use-cms";
+import { useCMS } from "@/lib/cms/store";
 import { peerLocationLabel, useProjectPresence, type PresencePeer } from "@/lib/workspace/presence-store";
+import { PersonTooltip } from "@/components/cms/workflow/PersonTooltip";
 import { cn } from "@/lib/utils";
 
 export function PresenceAvatar({
@@ -19,19 +21,21 @@ export function PresenceAvatar({
   size = 24,
   ring = true,
   className,
-  title,
+  /** Rich hover card (photo, name, role, location). Off inside the popover. */
+  withTooltip = true,
 }: {
   peer: PresencePeer;
   size?: number;
   ring?: boolean;
   className?: string;
-  title?: string;
+  withTooltip?: boolean;
 }) {
-  return (
+  // Presence peers are real teammates: pull their photo and role for the card.
+  const member = useCMS((s) => s.members.find((m) => m.id === peer.id));
+  const dot = (
     <span
-      title={title ?? `${peer.name} · ${peerLocationLabel(peer)}`}
       className={cn(
-        "grid shrink-0 select-none place-items-center rounded-full font-semibold text-white transition-opacity",
+        "grid shrink-0 select-none place-items-center rounded-full font-semibold text-white outline-none transition-opacity",
         peer.status === "idle" && "opacity-40",
         className,
       )}
@@ -42,9 +46,23 @@ export function PresenceAvatar({
         backgroundColor: peer.color,
         boxShadow: ring ? `0 0 0 2px var(--card)` : undefined,
       }}
+      {...(withTooltip ? { tabIndex: 0 } : { title: `${peer.name} · ${peerLocationLabel(peer)}` })}
     >
       {peer.initials}
     </span>
+  );
+  if (!withTooltip) return dot;
+  return (
+    <PersonTooltip
+      name={peer.name}
+      role={member?.role ?? peer.seat}
+      avatarUrl={member?.avatarUrl}
+      initials={peer.initials}
+      color={peer.color}
+      meta={peerLocationLabel(peer)}
+    >
+      {dot}
+    </PersonTooltip>
   );
 }
 
@@ -202,7 +220,7 @@ function PresenceGroup({
               !current && "hover:bg-[color:var(--color-row-hover)]",
             )}
           >
-            <PresenceAvatar peer={p} size={24} ring={false} title={p.name} />
+            <PresenceAvatar peer={p} size={24} ring={false} withTooltip={false} />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[12.5px] font-medium text-foreground">{p.name}</span>
               <span className="block truncate text-[11px] text-muted-foreground">{peerLocationLabel(p)}</span>
