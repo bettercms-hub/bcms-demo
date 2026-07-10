@@ -97,56 +97,63 @@ export function fakeBookmarkMeta(raw: string): { title: string; desc: string; si
 
 /* ---------------------------------------------------------- components */
 
+export type ComponentGroup = "Marketing" | "Commerce" | "Social" | "Content";
+
 export type ComponentDef = {
   key: string;
   label: string;
   desc: string;
   icon: string; // lucide icon name
   accent: string;
+  group: ComponentGroup;
   defaults: () => { title?: string; desc?: string; props?: Record<string, string> };
 };
 
+/** The order groups appear in the component browser. */
+export const COMPONENT_GROUPS: ComponentGroup[] = ["Marketing", "Commerce", "Social", "Content"];
+
 /** Reusable, typed component instances you can drop into body copy, the
- *  way BaseHub instantiates components inside rich text. */
+ *  way BaseHub instantiates components inside rich text. Grouped so the
+ *  browser stays navigable as the library grows to hundreds of components. */
 export const COMPONENT_CATALOG: ComponentDef[] = [
   {
     key: "cta-banner", label: "CTA banner", desc: "Headline, subtext, and a button",
-    icon: "Megaphone", accent: "from-indigo-500 to-fuchsia-500",
+    icon: "Megaphone", accent: "from-indigo-500 to-fuchsia-500", group: "Marketing",
     defaults: () => ({ title: "Ready to get started?", desc: "Spin up your first project in minutes.", props: { button: "Get started", href: "#" } }),
   },
   {
     key: "newsletter", label: "Newsletter signup", desc: "Email capture with a button",
-    icon: "Mail", accent: "from-sky-500 to-cyan-500",
+    icon: "Mail", accent: "from-sky-500 to-cyan-500", group: "Marketing",
     defaults: () => ({ title: "Subscribe to the newsletter", desc: "Product updates, no spam.", props: { button: "Subscribe", placeholder: "you@company.com" } }),
   },
   {
+    key: "product-hunt", label: "Badge", desc: "A small promo badge",
+    icon: "Award", accent: "from-orange-500 to-red-500", group: "Marketing",
+    defaults: () => ({ title: "Featured on the front page", props: { tag: "New" } }),
+  },
+  {
     key: "pricing", label: "Pricing card", desc: "Plan, price, and features",
-    icon: "CreditCard", accent: "from-emerald-500 to-teal-500",
+    icon: "CreditCard", accent: "from-emerald-500 to-teal-500", group: "Commerce",
     defaults: () => ({ title: "Pro", desc: "For growing teams", props: { price: "$29", period: "/mo", features: "Unlimited pages\nRoles and workflows\nPriority support", button: "Choose Pro" } }),
   },
   {
     key: "testimonial", label: "Testimonial", desc: "Quote with author and role",
-    icon: "Quote", accent: "from-amber-500 to-orange-500",
+    icon: "Quote", accent: "from-amber-500 to-orange-500", group: "Social",
     defaults: () => ({ title: "This changed how our team ships content.", props: { author: "Maya Chen", role: "Head of Content, Northwind" } }),
   },
   {
-    key: "stat", label: "Stat highlight", desc: "A big number with a label",
-    icon: "TrendingUp", accent: "from-violet-500 to-purple-500",
-    defaults: () => ({ title: "98%", desc: "Faster time to publish", props: {} }),
-  },
-  {
     key: "profile", label: "Author card", desc: "Avatar, name, and bio",
-    icon: "UserRound", accent: "from-pink-500 to-rose-500",
+    icon: "UserRound", accent: "from-pink-500 to-rose-500", group: "Social",
     defaults: () => ({ title: "Arnab Dhar", desc: "Writes about content operations and headless CMS.", props: { role: "Staff Writer" } }),
   },
   {
-    key: "product-hunt", label: "Badge", desc: "A small promo badge",
-    icon: "Award", accent: "from-orange-500 to-red-500",
-    defaults: () => ({ title: "Featured on the front page", props: { tag: "New" } }),
+    key: "stat", label: "Stat highlight", desc: "A big number with a label",
+    icon: "TrendingUp", accent: "from-violet-500 to-purple-500", group: "Content",
+    defaults: () => ({ title: "98%", desc: "Faster time to publish", props: {} }),
   },
   {
     key: "faq", label: "FAQ item", desc: "A question and answer",
-    icon: "MessagesSquare", accent: "from-slate-500 to-slate-600",
+    icon: "MessagesSquare", accent: "from-slate-500 to-slate-600", group: "Content",
     defaults: () => ({ title: "Can I bring my own frontend?", desc: "Yes. Query content over the headless API and render it anywhere.", props: {} }),
   },
 ];

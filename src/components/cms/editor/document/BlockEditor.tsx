@@ -28,6 +28,9 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  Heading4,
+  Heading5,
+  Heading6,
   Image as ImageIcon,
   ImagePlus,
   Link2,
@@ -45,6 +48,7 @@ import {
   PenLine,
   Plus,
   Quote,
+  Search,
   Sparkles,
   StretchHorizontal,
   Table as TableIcon,
@@ -72,6 +76,7 @@ import {
 import {
   AI_COMMANDS,
   COMPONENT_CATALOG,
+  COMPONENT_GROUPS,
   CALLOUT_TONES,
   componentDef,
   detectEmbed,
@@ -100,8 +105,6 @@ interface SlashState {
   query: string;
   rect: { top: number; left: number };
 }
-
-const RECENT_KEY = "bcms.slash.recent";
 
 /* ------------------------------------------------------------------ */
 /* Slash menu catalogue                                               */
@@ -141,6 +144,9 @@ const BASIC_ITEMS: SlashItem[] = [
   { id: "h1", label: "Heading 1", description: "Large section heading", icon: Heading1, category: "Basic", keywords: ["title", "h1"], action: { kind: "block", type: "h1" } },
   { id: "h2", label: "Heading 2", description: "Medium section heading", icon: Heading2, category: "Basic", keywords: ["h2"], action: { kind: "block", type: "h2" } },
   { id: "h3", label: "Heading 3", description: "Small section heading", icon: Heading3, category: "Basic", keywords: ["h3"], action: { kind: "block", type: "h3" } },
+  { id: "h4", label: "Heading 4", description: "Sub-heading", icon: Heading4, category: "Basic", keywords: ["h4"], action: { kind: "block", type: "h4" } },
+  { id: "h5", label: "Heading 5", description: "Minor heading", icon: Heading5, category: "Basic", keywords: ["h5"], action: { kind: "block", type: "h5" } },
+  { id: "h6", label: "Heading 6", description: "Smallest heading", icon: Heading6, category: "Basic", keywords: ["h6"], action: { kind: "block", type: "h6" } },
   { id: "quote", label: "Quote", description: "Pull quote or block quote", icon: MessageSquareQuote, category: "Basic", keywords: ["blockquote"], action: { kind: "block", type: "quote" } },
   { id: "callout", label: "Callout", description: "Highlighted note with a tone", icon: Lightbulb, category: "Basic", keywords: ["note", "tip", "info"], action: { kind: "block", type: "callout" } },
   { id: "toggle", label: "Toggle", description: "Collapsible heading and body", icon: ChevronRight, category: "Basic", keywords: ["accordion", "collapse", "details"], action: { kind: "block", type: "toggle" } },
@@ -176,27 +182,25 @@ const COMPONENT_ITEMS: SlashItem[] = COMPONENT_CATALOG.map((c) => ({
   keywords: ["component", "instance", c.key], action: { kind: "component", key: c.key },
 }));
 
+// Everything the slash menu can insert, used for global fuzzy search.
 const SLASH_ITEMS: SlashItem[] = [
   ...AI_ITEMS, ...BASIC_ITEMS, ...LIST_ITEMS, ...MEDIA_ITEMS,
   ...EMBED_ITEMS, ...ADVANCED_ITEMS, ...COMPONENT_ITEMS,
 ];
 
-function loadRecent(): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(RECENT_KEY);
-    if (!raw) return [];
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr.slice(0, 5) : [];
-  } catch {
-    return [];
-  }
-}
-function pushRecent(id: string) {
-  if (typeof window === "undefined") return;
-  const cur = loadRecent().filter((x) => x !== id);
-  const next = [id, ...cur].slice(0, 5);
-  window.localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+const byId = (id: string) => SLASH_ITEMS.find((i) => i.id === id);
+
+// The block set shown directly at the root of the menu (basics first). AI and
+// Components are collapsed into single expandable rows so the root stays short
+// and can scale to hundreds of components.
+const ROOT_BLOCKS: SlashItem[] = [
+  "paragraph", "h1", "h2", "h3", "h4", "h5", "h6", "table",
+  "quote", "callout", "bullet", "numbered", "todo", "toggle", "divider", "code", "image",
+].map(byId).filter(Boolean) as SlashItem[];
+
+function matchItem(it: SlashItem, q: string): boolean {
+  const hay = `${it.label} ${it.description} ${(it.keywords ?? []).join(" ")}`.toLowerCase();
+  return hay.includes(q);
 }
 
 function widgetDefaults(type: DocBlockType): Partial<DocBlock> {
@@ -394,7 +398,6 @@ export function BlockEditor({ value, onChange, placeholder }: Props) {
     if (el && el.textContent !== cleaned) el.textContent = cleaned;
     const base = doc.blocks.map((b) => (b.id === id ? { ...b, text: cleaned } : b));
     setSlash(null);
-    pushRecent(item.id);
 
     const a = item.action;
     if (a.kind === "block") {
@@ -877,6 +880,12 @@ function Editable({
         return "text-[22px] font-semibold leading-snug tracking-tight";
       case "h3":
         return "text-[17px] font-semibold leading-snug";
+      case "h4":
+        return "text-[15px] font-semibold leading-snug";
+      case "h5":
+        return "text-[13.5px] font-semibold uppercase tracking-wide leading-snug";
+      case "h6":
+        return "text-[12px] font-semibold uppercase tracking-wider text-muted-foreground leading-snug";
       case "code":
         return "font-mono text-[12.5px]";
       default:
@@ -1300,6 +1309,23 @@ function ToggleBody({ block, onPatch }: WidgetProps) {
 /* Slash menu                                                          */
 /* ------------------------------------------------------------------ */
 
+type SlashView = "root" | "ai" | "components" | "embeds";
+
+type Row =
+  | { t: "insert"; item: SlashItem }
+  | { t: "drill"; view: SlashView; label: string; desc: string; icon: LucideIcon; count: number }
+  | { t: "back"; label: string };
+
+const CATEGORY_LABEL: Record<SlashCategory, string> = {
+  AI: "AI", Basic: "Basic blocks", Lists: "Lists", Media: "Media",
+  Embeds: "Embeds", Advanced: "Advanced", Components: "Components",
+};
+const CATEGORY_ORDER: SlashCategory[] = ["AI", "Basic", "Lists", "Media", "Embeds", "Advanced", "Components"];
+
+function categoryItems(view: SlashView): SlashItem[] {
+  return view === "ai" ? AI_ITEMS : view === "components" ? COMPONENT_ITEMS : view === "embeds" ? EMBED_ITEMS : [];
+}
+
 function SlashMenu({
   state,
   onSelect,
@@ -1309,117 +1335,147 @@ function SlashMenu({
   onSelect: (item: SlashItem) => void;
   onClose: () => void;
 }) {
+  const [view, setView] = useState<SlashView>("root");
   const [active, setActive] = useState(0);
+  const q = state.query.trim().toLowerCase();
 
-  const items = useMemo(() => {
-    const q = state.query.trim().toLowerCase();
-    if (!q) {
-      const recent = loadRecent()
-        .map((id) => SLASH_ITEMS.find((x) => x.id === id))
-        .filter(Boolean) as SlashItem[];
-      return { recent, results: SLASH_ITEMS };
+  // Build the flat, keyboard-navigable rows and the section headers to show.
+  const { rows, sections } = useMemo(() => {
+    const rows: Row[] = [];
+    const sections: { title?: string; idx: number[] }[] = [];
+    const inCategory = view !== "root";
+
+    if (!inCategory && !q) {
+      // Compact root: basics up front, AI + Components + Embeds collapsed.
+      ROOT_BLOCKS.forEach((it) => rows.push({ t: "insert", item: it }));
+      sections.push({ title: "Basic", idx: ROOT_BLOCKS.map((_, i) => i) });
+      const drillStart = rows.length;
+      rows.push({ t: "drill", view: "ai", label: "AI", desc: "Write and edit with AI", icon: Sparkles, count: AI_ITEMS.length });
+      rows.push({ t: "drill", view: "components", label: "Components", desc: "Reusable blocks for your site", icon: Boxes, count: COMPONENT_ITEMS.length });
+      rows.push({ t: "drill", view: "embeds", label: "Embeds", desc: "YouTube, Figma, Loom, and more", icon: Youtube, count: EMBED_ITEMS.length });
+      sections.push({ title: "More", idx: [drillStart, drillStart + 1, drillStart + 2] });
+    } else if (!inCategory && q) {
+      // Global fuzzy search across everything, grouped by category.
+      const hits = SLASH_ITEMS.filter((it) => matchItem(it, q));
+      hits.forEach((it) => rows.push({ t: "insert", item: it }));
+      for (const cat of CATEGORY_ORDER) {
+        const idx = rows.map((r, i) => (r.t === "insert" && r.item.category === cat ? i : -1)).filter((i) => i >= 0);
+        if (idx.length) sections.push({ title: CATEGORY_LABEL[cat], idx });
+      }
+    } else {
+      // Drilled into a category: a back row, then its (optionally filtered) items.
+      rows.push({ t: "back", label: view === "ai" ? "AI" : view === "components" ? "Components" : "Embeds" });
+      sections.push({ title: undefined, idx: [0] });
+      const items = categoryItems(view).filter((it) => !q || matchItem(it, q));
+      items.forEach((it) => rows.push({ t: "insert", item: it }));
+      if (view === "components") {
+        for (const g of COMPONENT_GROUPS) {
+          const idx = rows
+            .map((r, i) => (r.t === "insert" && r.item.action.kind === "component" && componentDef(r.item.action.key)?.group === g ? i : -1))
+            .filter((i) => i >= 0);
+          if (idx.length) sections.push({ title: g, idx });
+        }
+      } else {
+        const idx = rows.map((r, i) => (r.t === "insert" ? i : -1)).filter((i) => i >= 0);
+        if (idx.length) sections.push({ title: view === "ai" ? "AI commands" : "Embeds", idx });
+      }
     }
-    const results = SLASH_ITEMS.filter((it) => {
-      const hay = `${it.label} ${it.description} ${(it.keywords ?? []).join(" ")}`.toLowerCase();
-      return hay.includes(q);
-    });
-    return { recent: [] as SlashItem[], results };
-  }, [state.query]);
+    return { rows, sections };
+  }, [q, view]);
 
-  const flat = [...items.recent, ...items.results];
+  useEffect(() => setActive(0), [q, view]);
 
-  useEffect(() => {
-    setActive(0);
-  }, [state.query]);
+  const activate = (row: Row) => {
+    if (row.t === "insert") onSelect(row.item);
+    else if (row.t === "drill") setView(row.view);
+    else setView("root");
+  };
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setActive((i) => Math.min(flat.length - 1, i + 1));
+        setActive((i) => Math.min(rows.length - 1, i + 1));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setActive((i) => Math.max(0, i - 1));
       } else if (e.key === "Enter") {
         e.preventDefault();
-        const item = flat[active];
-        if (item) onSelect(item);
+        const row = rows[active];
+        if (row) activate(row);
       } else if (e.key === "Escape") {
         e.preventDefault();
-        onClose();
+        if (view !== "root") setView("root");
+        else onClose();
       }
     };
     window.addEventListener("keydown", handler, true);
     return () => window.removeEventListener("keydown", handler, true);
-  }, [flat, active, onSelect, onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, active, view, onSelect, onClose]);
 
-  if (flat.length === 0) return null;
+  const empty = rows.length === 0 || (rows.length === 1 && rows[0].t === "back");
 
-  const categorised: Record<string, SlashItem[]> = {};
-  for (const it of items.results) {
-    (categorised[it.category] ??= []).push(it);
-  }
+  // Open downward from the caret, but flip up when there isn't room below.
+  const MENU_MAX = 420;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+  const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
+  const openUp = state.rect.top + 6 + MENU_MAX > vh;
+  const top = openUp ? Math.max(8, state.rect.top - MENU_MAX - 22) : state.rect.top + 6;
+  const left = Math.max(8, Math.min(state.rect.left, vw - 356));
 
   return (
     <div
-      style={{
-        position: "fixed",
-        top: state.rect.top + 6,
-        left: state.rect.left,
-      }}
-      className="z-50 w-[320px] overflow-hidden rounded-lg border border-border bg-popover shadow-lg animate-in fade-in zoom-in-95 duration-100"
+      style={{ position: "fixed", top, left }}
+      className="z-50 flex max-h-[420px] w-[340px] flex-col overflow-hidden rounded-xl border border-border bg-popover shadow-lg animate-in fade-in zoom-in-95 duration-100"
       role="listbox"
     >
-      <div className="max-h-[320px] overflow-y-auto py-1">
-        {items.recent.length > 0 && (
-          <Section title="Recently used">
-            {items.recent.map((it, i) => (
-              <SlashRow
-                key={`r-${it.id}`}
-                item={it}
-                active={active === i}
-                onMouseEnter={() => setActive(i)}
-                onClick={() => onSelect(it)}
-              />
-            ))}
-          </Section>
+      {/* search-bar header reflecting what you type after "/" */}
+      <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2">
+        <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        {q ? (
+          <span className="truncate text-[12.5px] text-foreground">{state.query}</span>
+        ) : (
+          <span className="text-[12.5px] text-muted-foreground">
+            {view === "root" ? "Search or pick a block" : `Search ${view === "ai" ? "AI commands" : view}`}
+          </span>
         )}
-        {Object.entries(categorised).map(([cat, list]) => (
-          <Section key={cat} title={cat}>
-            {list.map((it) => {
-              const idx = flat.indexOf(it);
-              return (
-                <SlashRow
-                  key={it.id}
-                  item={it}
-                  active={active === idx}
-                  onMouseEnter={() => setActive(idx)}
-                  onClick={() => onSelect(it)}
-                />
-              );
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto py-1">
+        {empty && (
+          <div className="px-4 py-6 text-center text-[12px] text-muted-foreground">No matches</div>
+        )}
+        {sections.map((sec, si) => (
+          <div key={si} className={`px-1.5 pb-1 ${sec.title === "More" ? "mt-1 border-t border-border/50 pt-1" : ""}`}>
+            {sec.title && (
+              <div className="px-2 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                {sec.title}
+              </div>
+            )}
+            {sec.idx.map((i) => {
+              const row = rows[i];
+              const common = {
+                active: active === i,
+                onMouseEnter: () => setActive(i),
+                onClick: () => activate(row),
+              };
+              if (row.t === "insert") return <SlashRow key={i} item={row.item} {...common} />;
+              if (row.t === "drill") return <DrillRow key={i} row={row} {...common} />;
+              return <BackRow key={i} label={row.label} {...common} />;
             })}
-          </Section>
+          </div>
         ))}
       </div>
+
       <div className="flex items-center justify-between border-t border-border/60 bg-muted/30 px-3 py-1.5 text-[10.5px] text-muted-foreground">
         <span className="inline-flex items-center gap-1">
           <CornerDownLeft className="h-3 w-3" /> select
         </span>
         <span className="inline-flex items-center gap-1">
-          <Sparkles className="h-3 w-3" /> type to filter
+          {view === "root" ? "type to search" : "esc to go back"}
         </span>
       </div>
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="px-1.5 pb-1">
-      <div className="px-2 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-        {title}
-      </div>
-      <div>{children}</div>
     </div>
   );
 }
@@ -1455,6 +1511,73 @@ function SlashRow({
         <span className="block truncate text-[12.5px] font-medium text-foreground">{item.label}</span>
         <span className="block truncate text-[11px] text-muted-foreground">{item.description}</span>
       </span>
+    </button>
+  );
+}
+
+function DrillRow({
+  row,
+  active,
+  onMouseEnter,
+  onClick,
+}: {
+  row: { label: string; desc: string; icon: LucideIcon; count: number };
+  active: boolean;
+  onMouseEnter: () => void;
+  onClick: () => void;
+}) {
+  const Icon = row.icon;
+  return (
+    <button
+      type="button"
+      onMouseEnter={onMouseEnter}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        onClick();
+      }}
+      className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors ${
+        active ? "bg-[color:var(--row-hover)]" : "hover:bg-[color:var(--row-hover)]"
+      }`}
+    >
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border bg-background text-muted-foreground">
+        <Icon className="h-3.5 w-3.5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[12.5px] font-medium text-foreground">{row.label}</span>
+        <span className="block truncate text-[11px] text-muted-foreground">{row.desc}</span>
+      </span>
+      <span className="shrink-0 rounded-full bg-[color:var(--s2)] px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">{row.count}</span>
+      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+    </button>
+  );
+}
+
+function BackRow({
+  label,
+  active,
+  onMouseEnter,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onMouseEnter: () => void;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onMouseEnter={onMouseEnter}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        onClick();
+      }}
+      className={`flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-[12px] font-medium text-muted-foreground transition-colors ${
+        active ? "bg-[color:var(--row-hover)] text-foreground" : "hover:bg-[color:var(--row-hover)]"
+      }`}
+    >
+      <ChevronRight className="h-3.5 w-3.5 rotate-180" />
+      {label}
+      <span className="text-muted-foreground/60">· all blocks</span>
     </button>
   );
 }
