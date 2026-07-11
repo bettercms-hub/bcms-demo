@@ -266,6 +266,28 @@ function gradientImageDataUri(seed: string): string {
 /* Main editor                                                         */
 /* ------------------------------------------------------------------ */
 
+/* --- Notion-style block selection helpers --- */
+
+/** Walk up from a DOM node to the block row that owns it. */
+function closestBlockId(node: Node | null): string | null {
+  let el: HTMLElement | null =
+    node && node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement | null);
+  while (el) {
+    if (el.dataset?.blockId) return el.dataset.blockId;
+    el = el.parentElement;
+  }
+  return null;
+}
+
+/** Every block id in document order between two blocks, inclusive. */
+function blockIdsBetween(blocks: DocBlock[], aId: string, bId: string): string[] {
+  const ia = blocks.findIndex((b) => b.id === aId);
+  const ib = blocks.findIndex((b) => b.id === bId);
+  if (ia === -1 || ib === -1) return [];
+  const [lo, hi] = ia <= ib ? [ia, ib] : [ib, ia];
+  return blocks.slice(lo, hi + 1).map((b) => b.id);
+}
+
 export function BlockEditor({ value, onChange, placeholder, projectId, entryId }: Props) {
   const initial = useMemo(() => parseDoc(value), [value]);
   const [doc, setDoc] = useState<DocValue>(initial);
@@ -273,6 +295,18 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
   const [aiPrompt, setAiPrompt] = useState<{ blockId: string; cmd: AiCommand; base: DocBlock[]; rect: { top: number; left: number } } | null>(null);
   const blockRefs = useRef<Map<string, HTMLElement>>(new Map());
   const focusAfterRenderRef = useRef<{ id: string; toStart?: boolean } | null>(null);
+
+  // Notion-style block selection: dragging across block boundaries selects
+  // whole blocks (rounded highlight) instead of the browser's ragged text
+  // selection. The native Range stays alive under the hood (so ⌘C still
+  // copies), we just hide its visual and paint the blocks instead.
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const blockMode = selectedIds.size > 0;
+  const clearSelection = useCallback(
+    () => setSelectedIds((prev) => (prev.size ? new Set() : prev)),
+    [],
+  );
 
   // Simulated collaborators: map each active teammate on this entry to a block.
   const allPeers = useProjectPresence(projectId);
@@ -383,6 +417,107 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
       ...doc,
       blocks: doc.blocks.map((b) => (b.id === id ? { ...b, type } : b)),
     });
+  };
+
+  // Track the live document selection; when it crosses block boundaries,
+  // switch to block-selection mode and paint whole blocks.
+  useEffect(() => {
+    function onSel() {
+      const root = rootRef.current;
+      if (!root) return;
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return clearSelection();
+      const range = sel.getRangeAt(0);
+      if (!root.contains(range.commonAncestorContainer)) return clearSelection();
+      const a = closestBlockId(range.startContainer);
+      const b = closestBlockId(range.endContainer);
+      if (!a || !b || a === b) return clearSelection();
+      const ids = blockIdsBetween(doc.blocks, a, b);
+      const key = ids.join(",");
+      setSelectedIds((prev) => ([...prev].join(",") === key ? prev : new Set(ids)));
+    }
+    document.addEventListener("selectionchange", onSel);
+    return () => document.removeEventListener("selectionchange", onSel);
+  }, [doc.blocks, clearSelection]);
+
+  const removeBlocks = (ids: Set<string>) => {
+    const idx = doc.blocks.findIndex((b) => ids.has(b.id));
+    const remaining = doc.blocks.filter((b) => !ids.has(b.id));
+    const next = remaining.length ? remaining : [emptyParagraph()];
+    const focusId = (idx > 0 ? doc.blocks[idx - 1]?.id : undefined) ?? next[0]?.id;
+    if (focusId) focusAfterRenderRef.current = { id: focusId };
+    setSelectedIds(new Set());
+    commit({ ...doc, blocks: next });
+  };
+
+  // Typing while blocks are selected replaces them with a fresh paragraph.
+  const replaceSelectionWithChar = (ids: Set<string>, char: string) => {
+    const idx = doc.blocks.findIndex((b) => ids.has(b.id));
+    const para: DocBlock = { ...emptyParagraph(), text: char };
+    const remaining = doc.blocks.filter((b) => !ids.has(b.id));
+    remaining.splice(Math.max(0, idx), 0, para);
+    focusAfterRenderRef.current = { id: para.id };
+    setSelectedIds(new Set());
+    commit({ ...doc, blocks: remaining });
+  };
+
+  // Lay a native Range across every block so ⌘A → whole-doc block selection.
+  const selectAllBlocks = () => {
+    const root = rootRef.current;
+    if (!root) return;
+    const els = Array.from(root.querySelectorAll<HTMLElement>("[data-block-id]"));
+    if (els.length === 0) return;
+    const sel = window.getSelection();
+    if (!sel) return;
+    const r = document.createRange();
+    r.setStart(els[0], 0);
+    const last = els[els.length - 1];
+    r.setEnd(last, last.childNodes.length);
+    sel.removeAllRanges();
+    sel.addRange(r); // selectionchange populates selectedIds
+  };
+
+  const selectBlockText = (blockEl: HTMLElement | null) => {
+    const editable = blockEl?.querySelector<HTMLElement>("[contenteditable]") ?? blockEl;
+    const sel = window.getSelection();
+    if (!editable || !sel) return;
+    const r = document.createRange();
+    r.selectNodeContents(editable);
+    sel.removeAllRanges();
+    sel.addRange(r);
+  };
+
+  const onRootKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const mod = e.metaKey || e.ctrlKey;
+    const tag = (e.target as HTMLElement).tagName;
+    if (mod && (e.key === "a" || e.key === "A") && tag !== "INPUT" && tag !== "TEXTAREA") {
+      e.preventDefault();
+      // Notion's two-step: ⌘A fills the current block first, ⌘A again (or when
+      // already in block mode) selects every block.
+      if (selectedIds.size > 0) return selectAllBlocks();
+      const sel = window.getSelection();
+      const anchorId = closestBlockId(sel?.anchorNode ?? null);
+      const blockEl = anchorId
+        ? rootRef.current?.querySelector<HTMLElement>(`[data-block-id="${anchorId}"]`) ?? null
+        : null;
+      const editable = blockEl?.querySelector<HTMLElement>("[contenteditable]") ?? blockEl;
+      const full = (editable?.textContent ?? "").trim();
+      const selText = (sel?.toString() ?? "").trim();
+      if (blockEl && full && selText !== full) return selectBlockText(blockEl);
+      return selectAllBlocks();
+    }
+    if (selectedIds.size === 0) return;
+    if (e.key === "Escape") { e.preventDefault(); clearSelection(); return; }
+    if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); removeBlocks(selectedIds); return; }
+    if (mod && (e.key === "x" || e.key === "X")) {
+      e.preventDefault();
+      try { document.execCommand("copy"); } catch { /* clipboard blocked */ }
+      removeBlocks(selectedIds);
+      return;
+    }
+    if (mod) return; // ⌘C copies the live native selection; leave other combos alone
+    if (e.key.startsWith("Arrow")) { clearSelection(); return; }
+    if (e.key.length === 1) { e.preventDefault(); replaceSelectionWithChar(selectedIds, e.key); return; }
   };
 
   /* --- slash dispatch: the current (now empty) block becomes the target --- */
@@ -566,7 +701,12 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
 
   return (
     <BlockEditorContext.Provider value={{ projectId }}>
-    <div className="relative">
+    <div
+      ref={rootRef}
+      onKeyDownCapture={onRootKeyDown}
+      data-blockmode={blockMode ? "true" : undefined}
+      className="bcms-doc-editor relative"
+    >
       <div className="pointer-events-none absolute right-0 top-[-26px] z-10 flex justify-end">
         <button
           type="button"
@@ -582,6 +722,7 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
           key={b.id}
           block={b}
           isFirst={i === 0}
+          selected={selectedIds.has(b.id)}
           placeholder={i === 0 ? placeholder : undefined}
           refMap={blockRefs}
           peers={blockPeers.get(b.id)}
@@ -676,6 +817,7 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
 interface RowProps {
   block: DocBlock;
   isFirst: boolean;
+  selected?: boolean;
   placeholder?: string;
   refMap: React.MutableRefObject<Map<string, HTMLElement>>;
   peers?: PresencePeer[];
@@ -697,6 +839,7 @@ interface RowProps {
 
 function BlockRow({
   block,
+  selected,
   placeholder,
   refMap,
   peers,
@@ -821,7 +964,11 @@ function BlockRow({
   };
 
   return (
-    <div className="group/block relative -mx-2 flex gap-1 rounded px-2 py-0.5 hover:bg-[color:var(--row-hover)]/30">
+    <div
+      data-block-id={block.id}
+      data-selected={selected ? "true" : undefined}
+      className="bcms-block group/block relative -mx-2 flex gap-1 rounded px-2 py-0.5 hover:bg-[color:var(--row-hover)]/30"
+    >
       {/* Live collaborators on this paragraph */}
       {peers && peers.length > 0 && (
         <div className="absolute left-[-64px] top-1 hidden items-center sm:flex">
