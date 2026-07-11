@@ -69,6 +69,8 @@ import {
   TrendingUp,
   ClipboardCopy,
   CopyPlus,
+  RotateCcw,
+  SlidersHorizontal,
   Copy as CopyIcon,
   UserRound,
   Video,
@@ -98,11 +100,14 @@ import {
   COMPONENT_GROUPS,
   CALLOUT_TONES,
   componentDef,
+  componentFieldDefault,
   detectEmbed,
   fakeBookmarkMeta,
   simulateAi,
   toneOf,
   type AiCommand,
+  type ComponentDef,
+  type ComponentField,
 } from "@/lib/cms/blocks/rich-blocks";
 import {
   DropdownMenu,
@@ -1424,6 +1429,7 @@ function BlockRow({
         onCheck={onCheck}
         onSrcChange={onSrcChange}
         onPatch={onPatch}
+        onDuplicate={onDuplicate}
       />
     </div>
   );
@@ -1444,6 +1450,7 @@ interface BodyProps {
   onCheck: (checked: boolean) => void;
   onSrcChange: (src: string) => void;
   onPatch: (patch: Partial<DocBlock>) => void;
+  onDuplicate?: () => void;
 }
 
 function BlockBody({
@@ -1457,13 +1464,14 @@ function BlockBody({
   onCheck,
   onSrcChange,
   onPatch,
+  onDuplicate,
 }: BodyProps) {
   // Rich, self-contained widget blocks (no inline text editing).
   if (block.type === "embed" || block.type === "video") return <EmbedBlock block={block} onPatch={onPatch} />;
   if (block.type === "bookmark") return <BookmarkBlock block={block} onPatch={onPatch} />;
   if (block.type === "button") return <ButtonBlock block={block} onPatch={onPatch} />;
   if (block.type === "table") return <TableBlock block={block} onPatch={onPatch} />;
-  if (block.type === "component") return <ComponentBlock block={block} onPatch={onPatch} />;
+  if (block.type === "component") return <ComponentBlock block={block} onPatch={onPatch} onDuplicate={onDuplicate} />;
   if (block.type === "divider") {
     return (
       <div className="w-full py-3">
@@ -1644,7 +1652,7 @@ function Editable({
 /* Rich widget blocks                                                  */
 /* ------------------------------------------------------------------ */
 
-type WidgetProps = { block: DocBlock; onPatch: (patch: Partial<DocBlock>) => void };
+type WidgetProps = { block: DocBlock; onPatch: (patch: Partial<DocBlock>) => void; onDuplicate?: () => void };
 
 /* ------------------------------------------------------------------ */
 /* Image block                                                         */
@@ -2165,98 +2173,314 @@ function TableBlock({ block, onPatch }: WidgetProps) {
   );
 }
 
-function ComponentBlock({ block, onPatch }: WidgetProps) {
-  const def = componentDef(block.component);
-  const p = block.componentProps ?? {};
+/** Inline-editable text inside a component preview. Click and type — commits
+ *  on blur/Enter as a per-instance override. */
+function InlineProp({
+  value,
+  onCommit,
+  className,
+  multiline,
+}: {
+  value: string;
+  onCommit: (v: string) => void;
+  className?: string;
+  multiline?: boolean;
+}) {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || document.activeElement === el) return;
+    if (el.textContent !== value) el.textContent = value;
+  }, [value]);
   return (
-    <div className="group/cmp my-1.5 w-full overflow-hidden rounded-xl border border-border bg-card">
-      <div className={`flex items-center gap-2 bg-gradient-to-r ${def?.accent ?? "from-slate-500 to-slate-600"} px-3 py-1.5 text-[11px] font-semibold text-white`}>
-        <Boxes className="h-3.5 w-3.5" />
-        {def?.label ?? "Component"}
+    <span
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      spellCheck={false}
+      data-inline-prop
+      onMouseDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === "Enter" && !multiline) {
+          e.preventDefault();
+          (e.target as HTMLElement).blur();
+        }
+        if (e.key === "Escape") {
+          if (ref.current) ref.current.textContent = value;
+          (e.target as HTMLElement).blur();
+        }
+      }}
+      onBlur={() => onCommit((ref.current?.textContent ?? "").trim())}
+      className={cn(
+        "cursor-text rounded-sm outline-none transition-shadow focus:ring-2 focus:ring-white/50 focus:ring-offset-0",
+        className,
+      )}
+    />
+  );
+}
+
+/** A component instance: everything is editable — inline in the preview or in
+ *  the props form — and every edit is a per-instance OVERRIDE. The component
+ *  in the catalog never changes. */
+function ComponentBlock({ block, onPatch, onDuplicate }: WidgetProps) {
+  const def = componentDef(block.component);
+  const [formOpen, setFormOpen] = useState(false);
+  if (!def) return <div className="text-[12px] text-muted-foreground">Unknown component</div>;
+
+  const p = block.componentProps ?? {};
+  const getVal = (f: ComponentField): string =>
+    f.slot === "title" ? (block.title ?? "") : f.slot === "desc" ? (block.desc ?? "") : (p[f.key] ?? "");
+  const setVal = (f: ComponentField, v: string) => {
+    if (f.slot === "title") onPatch({ title: v });
+    else if (f.slot === "desc") onPatch({ desc: v });
+    else onPatch({ componentProps: { ...p, [f.key]: v } });
+  };
+  const isOverridden = (f: ComponentField) => getVal(f) !== componentFieldDefault(def, f);
+  const overridden = def.fields.filter(isOverridden);
+
+  // Preview lookups by field key (covers slot fields transparently).
+  const get = (key: string): string => {
+    const f = def.fields.find((x) => x.key === key);
+    return f ? getVal(f) : (p[key] ?? "");
+  };
+  const set = (key: string) => (v: string) => {
+    const f = def.fields.find((x) => x.key === key);
+    if (f) setVal(f, v);
+  };
+
+  const resetAll = () => {
+    const d = def.defaults();
+    onPatch({ title: d.title ?? "", desc: d.desc ?? "", componentProps: { ...(d.props ?? {}) } });
+    toast.success("Overrides reset", { description: `Back to the ${def.label} component defaults.` });
+  };
+
+  const headBtn =
+    "grid h-5.5 w-5.5 place-items-center rounded transition-colors hover:bg-white/25 focus:outline-none";
+
+  return (
+    <div className="group/cmp my-1.5 w-full overflow-hidden rounded-xl border border-border bg-card" contentEditable={false}>
+      <div className={`flex h-8 items-center gap-2 bg-gradient-to-r ${def.accent} px-3 text-[11px] font-semibold text-white`}>
+        <Boxes className="h-3.5 w-3.5 shrink-0" />
+        {def.label}
+        {overridden.length > 0 && (
+          <span
+            className="rounded-full bg-white/20 px-1.5 py-0.5 text-[9.5px] font-medium"
+            title={`Overridden here: ${overridden.map((f) => f.label).join(", ")}. The ${def.label} component is unchanged.`}
+          >
+            {overridden.length} {overridden.length === 1 ? "override" : "overrides"}
+          </span>
+        )}
         <span className="ml-auto rounded-full bg-white/20 px-1.5 py-0.5 text-[9.5px] font-medium uppercase tracking-wide">Instance</span>
+        <span className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/cmp:opacity-100">
+          {overridden.length > 0 && (
+            <button type="button" title="Reset all overrides" onClick={resetAll} className={headBtn}>
+              <RotateCcw className="h-3 w-3" />
+            </button>
+          )}
+          {onDuplicate && (
+            <button type="button" title="Duplicate this instance" onClick={onDuplicate} className={headBtn}>
+              <CopyPlus className="h-3 w-3" />
+            </button>
+          )}
+          <button
+            type="button"
+            title="Edit props"
+            aria-pressed={formOpen}
+            onClick={() => setFormOpen((v) => !v)}
+            className={cn(headBtn, formOpen && "bg-white/25")}
+          >
+            <SlidersHorizontal className="h-3 w-3" />
+          </button>
+        </span>
       </div>
+
+      {/* The preview IS the editor: click any text and type. */}
       <div className="p-4">
-        <ComponentPreview keyName={block.component} title={block.title ?? ""} desc={block.desc ?? ""} props={p} />
+        <ComponentPreview keyName={block.component} get={get} set={set} />
       </div>
-      <div className="hidden items-center gap-2 border-t border-border px-3 py-2 group-hover/cmp:flex">
-        <input
-          value={block.title ?? ""}
-          placeholder="Title"
-          onChange={(e) => onPatch({ title: e.target.value })}
-          className="h-7 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-[12px] outline-none focus:border-primary"
-        />
-        <input
-          value={block.desc ?? ""}
-          placeholder="Description"
-          onChange={(e) => onPatch({ desc: e.target.value })}
-          className="h-7 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-[12px] outline-none focus:border-primary"
-        />
-      </div>
+
+      {/* Full props form — the complete editable surface, with per-prop reset. */}
+      {formOpen && (
+        <div className="border-t border-border bg-muted/20 px-4 py-3" onMouseDown={(e) => e.stopPropagation()}>
+          <div className="grid gap-x-5 gap-y-3 sm:grid-cols-2">
+            {def.fields.map((f) => (
+              <PropField
+                key={f.key}
+                field={f}
+                value={getVal(f)}
+                overridden={isOverridden(f)}
+                onChange={(v) => setVal(f, v)}
+                onReset={() => setVal(f, componentFieldDefault(def, f))}
+              />
+            ))}
+          </div>
+          <p className="mt-3 text-[10.5px] text-muted-foreground">
+            Edits apply to this instance only — the {def.label} component stays unchanged.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
 
-function ComponentPreview({ keyName, title, desc, props }: { keyName?: string; title: string; desc: string; props: Record<string, string> }) {
+/** One prop in the instance form: label, override marker, control, reset. */
+function PropField({
+  field,
+  value,
+  overridden,
+  onChange,
+  onReset,
+}: {
+  field: ComponentField;
+  value: string;
+  overridden: boolean;
+  onChange: (v: string) => void;
+  onReset: () => void;
+}) {
+  const inputCls =
+    "w-full rounded-md border border-border bg-background px-2 text-[12px] text-foreground outline-none transition-colors focus:border-primary";
+  return (
+    <div className={field.kind !== "text" ? "sm:col-span-2" : undefined}>
+      <div className="mb-1 flex h-4 items-center gap-1.5">
+        <label className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground">{field.label}</label>
+        {overridden && (
+          <>
+            <span className="h-1.5 w-1.5 rounded-full bg-primary" title="Overridden on this instance" />
+            <button
+              type="button"
+              onClick={onReset}
+              title="Reset to component default"
+              className="grid h-4 w-4 place-items-center rounded text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <RotateCcw className="h-2.5 w-2.5" />
+            </button>
+          </>
+        )}
+      </div>
+      {field.kind === "list" ? (
+        <ListPropEditor value={value} onChange={onChange} />
+      ) : field.kind === "multiline" ? (
+        <textarea value={value} rows={2} onChange={(e) => onChange(e.target.value)} className={cn(inputCls, "resize-none py-1.5")} />
+      ) : (
+        <input value={value} onChange={(e) => onChange(e.target.value)} className={cn(inputCls, "h-7")} />
+      )}
+    </div>
+  );
+}
+
+/** Newline-separated list prop as add/remove rows (e.g. pricing features). */
+function ListPropEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const items = value.length ? value.split("\n") : [];
+  const commit = (next: string[]) => onChange(next.join("\n"));
+  return (
+    <div className="space-y-1">
+      {items.map((it, i) => (
+        <div key={i} className="flex items-center gap-1">
+          <input
+            value={it}
+            onChange={(e) => commit(items.map((x, j) => (j === i ? e.target.value : x)))}
+            className="h-7 w-full rounded-md border border-border bg-background px-2 text-[12px] text-foreground outline-none transition-colors focus:border-primary"
+          />
+          <button
+            type="button"
+            title="Remove item"
+            onClick={() => commit(items.filter((_, j) => j !== i))}
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-[color:var(--row-hover)] hover:text-foreground"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => commit([...items, ""])}
+        className="inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--row-hover)] hover:text-foreground"
+      >
+        <Plus className="h-3 w-3" /> Add item
+      </button>
+    </div>
+  );
+}
+
+/** The live preview of an instance — every visible text is click-to-edit and
+ *  commits as an override on this instance. */
+function ComponentPreview({ keyName, get, set }: { keyName?: string; get: (key: string) => string; set: (key: string) => (v: string) => void }) {
+  const title = get("title");
+  const desc = get("desc");
   switch (keyName) {
     case "cta-banner":
       return (
         <div className="rounded-lg bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-5 py-4 text-center text-white">
-          <div className="text-[15px] font-semibold">{title}</div>
-          <div className="mt-0.5 text-[12px] opacity-90">{desc}</div>
-          <span className="mt-2.5 inline-flex h-8 items-center rounded-md bg-white px-3 text-[12px] font-semibold text-indigo-600">{props.button ?? "Get started"}</span>
+          <div className="text-[15px] font-semibold"><InlineProp value={title} onCommit={set("title")} /></div>
+          <div className="mt-0.5 text-[12px] opacity-90"><InlineProp value={desc} onCommit={set("desc")} /></div>
+          <span className="mt-2.5 inline-flex h-8 items-center rounded-md bg-white px-3 text-[12px] font-semibold text-indigo-600"><InlineProp value={get("button")} onCommit={set("button")} className="focus:ring-indigo-300" /></span>
         </div>
       );
     case "newsletter":
       return (
         <div className="rounded-lg border border-border bg-muted/30 px-4 py-3">
-          <div className="text-[14px] font-semibold text-foreground">{title}</div>
-          <div className="text-[12px] text-muted-foreground">{desc}</div>
+          <div className="text-[14px] font-semibold text-foreground"><InlineProp value={title} onCommit={set("title")} className="focus:ring-primary/40" /></div>
+          <div className="text-[12px] text-muted-foreground"><InlineProp value={desc} onCommit={set("desc")} className="focus:ring-primary/40" /></div>
           <div className="mt-2 flex gap-2">
-            <span className="flex h-8 flex-1 items-center rounded-md border border-border bg-background px-2.5 text-[12px] text-muted-foreground">{props.placeholder ?? "you@company.com"}</span>
-            <span className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-[12px] font-semibold text-primary-foreground">{props.button ?? "Subscribe"}</span>
+            <span className="flex h-8 flex-1 items-center rounded-md border border-border bg-background px-2.5 text-[12px] text-muted-foreground"><InlineProp value={get("placeholder")} onCommit={set("placeholder")} className="focus:ring-primary/40" /></span>
+            <span className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-[12px] font-semibold text-primary-foreground"><InlineProp value={get("button")} onCommit={set("button")} /></span>
           </div>
         </div>
       );
-    case "pricing":
+    case "pricing": {
+      const features = get("features").split("\n").filter(Boolean);
       return (
         <div className="rounded-lg border border-border px-4 py-3">
-          <div className="text-[12px] font-medium text-muted-foreground">{title}</div>
+          <div className="text-[12px] font-medium text-muted-foreground"><InlineProp value={title} onCommit={set("title")} className="focus:ring-primary/40" /></div>
           <div className="mt-0.5 flex items-baseline gap-1">
-            <span className="text-[26px] font-bold tracking-tight text-foreground">{props.price ?? "$29"}</span>
-            <span className="text-[12px] text-muted-foreground">{props.period ?? "/mo"}</span>
+            <span className="text-[26px] font-bold tracking-tight text-foreground"><InlineProp value={get("price")} onCommit={set("price")} className="focus:ring-primary/40" /></span>
+            <span className="text-[12px] text-muted-foreground"><InlineProp value={get("period")} onCommit={set("period")} className="focus:ring-primary/40" /></span>
           </div>
           <ul className="mt-2 space-y-1">
-            {(props.features ?? "").split("\n").filter(Boolean).map((f, i) => (
-              <li key={i} className="flex items-center gap-1.5 text-[12px] text-foreground"><span className="text-emerald-500">✓</span>{f}</li>
+            {features.map((f, i) => (
+              <li key={i} className="flex items-center gap-1.5 text-[12px] text-foreground">
+                <span className="text-emerald-500">✓</span>
+                <InlineProp
+                  value={f}
+                  onCommit={(v) => {
+                    const next = [...features];
+                    if (v) next[i] = v; else next.splice(i, 1);
+                    set("features")(next.join("\n"));
+                  }}
+                  className="focus:ring-primary/40"
+                />
+              </li>
             ))}
           </ul>
-          <span className="mt-2.5 inline-flex h-8 items-center rounded-md bg-primary px-3 text-[12px] font-semibold text-primary-foreground">{props.button ?? "Choose plan"}</span>
+          <span className="mt-2.5 inline-flex h-8 items-center rounded-md bg-primary px-3 text-[12px] font-semibold text-primary-foreground"><InlineProp value={get("button")} onCommit={set("button")} /></span>
         </div>
       );
+    }
     case "testimonial":
       return (
         <figure className="rounded-lg border border-border bg-muted/30 px-4 py-3">
-          <blockquote className="text-[14px] font-medium leading-snug text-foreground">“{title}”</blockquote>
+          <blockquote className="text-[14px] font-medium leading-snug text-foreground">“<InlineProp value={title} onCommit={set("title")} multiline className="focus:ring-primary/40" />”</blockquote>
           <figcaption className="mt-2 flex items-center gap-2">
-            <span className="grid h-7 w-7 place-items-center rounded-full bg-amber-500/20 text-[11px] font-semibold text-amber-600">{(props.author ?? "A").charAt(0)}</span>
-            <span className="text-[11.5px]"><span className="font-semibold text-foreground">{props.author ?? "Author"}</span><span className="text-muted-foreground"> · {props.role ?? ""}</span></span>
+            <span className="grid h-7 w-7 place-items-center rounded-full bg-amber-500/20 text-[11px] font-semibold text-amber-600">{(get("author") || "A").charAt(0)}</span>
+            <span className="text-[11.5px]"><span className="font-semibold text-foreground"><InlineProp value={get("author")} onCommit={set("author")} className="focus:ring-primary/40" /></span><span className="text-muted-foreground"> · <InlineProp value={get("role")} onCommit={set("role")} className="focus:ring-primary/40" /></span></span>
           </figcaption>
         </figure>
       );
     case "stat":
       return (
         <div className="text-center">
-          <div className="bg-gradient-to-r from-violet-500 to-purple-500 bg-clip-text text-[34px] font-bold leading-none tracking-tight text-transparent">{title}</div>
-          <div className="mt-1 text-[12px] text-muted-foreground">{desc}</div>
+          <div className="bg-gradient-to-r from-violet-500 to-purple-500 bg-clip-text text-[34px] font-bold leading-none tracking-tight text-transparent"><InlineProp value={title} onCommit={set("title")} className="focus:ring-violet-300" /></div>
+          <div className="mt-1 text-[12px] text-muted-foreground"><InlineProp value={desc} onCommit={set("desc")} className="focus:ring-primary/40" /></div>
         </div>
       );
     case "profile":
       return (
         <div className="flex items-center gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-pink-500 to-rose-500 text-[15px] font-semibold text-white">{title.charAt(0)}</span>
+          <span className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-pink-500 to-rose-500 text-[15px] font-semibold text-white">{(title || "A").charAt(0)}</span>
           <div className="min-w-0">
-            <div className="text-[13.5px] font-semibold text-foreground">{title} <span className="ml-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{props.role ?? ""}</span></div>
-            <div className="text-[12px] text-muted-foreground">{desc}</div>
+            <div className="text-[13.5px] font-semibold text-foreground"><InlineProp value={title} onCommit={set("title")} className="focus:ring-primary/40" /> <span className="ml-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"><InlineProp value={get("role")} onCommit={set("role")} className="focus:ring-primary/40" /></span></div>
+            <div className="text-[12px] text-muted-foreground"><InlineProp value={desc} onCommit={set("desc")} multiline className="focus:ring-primary/40" /></div>
           </div>
         </div>
       );
@@ -2264,22 +2488,22 @@ function ComponentPreview({ keyName, title, desc, props }: { keyName?: string; t
       return (
         <div className="inline-flex items-center gap-2 rounded-lg border border-orange-300/50 bg-orange-500/10 px-3 py-2">
           <Award className="h-4 w-4 text-orange-500" />
-          <span className="text-[12.5px] font-medium text-foreground">{title}</span>
-          {props.tag && <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[9.5px] font-bold uppercase text-white">{props.tag}</span>}
+          <span className="text-[12.5px] font-medium text-foreground"><InlineProp value={title} onCommit={set("title")} className="focus:ring-orange-300" /></span>
+          <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[9.5px] font-bold uppercase text-white"><InlineProp value={get("tag")} onCommit={set("tag")} /></span>
         </div>
       );
     case "faq":
       return (
         <div>
-          <div className="flex items-center gap-1.5 text-[13.5px] font-semibold text-foreground"><MessagesSquare className="h-3.5 w-3.5 text-muted-foreground" />{title}</div>
-          <div className="mt-1 pl-5 text-[12.5px] text-muted-foreground">{desc}</div>
+          <div className="flex items-center gap-1.5 text-[13.5px] font-semibold text-foreground"><MessagesSquare className="h-3.5 w-3.5 text-muted-foreground" /><InlineProp value={title} onCommit={set("title")} className="focus:ring-primary/40" /></div>
+          <div className="mt-1 pl-5 text-[12.5px] text-muted-foreground"><InlineProp value={desc} onCommit={set("desc")} multiline className="focus:ring-primary/40" /></div>
         </div>
       );
     default:
       return (
         <div>
-          <div className="text-[13.5px] font-semibold text-foreground">{title}</div>
-          {desc && <div className="mt-0.5 text-[12px] text-muted-foreground">{desc}</div>}
+          <div className="text-[13.5px] font-semibold text-foreground"><InlineProp value={title} onCommit={set("title")} className="focus:ring-primary/40" /></div>
+          <div className="mt-0.5 text-[12px] text-muted-foreground"><InlineProp value={desc} onCommit={set("desc")} className="focus:ring-primary/40" /></div>
         </div>
       );
   }
