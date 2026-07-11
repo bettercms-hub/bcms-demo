@@ -7,6 +7,7 @@ import { CommandPalette, useCommandPalette } from "../CommandPalette";
 import { ShortcutCheatsheet } from "../ShortcutCheatsheet";
 import { LargerScreen } from "../LargerScreen";
 import { AgentDock } from "@/components/agent/AgentDock";
+import { ConnectAiDialog } from "@/components/agent/ConnectAiDialog";
 import { useEffect, useState, type ReactNode } from "react";
 import { editorBus } from "@/lib/cms/editor-bus";
 import { isEditableTarget } from "@/lib/cms/shortcuts";
@@ -24,6 +25,7 @@ type Scope = "pages" | "collections" | "components";
 export function AppShell({ wsSlug, children }: Props) {
   const palette = useCommandPalette();
   const [cheatsheetOpen, setCheatsheetOpen] = useState(false);
+  const [connectOpen, setConnectOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { project: projectSlug } = useParams({ strict: false }) as { project?: string };
@@ -43,6 +45,7 @@ export function AppShell({ wsSlug, children }: Props) {
   useEffect(() => {
     const off = editorBus.on((e) => {
       if (e.type === "editor:open-cheatsheet") setCheatsheetOpen(true);
+      if (e.type === "editor:open-connect") setConnectOpen(true);
     });
     const onKey = (e: KeyboardEvent) => {
       if (isEditableTarget(e.target)) return;
@@ -133,6 +136,17 @@ export function AppShell({ wsSlug, children }: Props) {
       )}
       <CommandPalette open={palette.open} onOpenChange={palette.setOpen} />
       <ShortcutCheatsheet open={cheatsheetOpen} onOpenChange={setCheatsheetOpen} />
+      {ws && project && (
+        <ConnectAiDialog
+          open={connectOpen}
+          onOpenChange={setConnectOpen}
+          projectId={project.id}
+          projectName={project.name}
+          projectSlug={project.slug}
+          wsId={ws.id}
+          wsSlug={wsSlug}
+        />
+      )}
     </div>
   );
 }

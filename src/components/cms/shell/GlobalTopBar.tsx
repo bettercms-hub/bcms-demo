@@ -1,5 +1,5 @@
 import { Link, useParams } from "@tanstack/react-router";
-import { Bell, HelpCircle, Menu, Search, Settings } from "lucide-react";
+import { Bell, HelpCircle, Menu, Plug, Search, Settings } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -113,6 +113,16 @@ export function GlobalTopBar({ onOpenPalette, onMenu, project }: Props) {
             <HelpCircle className="h-4 w-4" strokeWidth={1.75} />
           </UtilityIconButton>
         </span>
+        {project && (
+          <button
+            type="button"
+            onClick={() => editorBus.emit({ type: "editor:open-connect" })}
+            title="Connect your AI (Claude Code, Cursor, VS Code…)"
+            className="mr-0.5 hidden h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-[12px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)] sm:inline-flex"
+          >
+            <Plug className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} /> Connect
+          </button>
+        )}
         {project && (
           <Link
             to="/w/$workspace/p/$project/settings"

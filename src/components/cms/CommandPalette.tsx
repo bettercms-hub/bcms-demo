@@ -16,6 +16,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  Plug,
   Send,
   Settings2,
   Smartphone,
@@ -98,6 +99,11 @@ export function CommandPalette({ open, onOpenChange }: Props) {
 
         {inEditor && (
           <CommandGroup heading="Actions">
+            <Item
+              icon={Plug}
+              label="Connect your AI (MCP)"
+              onSelect={() => go(() => editorBus.emit({ type: "editor:open-connect" }))}
+            />
             <Item
               icon={Send}
               label="Publish current page"

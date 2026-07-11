@@ -9,6 +9,7 @@ export type EditorEvent =
   | { type: "editor:set-preview-device"; device: "desktop" | "tablet" | "mobile" }
   | { type: "editor:refresh-preview" }
   | { type: "editor:open-cheatsheet" }
+  | { type: "editor:open-connect" }
   | { type: "editor:collapse-all" }
   | { type: "editor:expand-all" }
   | { type: "editor:toggle-flag"; flag: "show-metadata" | "show-summaries"; value: boolean }
