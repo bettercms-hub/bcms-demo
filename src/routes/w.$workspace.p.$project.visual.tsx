@@ -54,13 +54,16 @@ import {
   sectionDesignClass,
   sectionDesignStyle,
   sectionHasDesign,
+  sectionInnerClass,
   sectionOverlay,
+  SPACE_LABELS,
+  SPACE_TOKENS,
   type PageTemplate,
   type SectionDef,
   type SectionDesign,
   type SectionInstance,
+  type SpaceToken,
 } from "@/components/cms/editor/sections/SectionSystem";
-import { Field as DField, Row as DRow, SegmentedField, ToggleField } from "@/components/cms/editor/section-tabs/atoms";
 import { newPageId, pagesActions, usePages, type PageDoc } from "@/lib/cms/pages-store";
 import { PublishMenu } from "@/components/cms/editor/PublishMenu";
 import { PageSettingsDialog } from "@/components/cms/editor/PageSettingsDialog";
@@ -1425,93 +1428,177 @@ function InsertPoint({ onClick }: { onClick: () => void }) {
   );
 }
 
+/* ----- Design panel controls (compact, panel-width friendly) ----- */
+
+function DGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2.5">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.09em] text-muted-foreground/70">{title}</div>
+      {children}
+    </div>
+  );
+}
+function DLabel({ children }: { children: React.ReactNode }) {
+  return <div className="text-[11px] font-medium text-foreground/80">{children}</div>;
+}
+function Seg<T extends string>({ value, onChange, options, wrap }: { value: T; onChange: (v: T) => void; options: [T, string][]; wrap?: boolean }) {
+  return (
+    <div className={cn("flex gap-1", wrap && "flex-wrap")}>
+      {options.map(([val, label]) => {
+        const on = value === val;
+        return (
+          <button
+            key={val}
+            type="button"
+            onClick={() => onChange(val)}
+            aria-pressed={on}
+            className={cn(
+              "h-7 rounded-md px-2.5 text-[11.5px] font-medium transition-colors",
+              on
+                ? "bg-[var(--s3)] text-foreground ring-1 ring-inset ring-[color:color-mix(in_oklab,var(--primary)_40%,transparent)]"
+                : "text-muted-foreground hover:bg-[var(--s2)] hover:text-foreground",
+            )}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+function TokenSlider({ label, value, onChange }: { label: string; value: SpaceToken; onChange: (v: SpaceToken) => void }) {
+  const idx = Math.max(0, SPACE_TOKENS.indexOf(value));
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="w-12 shrink-0 text-[11px] text-muted-foreground">{label}</span>
+      <input
+        type="range"
+        min={0}
+        max={SPACE_TOKENS.length - 1}
+        step={1}
+        value={idx}
+        onChange={(e) => onChange(SPACE_TOKENS[Number(e.target.value)])}
+        aria-label={`${label} spacing`}
+        className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-[color:var(--color-border)] accent-[color:var(--primary)]"
+      />
+      <span className="w-7 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">{SPACE_LABELS[value]}</span>
+    </div>
+  );
+}
+function RangeRow({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-medium text-foreground/80">{label}</span>
+        <span className="text-[11px] tabular-nums text-muted-foreground">{value}%</span>
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        step={5}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        aria-label={label}
+        className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-[color:var(--color-border)] accent-[color:var(--primary)]"
+      />
+    </div>
+  );
+}
+function DToggle({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button type="button" onClick={() => onChange(!checked)} className="flex w-full items-start gap-2 text-left">
+      <span className={cn("mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded border transition-colors", checked ? "border-primary bg-primary text-primary-foreground" : "border-[color:var(--color-border)]")}>
+        {checked && <Check className="h-3 w-3" />}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[11.5px] font-medium text-foreground">{label}</span>
+        {hint && <span className="block text-[10.5px] leading-snug text-muted-foreground">{hint}</span>}
+      </span>
+    </button>
+  );
+}
+
 /**
  * SectionDesignPanel — token-based design controls for a section, right in
- * the visual editor's form panel: spacing, theme, background, overlay, full
- * height. Values are tokens (never raw CSS) so they stay on-brand and travel
- * cleanly to a headless frontend. Marketer-and-up only.
+ * the visual editor's form panel. Grouped like a real design inspector:
+ * Color, Spacing, Layout, Effects, Background. Values are tokens (never raw
+ * CSS) so they stay on-brand and travel cleanly to a headless frontend.
+ * Marketer-and-up only.
  */
 function SectionDesignPanel({ section, onChange }: { section: SectionInstance; onChange: (patch: Partial<SectionDesign>) => void }) {
   const active = sectionHasDesign(section.design);
   const [open, setOpen] = useState(active);
   const d = section.design ?? {};
+  const pad = (v: SpaceToken): SpaceToken | undefined => (v === "none" ? undefined : v);
   return (
-    <div className="mt-3 border-t border-[color:var(--border-hairline)] pt-3">
+    <div className="mt-3.5 border-t border-[color:var(--border-hairline)] pt-3">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+        className="flex w-full items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.09em] text-muted-foreground transition-colors hover:text-foreground"
       >
-        <Paintbrush2 className="h-3 w-3" /> Design
+        <Paintbrush2 className="h-3.5 w-3.5" /> Design
         {active && <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-label="Customized" />}
-        <ChevronDown className={cn("ml-auto h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
+        <ChevronDown className={cn("ml-auto h-4 w-4 transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div className="mt-3 space-y-3">
-          <SegmentedField
-            label="Theme"
-            value={d.theme ?? "inherit"}
-            onChange={(v) => onChange({ theme: v as SectionDesign["theme"] })}
-            options={[{ value: "inherit", label: "Inherit" }, { value: "light", label: "Light" }, { value: "dark", label: "Dark" }]}
-          />
-          <SegmentedField
-            label="Background"
-            value={d.background ?? "default"}
-            onChange={(v) => onChange({ background: v as SectionDesign["background"] })}
-            options={[
-              { value: "default", label: "None" },
-              { value: "surface", label: "Surface" },
-              { value: "muted", label: "Muted" },
-              { value: "accent", label: "Accent" },
-              { value: "inverse", label: "Dark" },
-            ]}
-          />
-          <DRow>
-            <SegmentedField
-              label="Top and bottom space"
-              value={d.paddingY ?? "none"}
-              onChange={(v) => onChange({ paddingY: v as SectionDesign["paddingY"] })}
-              options={[{ value: "none", label: "0" }, { value: "sm", label: "S" }, { value: "md", label: "M" }, { value: "lg", label: "L" }, { value: "xl", label: "XL" }]}
-            />
-            <SegmentedField
-              label="Side space"
-              value={d.paddingX ?? "none"}
-              onChange={(v) => onChange({ paddingX: v as SectionDesign["paddingX"] })}
-              options={[{ value: "none", label: "0" }, { value: "sm", label: "S" }, { value: "md", label: "M" }, { value: "lg", label: "L" }]}
-            />
-          </DRow>
-          <ToggleField
-            label="Full viewport height"
-            hint="Great for hero sections. Content centers vertically."
-            checked={!!d.fullHeight}
-            onChange={(v) => onChange({ fullHeight: v })}
-          />
-          <DField label="Background image URL" hint="Optional. Adds an overlay control.">
-            <Input
-              value={d.backgroundImage ?? ""}
-              onChange={(e) => onChange({ backgroundImage: e.target.value.trim() || undefined })}
-              placeholder="https://…/image.jpg"
-            />
-          </DField>
-          {d.backgroundImage && (
-            <DField label={`Overlay opacity (${d.overlayOpacity ?? 0}%)`} hint="Dark scrim over the image so text stays readable.">
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={5}
-                value={d.overlayOpacity ?? 0}
-                onChange={(e) => onChange({ overlayOpacity: Number(e.target.value) })}
-                aria-label="Overlay opacity"
-                className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-[color:var(--color-border)] accent-[color:var(--primary)]"
-              />
-            </DField>
-          )}
+        <div className="mt-4 space-y-5">
+          <DGroup title="Color">
+            <DLabel>Theme</DLabel>
+            <Seg value={d.theme ?? "inherit"} onChange={(v) => onChange({ theme: v })} options={[["inherit", "Inherit"], ["light", "Light"], ["dark", "Dark"]]} />
+            <DLabel>Background</DLabel>
+            <Seg wrap value={d.background ?? "default"} onChange={(v) => onChange({ background: v })} options={[["default", "None"], ["surface", "Surface"], ["muted", "Muted"], ["accent", "Accent"], ["inverse", "Dark"], ["custom", "Custom"]]} />
+            {d.background === "custom" && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={d.backgroundColor ?? "#0f172a"}
+                  onChange={(e) => onChange({ backgroundColor: e.target.value })}
+                  aria-label="Custom background color"
+                  className="h-8 w-9 shrink-0 cursor-pointer rounded-md border border-[color:var(--color-border)] bg-transparent"
+                />
+                <Input value={d.backgroundColor ?? ""} onChange={(e) => onChange({ backgroundColor: e.target.value })} placeholder="#0f172a" />
+              </div>
+            )}
+          </DGroup>
+
+          <DGroup title="Spacing">
+            <TokenSlider label="Top" value={d.paddingTop ?? "none"} onChange={(v) => onChange({ paddingTop: pad(v) })} />
+            <TokenSlider label="Bottom" value={d.paddingBottom ?? "none"} onChange={(v) => onChange({ paddingBottom: pad(v) })} />
+            <TokenSlider label="Sides" value={d.paddingX ?? "none"} onChange={(v) => onChange({ paddingX: pad(v) })} />
+          </DGroup>
+
+          <DGroup title="Layout">
+            <DLabel>Content width</DLabel>
+            <Seg value={d.maxWidth ?? "full"} onChange={(v) => onChange({ maxWidth: v })} options={[["narrow", "Narrow"], ["default", "Default"], ["wide", "Wide"], ["full", "Full"]]} />
+            <DLabel>Align</DLabel>
+            <Seg value={d.align ?? "left"} onChange={(v) => onChange({ align: v })} options={[["left", "Left"], ["center", "Center"], ["right", "Right"]]} />
+            <DToggle label="Full viewport height" hint="Great for hero sections. Content centers vertically." checked={!!d.fullHeight} onChange={(v) => onChange({ fullHeight: v })} />
+          </DGroup>
+
+          <DGroup title="Effects">
+            <RangeRow label="Section opacity" value={d.opacity ?? 100} onChange={(v) => onChange({ opacity: v })} />
+            <DLabel>Corner radius</DLabel>
+            <Seg wrap value={d.radius ?? "none"} onChange={(v) => onChange({ radius: v })} options={[["none", "0"], ["sm", "S"], ["md", "M"], ["lg", "L"], ["xl", "XL"], ["2xl", "2XL"]]} />
+            <DLabel>Shadow</DLabel>
+            <Seg wrap value={d.shadow ?? "none"} onChange={(v) => onChange({ shadow: v })} options={[["none", "0"], ["sm", "S"], ["md", "M"], ["lg", "L"], ["xl", "XL"]]} />
+            <div className="grid grid-cols-2 gap-2 pt-0.5">
+              <DToggle label="Border top" checked={!!d.borderTop} onChange={(v) => onChange({ borderTop: v })} />
+              <DToggle label="Border bottom" checked={!!d.borderBottom} onChange={(v) => onChange({ borderBottom: v })} />
+            </div>
+          </DGroup>
+
+          <DGroup title="Background image">
+            <Input value={d.backgroundImage ?? ""} onChange={(e) => onChange({ backgroundImage: e.target.value.trim() || undefined })} placeholder="https://…/image.jpg" />
+            {d.backgroundImage && <RangeRow label="Overlay" value={d.overlayOpacity ?? 0} onChange={(v) => onChange({ overlayOpacity: v })} />}
+          </DGroup>
+
           {active && (
             <button
               type="button"
-              onClick={() => onChange({ theme: undefined, background: undefined, paddingY: undefined, paddingX: undefined, fullHeight: undefined, backgroundImage: undefined, overlayOpacity: undefined })}
-              className="text-[11.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+              onClick={() => onChange({ theme: undefined, background: undefined, backgroundColor: undefined, paddingTop: undefined, paddingBottom: undefined, paddingX: undefined, maxWidth: undefined, align: undefined, radius: undefined, shadow: undefined, borderTop: undefined, borderBottom: undefined, fullHeight: undefined, opacity: undefined, backgroundImage: undefined, overlayOpacity: undefined })}
+              className="inline-flex items-center gap-1 text-[11.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               Reset design
             </button>
@@ -1558,12 +1645,13 @@ function SectionShell({
   // own markup; with nothing set it's a transparent pass-through (no change).
   const designed = sectionHasDesign(section.design);
   const overlay = sectionOverlay(section.design);
+  const innerCls = sectionInnerClass(section.design);
   const body = designed ? (
     <div className={cn("relative", sectionDesignClass(section.design))} style={sectionDesignStyle(section.design)}>
       {overlay > 0 && (
         <div aria-hidden className="pointer-events-none absolute inset-0" style={{ backgroundColor: `rgba(0,0,0,${overlay})` }} />
       )}
-      <div className={overlay > 0 ? "relative" : undefined}>{children}</div>
+      <div className={cn(overlay > 0 && "relative", innerCls || undefined)}>{children}</div>
     </div>
   ) : (
     children

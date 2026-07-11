@@ -71,18 +71,39 @@ export interface SectionDef {
   defaults: Record<string, string>;
   render: (p: RenderProps) => ReactNode;
 }
+/** Spacing scale shared by the design padding controls. */
+export const SPACE_TOKENS = ["none", "xs", "sm", "md", "lg", "xl", "2xl", "3xl"] as const;
+export type SpaceToken = (typeof SPACE_TOKENS)[number];
+/** Short labels for the spacing slider stops. */
+export const SPACE_LABELS: Record<SpaceToken, string> = {
+  none: "0", xs: "XS", sm: "S", md: "M", lg: "L", xl: "XL", "2xl": "2XL", "3xl": "3XL",
+};
+
 /** Marketer-set, token-based design overrides on a section instance. Stored
  *  as structured tokens (never raw CSS) so a headless frontend maps them and
  *  managed hosting renders them with the maps below. */
 export interface SectionDesign {
   theme?: "inherit" | "light" | "dark";
-  background?: "default" | "surface" | "muted" | "accent" | "inverse";
-  paddingY?: "none" | "sm" | "md" | "lg" | "xl";
-  paddingX?: "none" | "sm" | "md" | "lg";
-  fullHeight?: boolean;
+  background?: "default" | "surface" | "muted" | "accent" | "inverse" | "custom";
+  /** Custom hex/CSS color when background is "custom". */
+  backgroundColor?: string;
   backgroundImage?: string;
   /** 0-100 dark scrim over the background image, for legibility. */
   overlayOpacity?: number;
+  /** 0-100 opacity of the whole section. */
+  opacity?: number;
+  /** Independent inner padding on the spacing scale. */
+  paddingTop?: SpaceToken;
+  paddingBottom?: SpaceToken;
+  paddingX?: SpaceToken;
+  /** Constrain and position the content column. */
+  maxWidth?: "full" | "wide" | "default" | "narrow";
+  align?: "left" | "center" | "right";
+  radius?: "none" | "sm" | "md" | "lg" | "xl" | "2xl";
+  shadow?: "none" | "sm" | "md" | "lg" | "xl";
+  borderTop?: boolean;
+  borderBottom?: boolean;
+  fullHeight?: boolean;
 }
 
 export interface SectionInstance {
@@ -94,11 +115,18 @@ export interface SectionInstance {
   design?: SectionDesign;
 }
 
-const DESIGN_PY: Record<string, string> = { none: "py-0", sm: "py-6", md: "py-12", lg: "py-20", xl: "py-32" };
-const DESIGN_PX: Record<string, string> = { none: "px-0", sm: "px-4", md: "px-8", lg: "px-16" };
-const DESIGN_BG: Record<string, string> = {
-  default: "", surface: "bg-slate-50", muted: "bg-slate-100", accent: "bg-indigo-50", inverse: "bg-slate-900 text-white",
-};
+const D_PT: Record<SpaceToken, string> = { none: "pt-0", xs: "pt-3", sm: "pt-6", md: "pt-10", lg: "pt-16", xl: "pt-24", "2xl": "pt-32", "3xl": "pt-40" };
+const D_PB: Record<SpaceToken, string> = { none: "pb-0", xs: "pb-3", sm: "pb-6", md: "pb-10", lg: "pb-16", xl: "pb-24", "2xl": "pb-32", "3xl": "pb-40" };
+const D_PX: Record<SpaceToken, string> = { none: "px-0", xs: "px-3", sm: "px-6", md: "px-10", lg: "px-16", xl: "px-24", "2xl": "px-32", "3xl": "px-40" };
+const D_BG: Record<string, string> = { default: "", surface: "bg-slate-50", muted: "bg-slate-100", accent: "bg-indigo-50", inverse: "bg-slate-900", custom: "" };
+const D_MAXW: Record<string, string> = { full: "max-w-none", wide: "max-w-6xl", default: "max-w-4xl", narrow: "max-w-2xl" };
+const D_RADIUS: Record<string, string> = { none: "", sm: "rounded-md", md: "rounded-lg", lg: "rounded-xl", xl: "rounded-2xl", "2xl": "rounded-3xl" };
+const D_SHADOW: Record<string, string> = { none: "", sm: "shadow-sm", md: "shadow-md", lg: "shadow-lg", xl: "shadow-xl" };
+
+/** A dark surface needs the light-text scope so headings don't vanish. */
+export function isDarkSurface(d?: SectionDesign): boolean {
+  return d?.theme === "dark" || d?.background === "inverse";
+}
 
 /** Has the marketer set anything that changes how the section paints? */
 export function sectionHasDesign(d?: SectionDesign): boolean {
@@ -106,26 +134,56 @@ export function sectionHasDesign(d?: SectionDesign): boolean {
   return !!(
     (d.theme && d.theme !== "inherit") ||
     (d.background && d.background !== "default") ||
-    d.paddingY || d.paddingX || d.fullHeight || d.backgroundImage
+    d.backgroundImage || d.paddingTop || d.paddingBottom || d.paddingX ||
+    (d.maxWidth && d.maxWidth !== "full") || (d.align && d.align !== "left") ||
+    (d.radius && d.radius !== "none") || (d.shadow && d.shadow !== "none") ||
+    d.borderTop || d.borderBottom || d.fullHeight ||
+    (d.opacity != null && d.opacity < 100)
   );
 }
 
-/** Token → Tailwind classes for the design wrapper on the canvas. */
+/** Token → Tailwind classes for the OUTER design wrapper on the canvas. */
 export function sectionDesignClass(d?: SectionDesign): string {
   if (!d) return "";
   const cls: string[] = [];
   if (d.theme === "dark") cls.push("bg-slate-950 text-slate-100");
   else if (d.theme === "light") cls.push("bg-white text-slate-900");
-  else if (d.background && d.background !== "default") cls.push(DESIGN_BG[d.background] ?? "");
-  if (d.paddingY) cls.push(DESIGN_PY[d.paddingY] ?? "");
-  if (d.paddingX) cls.push(DESIGN_PX[d.paddingX] ?? "");
+  else if (d.background && d.background !== "default" && d.background !== "custom") cls.push(D_BG[d.background] ?? "");
+  if (isDarkSurface(d)) cls.push("bcms-sec-dark text-slate-100");
+  if (d.paddingTop) cls.push(D_PT[d.paddingTop]);
+  if (d.paddingBottom) cls.push(D_PB[d.paddingBottom]);
+  if (d.paddingX) cls.push(D_PX[d.paddingX]);
+  if (d.radius && d.radius !== "none") cls.push(D_RADIUS[d.radius], "overflow-hidden");
+  if (d.shadow && d.shadow !== "none") cls.push(D_SHADOW[d.shadow]);
+  if (d.borderTop) cls.push("border-t border-slate-200");
+  if (d.borderBottom) cls.push("border-b border-slate-200");
   if (d.fullHeight) cls.push("min-h-screen flex flex-col justify-center");
   return cls.filter(Boolean).join(" ");
 }
 
+/** Inner content-column classes (max width + horizontal alignment). */
+export function sectionInnerClass(d?: SectionDesign): string {
+  if (!d) return "";
+  const hasWidth = d.maxWidth && d.maxWidth !== "full";
+  const hasAlign = d.align && d.align !== "left";
+  if (!hasWidth && !hasAlign) return "";
+  const cls: string[] = [];
+  if (hasWidth) cls.push(D_MAXW[d.maxWidth!] ?? "");
+  cls.push(d.align === "center" ? "mx-auto" : d.align === "right" ? "ml-auto" : "mr-auto");
+  return cls.filter(Boolean).join(" ");
+}
+
 export function sectionDesignStyle(d?: SectionDesign): React.CSSProperties | undefined {
-  if (!d?.backgroundImage) return undefined;
-  return { backgroundImage: `url(${d.backgroundImage})`, backgroundSize: "cover", backgroundPosition: "center" };
+  if (!d) return undefined;
+  const style: React.CSSProperties = {};
+  if (d.background === "custom" && d.backgroundColor) style.backgroundColor = d.backgroundColor;
+  if (d.backgroundImage) {
+    style.backgroundImage = `url(${d.backgroundImage})`;
+    style.backgroundSize = "cover";
+    style.backgroundPosition = "center";
+  }
+  if (d.opacity != null && d.opacity < 100) style.opacity = Math.max(0, d.opacity) / 100;
+  return Object.keys(style).length ? style : undefined;
 }
 
 /** 0..1 scrim opacity, only when a background image is set. */

@@ -553,3 +553,20 @@ aside ::-webkit-scrollbar-thumb {
   transition-duration: 0.001ms !important;
   scroll-behavior: auto !important;
 }
+
+/* ------------------------------------------------------------------ *
+ * Per-section dark theme (visual-editor design controls).
+ * A section with the "dark" surface flips its own headings and body text
+ * to light, but text inside light cards is restored so card content stays
+ * readable. Specificity: the card-scoped rules (more classes) win over the
+ * section-level flip, which in turn wins over the base Tailwind utilities.
+ * ------------------------------------------------------------------ */
+.bcms-sec-dark :is(h1, h2, h3, h4, h5, h6),
+.bcms-sec-dark .text-slate-900,
+.bcms-sec-dark .text-slate-800 { color: #f1f5f9; }
+.bcms-sec-dark :is(p, li, blockquote),
+.bcms-sec-dark .text-slate-700,
+.bcms-sec-dark .text-slate-600,
+.bcms-sec-dark .text-slate-500 { color: #cbd5e1; }
+.bcms-sec-dark :is(.bg-white, .bg-slate-50, .bg-slate-100) :is(h1, h2, h3, h4, h5, h6, .text-slate-900, .text-slate-800) { color: #0f172a; }
+.bcms-sec-dark :is(.bg-white, .bg-slate-50, .bg-slate-100) :is(p, li, blockquote, .text-slate-700, .text-slate-600, .text-slate-500) { color: #475569; }
