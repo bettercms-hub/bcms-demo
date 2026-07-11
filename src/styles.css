@@ -579,13 +579,3 @@ aside ::-webkit-scrollbar-thumb {
 .bcms-doc-editor ::selection { background: color-mix(in oklab, var(--primary) 22%, transparent); }
 .bcms-doc-editor ::-moz-selection { background: color-mix(in oklab, var(--primary) 22%, transparent); }
 
-/* In block-selection mode, hide the ragged native selection — the whole-block
-   highlight below carries the visual instead. */
-.bcms-doc-editor[data-blockmode="true"] ::selection { background: transparent; }
-.bcms-doc-editor[data-blockmode="true"] ::-moz-selection { background: transparent; }
-
-.bcms-block { transition: background-color 0.12s ease; }
-.bcms-doc-editor [data-block-id][data-selected="true"] {
-  background: color-mix(in oklab, var(--primary) 13%, transparent);
-  border-radius: 6px;
-}

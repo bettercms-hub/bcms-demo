@@ -8,6 +8,7 @@
  */
 import {
   createContext,
+  Fragment,
   useCallback,
   useContext,
   useEffect,
@@ -16,6 +17,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { cn } from "@/lib/utils";
 import {
   Award,
   Bookmark,
@@ -266,26 +268,14 @@ function gradientImageDataUri(seed: string): string {
 /* Main editor                                                         */
 /* ------------------------------------------------------------------ */
 
-/* --- Notion-style block selection helpers --- */
-
-/** Walk up from a DOM node to the block row that owns it. */
-function closestBlockId(node: Node | null): string | null {
-  let el: HTMLElement | null =
-    node && node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement | null);
-  while (el) {
-    if (el.dataset?.blockId) return el.dataset.blockId;
-    el = el.parentElement;
-  }
-  return null;
-}
-
-/** Every block id in document order between two blocks, inclusive. */
-function blockIdsBetween(blocks: DocBlock[], aId: string, bId: string): string[] {
-  const ia = blocks.findIndex((b) => b.id === aId);
-  const ib = blocks.findIndex((b) => b.id === bId);
-  if (ia === -1 || ib === -1) return [];
-  const [lo, hi] = ia <= ib ? [ia, ib] : [ib, ia];
-  return blocks.slice(lo, hi + 1).map((b) => b.id);
+/** A slim horizontal line marking where a dragged block will drop. */
+function DropLine() {
+  return (
+    <div className="relative h-0" aria-hidden>
+      <div className="absolute -left-1 right-0 -top-px h-[2px] rounded-full bg-[color:var(--primary)]" />
+      <div className="absolute -left-1 -top-[3px] h-2 w-2 rounded-full bg-[color:var(--primary)]" />
+    </div>
+  );
 }
 
 export function BlockEditor({ value, onChange, placeholder, projectId, entryId }: Props) {
@@ -296,17 +286,15 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
   const blockRefs = useRef<Map<string, HTMLElement>>(new Map());
   const focusAfterRenderRef = useRef<{ id: string; toStart?: boolean } | null>(null);
 
-  // Notion-style block selection: dragging across block boundaries selects
-  // whole blocks (rounded highlight) instead of the browser's ragged text
-  // selection. The native Range stays alive under the hood (so ⌘C still
-  // copies), we just hide its visual and paint the blocks instead.
+  // Notion-style "grab the handle, drag the block to move it": grabbing a
+  // row's ⋮⋮ handle lifts the whole block and shows a drop-line where it will
+  // land; releasing reorders. Clicking the handle (no drag) opens its menu.
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
-  const blockMode = selectedIds.size > 0;
-  const clearSelection = useCallback(
-    () => setSelectedIds((prev) => (prev.size ? new Set() : prev)),
-    [],
-  );
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
+  // Set true for the click that immediately follows a drag, so the handle's
+  // click-to-open-menu doesn't fire after a move.
+  const justDraggedRef = useRef(false);
 
   // Simulated collaborators: map each active teammate on this entry to a block.
   const allPeers = useProjectPresence(projectId);
@@ -419,105 +407,63 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
     });
   };
 
-  // Track the live document selection; when it crosses block boundaries,
-  // switch to block-selection mode and paint whole blocks.
-  useEffect(() => {
-    function onSel() {
-      const root = rootRef.current;
-      if (!root) return;
-      const sel = window.getSelection();
-      if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return clearSelection();
-      const range = sel.getRangeAt(0);
-      if (!root.contains(range.commonAncestorContainer)) return clearSelection();
-      const a = closestBlockId(range.startContainer);
-      const b = closestBlockId(range.endContainer);
-      if (!a || !b || a === b) return clearSelection();
-      const ids = blockIdsBetween(doc.blocks, a, b);
-      const key = ids.join(",");
-      setSelectedIds((prev) => ([...prev].join(",") === key ? prev : new Set(ids)));
-    }
-    document.addEventListener("selectionchange", onSel);
-    return () => document.removeEventListener("selectionchange", onSel);
-  }, [doc.blocks, clearSelection]);
-
-  const removeBlocks = (ids: Set<string>) => {
-    const idx = doc.blocks.findIndex((b) => ids.has(b.id));
-    const remaining = doc.blocks.filter((b) => !ids.has(b.id));
-    const next = remaining.length ? remaining : [emptyParagraph()];
-    const focusId = (idx > 0 ? doc.blocks[idx - 1]?.id : undefined) ?? next[0]?.id;
-    if (focusId) focusAfterRenderRef.current = { id: focusId };
-    setSelectedIds(new Set());
-    commit({ ...doc, blocks: next });
+  // Move a block to a target insertion index (0..len), adjusting for the gap
+  // left where it was removed.
+  const reorderBlock = (id: string, toIndex: number) => {
+    const from = doc.blocks.findIndex((b) => b.id === id);
+    if (from === -1) return;
+    const blocks = [...doc.blocks];
+    const [moved] = blocks.splice(from, 1);
+    let insert = from < toIndex ? toIndex - 1 : toIndex;
+    insert = Math.max(0, Math.min(blocks.length, insert));
+    if (insert === from) return; // dropped in place
+    blocks.splice(insert, 0, moved);
+    focusAfterRenderRef.current = { id };
+    commit({ ...doc, blocks });
   };
 
-  // Typing while blocks are selected replaces them with a fresh paragraph.
-  const replaceSelectionWithChar = (ids: Set<string>, char: string) => {
-    const idx = doc.blocks.findIndex((b) => ids.has(b.id));
-    const para: DocBlock = { ...emptyParagraph(), text: char };
-    const remaining = doc.blocks.filter((b) => !ids.has(b.id));
-    remaining.splice(Math.max(0, idx), 0, para);
-    focusAfterRenderRef.current = { id: para.id };
-    setSelectedIds(new Set());
-    commit({ ...doc, blocks: remaining });
-  };
-
-  // Lay a native Range across every block so ⌘A → whole-doc block selection.
-  const selectAllBlocks = () => {
+  // Which boundary (0..len) the pointer is over, from block midpoints.
+  const dropIndexAt = (clientY: number): number => {
     const root = rootRef.current;
-    if (!root) return;
+    if (!root) return doc.blocks.length;
     const els = Array.from(root.querySelectorAll<HTMLElement>("[data-block-id]"));
-    if (els.length === 0) return;
-    const sel = window.getSelection();
-    if (!sel) return;
-    const r = document.createRange();
-    r.setStart(els[0], 0);
-    const last = els[els.length - 1];
-    r.setEnd(last, last.childNodes.length);
-    sel.removeAllRanges();
-    sel.addRange(r); // selectionchange populates selectedIds
+    for (let i = 0; i < els.length; i++) {
+      const r = els[i].getBoundingClientRect();
+      if (clientY < r.top + r.height / 2) return i;
+    }
+    return els.length;
   };
 
-  const selectBlockText = (blockEl: HTMLElement | null) => {
-    const editable = blockEl?.querySelector<HTMLElement>("[contenteditable]") ?? blockEl;
-    const sel = window.getSelection();
-    if (!editable || !sel) return;
-    const r = document.createRange();
-    r.selectNodeContents(editable);
-    sel.removeAllRanges();
-    sel.addRange(r);
-  };
-
-  const onRootKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    const mod = e.metaKey || e.ctrlKey;
-    const tag = (e.target as HTMLElement).tagName;
-    if (mod && (e.key === "a" || e.key === "A") && tag !== "INPUT" && tag !== "TEXTAREA") {
-      e.preventDefault();
-      // Notion's two-step: ⌘A fills the current block first, ⌘A again (or when
-      // already in block mode) selects every block.
-      if (selectedIds.size > 0) return selectAllBlocks();
-      const sel = window.getSelection();
-      const anchorId = closestBlockId(sel?.anchorNode ?? null);
-      const blockEl = anchorId
-        ? rootRef.current?.querySelector<HTMLElement>(`[data-block-id="${anchorId}"]`) ?? null
-        : null;
-      const editable = blockEl?.querySelector<HTMLElement>("[contenteditable]") ?? blockEl;
-      const full = (editable?.textContent ?? "").trim();
-      const selText = (sel?.toString() ?? "").trim();
-      if (blockEl && full && selText !== full) return selectBlockText(blockEl);
-      return selectAllBlocks();
-    }
-    if (selectedIds.size === 0) return;
-    if (e.key === "Escape") { e.preventDefault(); clearSelection(); return; }
-    if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); removeBlocks(selectedIds); return; }
-    if (mod && (e.key === "x" || e.key === "X")) {
-      e.preventDefault();
-      try { document.execCommand("copy"); } catch { /* clipboard blocked */ }
-      removeBlocks(selectedIds);
-      return;
-    }
-    if (mod) return; // ⌘C copies the live native selection; leave other combos alone
-    if (e.key.startsWith("Arrow")) { clearSelection(); return; }
-    if (e.key.length === 1) { e.preventDefault(); replaceSelectionWithChar(selectedIds, e.key); return; }
+  // Grab handler on a row's ⋮⋮ handle. A small move threshold distinguishes a
+  // click (opens the block menu) from a drag (lifts and moves the block).
+  const onHandlePointerDown = (id: string, e: React.PointerEvent<HTMLElement>) => {
+    if (e.button !== 0) return;
+    const startY = e.clientY;
+    let started = false;
+    const onMove = (ev: PointerEvent) => {
+      if (!started && Math.abs(ev.clientY - startY) > 4) {
+        started = true;
+        setDragId(id);
+        document.body.style.userSelect = "none";
+        document.body.style.cursor = "grabbing";
+      }
+      if (started) setDropIndex(dropIndexAt(ev.clientY));
+    };
+    const onUp = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+      if (started) {
+        reorderBlock(id, dropIndexAt(ev.clientY));
+        justDraggedRef.current = true; // suppress the click that opens the menu
+        setTimeout(() => { justDraggedRef.current = false; }, 0);
+      }
+      setDragId(null);
+      setDropIndex(null);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
   };
 
   /* --- slash dispatch: the current (now empty) block becomes the target --- */
@@ -701,12 +647,7 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
 
   return (
     <BlockEditorContext.Provider value={{ projectId }}>
-    <div
-      ref={rootRef}
-      onKeyDownCapture={onRootKeyDown}
-      data-blockmode={blockMode ? "true" : undefined}
-      className="bcms-doc-editor relative"
-    >
+    <div ref={rootRef} className="bcms-doc-editor relative">
       <div className="pointer-events-none absolute right-0 top-[-26px] z-10 flex justify-end">
         <button
           type="button"
@@ -718,11 +659,14 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
         </button>
       </div>
       {doc.blocks.map((b, i) => (
-        <BlockRow
-          key={b.id}
+        <Fragment key={b.id}>
+          {dragId && dropIndex === i && <DropLine />}
+          <BlockRow
           block={b}
           isFirst={i === 0}
-          selected={selectedIds.has(b.id)}
+          dragging={dragId === b.id}
+          onHandlePointerDown={onHandlePointerDown}
+          justDraggedRef={justDraggedRef}
           placeholder={i === 0 ? placeholder : undefined}
           refMap={blockRefs}
           peers={blockPeers.get(b.id)}
@@ -772,7 +716,9 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
           onSlashEscape={() => setSlash(null)}
           onPasteMarkdown={(text) => pasteMarkdown(b.id, text)}
         />
+        </Fragment>
       ))}
+      {dragId && dropIndex === doc.blocks.length && <DropLine />}
       {slash && (
         <SlashMenu
           state={slash}
@@ -817,7 +763,9 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
 interface RowProps {
   block: DocBlock;
   isFirst: boolean;
-  selected?: boolean;
+  dragging?: boolean;
+  onHandlePointerDown: (id: string, e: React.PointerEvent<HTMLElement>) => void;
+  justDraggedRef: React.MutableRefObject<boolean>;
   placeholder?: string;
   refMap: React.MutableRefObject<Map<string, HTMLElement>>;
   peers?: PresencePeer[];
@@ -839,7 +787,9 @@ interface RowProps {
 
 function BlockRow({
   block,
-  selected,
+  dragging,
+  onHandlePointerDown,
+  justDraggedRef,
   placeholder,
   refMap,
   peers,
@@ -859,6 +809,7 @@ function BlockRow({
   onPasteMarkdown,
 }: RowProps) {
   const editableRef = useRef<HTMLDivElement | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Set up ref map.
   const setRef = (el: HTMLDivElement | null) => {
@@ -966,8 +917,12 @@ function BlockRow({
   return (
     <div
       data-block-id={block.id}
-      data-selected={selected ? "true" : undefined}
-      className="bcms-block group/block relative -mx-2 flex gap-1 rounded px-2 py-0.5 hover:bg-[color:var(--row-hover)]/30"
+      className={cn(
+        "bcms-block group/block relative -mx-2 flex gap-1 rounded px-2 py-0.5 transition-[opacity,box-shadow]",
+        dragging
+          ? "opacity-40"
+          : "hover:bg-[color:var(--row-hover)]/30",
+      )}
     >
       {/* Live collaborators on this paragraph */}
       {peers && peers.length > 0 && (
@@ -990,12 +945,22 @@ function BlockRow({
         >
           <Plus className="h-3.5 w-3.5" />
         </button>
-        <DropdownMenu>
+        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              title="Block options"
-              className="grid h-6 w-6 cursor-grab place-items-center rounded transition-colors hover:bg-[color:var(--row-hover)] hover:text-foreground"
+              title="Drag to move · click for options"
+              // preventDefault stops Radix opening on pointerdown, so the same
+              // handle can start a drag; a plain click still opens the menu.
+              onPointerDown={(e) => {
+                e.preventDefault();
+                onHandlePointerDown(block.id, e);
+              }}
+              onClick={(e) => {
+                if (justDraggedRef.current || e.detail === 0) return;
+                setMenuOpen((o) => !o);
+              }}
+              className="grid h-6 w-6 cursor-grab touch-none place-items-center rounded transition-colors hover:bg-[color:var(--row-hover)] hover:text-foreground active:cursor-grabbing"
             >
               <GripVertical className="h-3.5 w-3.5" />
             </button>
