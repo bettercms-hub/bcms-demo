@@ -14,7 +14,7 @@
  */
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, GitCompareArrows, MessageSquareWarning, Rocket, ThumbsUp, UserPlus } from "lucide-react";
+import { Check, ChevronDown, Eye, GitCompareArrows, MessageSquare, MessageSquareWarning, Rocket, ThumbsUp, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { entryActions, getWorkflow, stageOfEntry, useCMS, workflowActions } from "@/lib/cms/store";
@@ -35,7 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import type { Member, WorkflowStage } from "@/lib/cms/types";
+import type { Entry, Member, WorkflowRequestKind, WorkflowStage } from "@/lib/cms/types";
 
 export function EntryWorkflowBar({ entryId, wsSlug, className }: { entryId: string; wsSlug: string; className?: string }) {
   const entry = useCMS((s) => s.entries.find((e) => e.id === entryId));
@@ -120,7 +120,7 @@ export function EntryWorkflowBar({ entryId, wsSlug, className }: { entryId: stri
         <span className="text-[11.5px] text-muted-foreground">Your seat can review, not edit.</span>
       ) : (
         <>
-          <AssigneePickerButton teammates={teammates} value={entry.workflowAssigneeIds ?? []} onChange={(ids) => workflowActions.assignEntry(entry.id, ids)} />
+          <RequestButton entry={entry} teammates={teammates} />
 
           {entry.publishedSnapshot && (
             <button
@@ -233,40 +233,231 @@ export function EntryWorkflowBar({ entryId, wsSlug, className }: { entryId: stri
   );
 }
 
-/* --------------------------------------------------------- assignee picker */
+/* ---------------------------------------------------------- request flow */
 
-function AssigneePickerButton({ teammates, value, onChange }: { teammates: Member[]; value: string[]; onChange: (ids: string[]) => void }) {
-  const selected = new Set(value);
+const REQUEST_KINDS: {
+  id: WorkflowRequestKind;
+  label: string;
+  hint: string;
+  icon: typeof Eye;
+  suggests: (m: Member) => boolean;
+}[] = [
+  {
+    id: "review",
+    label: "Review",
+    hint: "Read it and flag issues",
+    icon: Eye,
+    suggests: (m) => m.seat === "reviewer" || m.seat === "editor",
+  },
+  {
+    id: "approval",
+    label: "Approval",
+    hint: "Sign off so it can ship",
+    icon: ThumbsUp,
+    suggests: (m) => m.role === "owner" || m.role === "admin" || m.seat === "marketer",
+  },
+  {
+    id: "feedback",
+    label: "Feedback",
+    hint: "Opinions, no sign-off",
+    icon: MessageSquare,
+    suggests: () => false,
+  },
+];
+
+function seatLabel(m: Member): string {
+  const s = m.seat ?? (m.role === "owner" ? "owner" : undefined);
+  if (!s) return m.role;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+const KIND_ICON: Record<WorkflowRequestKind, typeof Eye> = { review: Eye, approval: ThumbsUp, feedback: MessageSquare };
+
+/**
+ * The "why + who" of pulling teammates into an entry. One popover: pick what
+ * you're asking for (review / approval / feedback), pick people (suggested
+ * by seat), add context and an optional due date. Open asks are listed on
+ * top so it's always clear who owes what.
+ */
+function RequestButton({ entry, teammates }: { entry: Entry; teammates: Member[] }) {
+  const members = useCMS((s) => s.members);
+  const [kind, setKind] = useState<WorkflowRequestKind>("review");
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [note, setNote] = useState("");
+  const [due, setDue] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const openRequests = (entry.workflowRequests ?? []).filter((r) => r.status === "open");
+  const kindDef = REQUEST_KINDS.find((k) => k.id === kind)!;
+  const suggested = teammates.filter(kindDef.suggests);
+  const rest = teammates.filter((m) => !kindDef.suggests(m));
+
+  const send = () => {
+    if (picked.size === 0) return;
+    workflowActions.request(entry.id, {
+      kind,
+      memberIds: Array.from(picked),
+      note,
+      due: due ? new Date(due).toISOString() : undefined,
+    });
+    const names = Array.from(picked)
+      .map((id) => members.find((m) => m.id === id)?.name?.split(" ")[0])
+      .filter(Boolean)
+      .join(", ");
+    toast.success(`${kindDef.label} requested`, { description: names });
+    setPicked(new Set());
+    setNote("");
+    setDue("");
+    setOpen(false);
+  };
+
+  const PersonRow = ({ m }: { m: Member }) => {
+    const on = picked.has(m.id);
+    return (
+      <button
+        type="button"
+        onClick={() =>
+          setPicked((prev) => {
+            const next = new Set(prev);
+            if (next.has(m.id)) next.delete(m.id);
+            else next.add(m.id);
+            return next;
+          })
+        }
+        className="flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-[color:var(--color-row-hover)]"
+      >
+        <MemberAvatar member={m} size={22} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[12.5px] text-foreground">{m.name}</span>
+          <span className="block text-[10.5px] text-muted-foreground">{seatLabel(m)}</span>
+        </span>
+        {on && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
+      </button>
+    );
+  };
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
-          title="Assign reviewers"
+          title={openRequests.length ? `${openRequests.length} open ${openRequests.length === 1 ? "request" : "requests"}` : "Request review, approval or feedback"}
           className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 text-[12px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
         >
           <UserPlus className="h-3.5 w-3.5 text-muted-foreground" />
-          {value.length === 0 ? "Assign" : <AssigneeStack ids={value} size={18} />}
+          {openRequests.length === 0 ? "Request" : <AssigneeStack ids={Array.from(new Set(openRequests.map((r) => r.memberId)))} size={18} />}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[240px] p-1.5">
-        <div className="px-1.5 pb-1 pt-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">Assign to</div>
-        {teammates.map((m) => {
-          const on = selected.has(m.id);
-          return (
+      <PopoverContent align="end" className="w-[300px] p-0">
+        {/* Open asks */}
+        {openRequests.length > 0 && (
+          <div className="border-b border-[color:var(--border-hairline)] px-2 pb-1.5 pt-2">
+            <div className="px-1 pb-1 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">Waiting on</div>
+            {openRequests.map((r) => {
+              const m = members.find((x) => x.id === r.memberId);
+              const Icon = KIND_ICON[r.kind];
+              if (!m) return null;
+              return (
+                <div key={r.id} className="group flex items-center gap-2 rounded-md px-1 py-1" title={r.note ? `"${r.note}"` : undefined}>
+                  <MemberAvatar member={m} size={20} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12px] text-foreground">{m.name}</span>
+                    <span className="flex items-center gap-1 text-[10.5px] text-muted-foreground">
+                      <Icon className="h-2.5 w-2.5" />
+                      {r.kind === "approval" ? "Approval" : r.kind === "review" ? "Review" : "Feedback"} · {relativeTime(r.requestedAt)}
+                      {r.due ? ` · due ${new Date(r.due).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    title="Mark done"
+                    onClick={() => workflowActions.closeRequest(entry.id, r.id, "done")}
+                    className="grid h-6 w-6 place-items-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    title="Withdraw request"
+                    onClick={() => workflowActions.closeRequest(entry.id, r.id, "withdrawn")}
+                    className="grid h-6 w-6 place-items-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-[color:var(--color-row-hover)] hover:text-destructive group-hover:opacity-100"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* What are you asking for? */}
+        <div className="px-2 pt-2">
+          <div className="grid grid-cols-3 gap-1">
+            {REQUEST_KINDS.map((k) => (
+              <button
+                key={k.id}
+                type="button"
+                onClick={() => setKind(k.id)}
+                title={k.hint}
+                className={cn(
+                  "flex flex-col items-center gap-0.5 rounded-md border px-1 py-1.5 text-[11px] font-medium transition-colors",
+                  kind === k.id
+                    ? "border-[color:color-mix(in_oklab,var(--primary)_45%,transparent)] bg-[color:color-mix(in_oklab,var(--primary)_8%,transparent)] text-foreground"
+                    : "border-[color:var(--color-border)] text-muted-foreground hover:bg-[color:var(--color-row-hover)] hover:text-foreground",
+                )}
+              >
+                <k.icon className="h-3.5 w-3.5" />
+                {k.label}
+              </button>
+            ))}
+          </div>
+          <div className="px-0.5 pb-1 pt-1 text-[11px] text-muted-foreground">{kindDef.hint}.</div>
+        </div>
+
+        {/* Who */}
+        <div className="max-h-[190px] overflow-y-auto px-2 pb-1">
+          {suggested.length > 0 && (
+            <>
+              <div className="px-1 pb-0.5 pt-1 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">Suggested</div>
+              {suggested.map((m) => <PersonRow key={m.id} m={m} />)}
+            </>
+          )}
+          {rest.length > 0 && (
+            <>
+              {suggested.length > 0 && <div className="px-1 pb-0.5 pt-1 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">Everyone else</div>}
+              {rest.map((m) => <PersonRow key={m.id} m={m} />)}
+            </>
+          )}
+          {teammates.length === 0 && <div className="px-1.5 py-2 text-[12px] text-muted-foreground">No teammates in this workspace.</div>}
+        </div>
+
+        {/* Context + due */}
+        <div className="space-y-1.5 border-t border-[color:var(--border-hairline)] px-2 pb-2 pt-2">
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={2}
+            placeholder="Add context so they know what to look at (optional)"
+            className="w-full resize-none rounded-md border border-[color:var(--color-border)] bg-[color:var(--background)] px-2 py-1.5 text-[12px] text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-[color:color-mix(in_oklab,var(--primary)_45%,transparent)]"
+          />
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={due}
+              onChange={(e) => setDue(e.target.value)}
+              aria-label="Due date"
+              className="h-7 flex-1 rounded-md border border-[color:var(--color-border)] bg-[color:var(--background)] px-2 text-[11.5px] text-foreground outline-none focus:border-[color:color-mix(in_oklab,var(--primary)_45%,transparent)]"
+            />
             <button
-              key={m.id}
               type="button"
-              onClick={() => onChange(on ? value.filter((id) => id !== m.id) : [...value, m.id])}
-              className="flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-[color:var(--color-row-hover)]"
+              disabled={picked.size === 0}
+              onClick={send}
+              className="inline-flex h-7 items-center gap-1 rounded-md bg-primary px-2.5 text-[12px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <MemberAvatar member={m} size={22} />
-              <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">{m.name}</span>
-              {on && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
+              Send request{picked.size > 1 ? `s (${picked.size})` : ""}
             </button>
-          );
-        })}
-        {teammates.length === 0 && <div className="px-1.5 py-2 text-[12px] text-muted-foreground">No teammates in this workspace.</div>}
+          </div>
+        </div>
       </PopoverContent>
     </Popover>
   );

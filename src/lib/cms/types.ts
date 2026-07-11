@@ -525,6 +525,8 @@ export interface Entry {
   workflowAssigneeIds?: ID[];
   workflowDueDate?: ISODate;
   workflowLastMove?: { by: ID; at: ISODate; comment?: string };
+  /** Typed asks: who was asked to do what on this entry, and why. */
+  workflowRequests?: WorkflowRequest[];
   /** SEO */
   metaTitle?: string;
   metaDescription?: string;
@@ -550,6 +552,23 @@ export interface ProjectWorkflow {
   id: ID;
   projectId: ID;
   stages: WorkflowStage[];
+}
+
+/** Why someone was pulled into an entry. Review = read and flag issues,
+ * approval = sign off so it can ship, feedback = opinions, no gate. */
+export type WorkflowRequestKind = "review" | "approval" | "feedback";
+
+/** A typed ask on an entry: who was asked, for what, by whom, and why. */
+export interface WorkflowRequest {
+  id: ID;
+  kind: WorkflowRequestKind;
+  memberId: ID;
+  /** Context that travels with the notification. */
+  note?: string;
+  requestedBy: ID;
+  requestedAt: ISODate;
+  due?: ISODate;
+  status: "open" | "done";
 }
 
 export interface EntryComment {

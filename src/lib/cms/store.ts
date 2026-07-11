@@ -88,6 +88,8 @@ import type {
   WebhookDelivery,
   WebhookEvent,
   Website,
+  WorkflowRequest,
+  WorkflowRequestKind,
   WorkflowStage,
   Workspace,
   WorkspaceRole,
@@ -2209,6 +2211,75 @@ export const workflowActions = {
     set((s) => ({
       ...s,
       entries: s.entries.map((e) => (e.id === entryId ? { ...e, workflowDueDate: iso } : e)),
+    }));
+  },
+  /** Ask people for something specific (review / approval / feedback).
+   * Each person gets their own request + notification; assignees stay in
+   * sync so boards and row avatars keep working. */
+  request: (
+    entryId: string,
+    input: { kind: WorkflowRequestKind; memberIds: string[]; note?: string; due?: string },
+  ) => {
+    const entry = state.entries.find((e) => e.id === entryId);
+    if (!entry || input.memberIds.length === 0) return;
+    const now = new Date().toISOString();
+    const fresh: WorkflowRequest[] = input.memberIds.map((memberId) => ({
+      id: newId("wfr"),
+      kind: input.kind,
+      memberId,
+      note: input.note?.trim() || undefined,
+      requestedBy: CURRENT_ACTOR,
+      requestedAt: now,
+      due: input.due,
+      status: "open",
+    }));
+    // One open request per person per kind: a re-ask replaces the old one.
+    const kept = (entry.workflowRequests ?? []).filter(
+      (r) => !(r.status === "open" && r.kind === input.kind && input.memberIds.includes(r.memberId)),
+    );
+    const requests = [...kept, ...fresh];
+    const assignees = Array.from(
+      new Set([...(entry.workflowAssigneeIds ?? []), ...input.memberIds]),
+    );
+    set((s) => ({
+      ...s,
+      entries: s.entries.map((e) =>
+        e.id === entryId ? { ...e, workflowRequests: requests, workflowAssigneeIds: assignees } : e,
+      ),
+    }));
+    const col = state.collections.find((c) => c.id === entry.collectionId);
+    const wsId = workspaceForProject(col?.projectId ?? "");
+    const verb = input.kind === "approval" ? "Approval" : input.kind === "review" ? "Review" : "Feedback";
+    const requester = state.members.find((m) => m.id === CURRENT_ACTOR)?.name ?? "A teammate";
+    for (const r of fresh) {
+      const who = state.members.find((m) => m.id === r.memberId)?.name ?? "someone";
+      notificationActions.add(wsId, {
+        kind: "info",
+        title: `${verb} requested: ${entry.title}`,
+        body: r.note ? `${requester} asked ${who}: ${r.note}` : `${requester} asked ${who}.`,
+      });
+    }
+    recordAudit(wsId, "workflow.requested", "entry", `${verb} on ${entry.title}`, entryId);
+  },
+  /** Mark a request done, or take it back. Assignees drop off when they
+   * have no other open request and weren't assigned directly before. */
+  closeRequest: (entryId: string, requestId: string, outcome: "done" | "withdrawn") => {
+    const entry = state.entries.find((e) => e.id === entryId);
+    const req = entry?.workflowRequests?.find((r) => r.id === requestId);
+    if (!entry || !req) return;
+    const requests =
+      outcome === "done"
+        ? (entry.workflowRequests ?? []).map((r) => (r.id === requestId ? { ...r, status: "done" as const } : r))
+        : (entry.workflowRequests ?? []).filter((r) => r.id !== requestId);
+    const stillOpen = requests.some((r) => r.status === "open" && r.memberId === req.memberId);
+    const assignees = stillOpen
+      ? entry.workflowAssigneeIds
+      : entry.workflowAssigneeIds?.filter((id) => id !== req.memberId);
+    set((s) => ({
+      ...s,
+      entries: s.entries.map((e) =>
+        e.id === entryId ? { ...e, workflowRequests: requests, workflowAssigneeIds: assignees } : e,
+      ),
     }));
   },
 };
