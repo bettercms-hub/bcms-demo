@@ -67,6 +67,8 @@ import {
   Text as TextIcon,
   Trash2,
   TrendingUp,
+  ClipboardCopy,
+  CopyPlus,
   Copy as CopyIcon,
   UserRound,
   Video,
@@ -268,12 +270,77 @@ function gradientImageDataUri(seed: string): string {
 /* Main editor                                                         */
 /* ------------------------------------------------------------------ */
 
+/** Every block id in document order between two blocks, inclusive. */
+function blockIdsBetween(blocks: DocBlock[], aId: string, bId: string): string[] {
+  const ia = blocks.findIndex((b) => b.id === aId);
+  const ib = blocks.findIndex((b) => b.id === bId);
+  if (ia === -1 || ib === -1) return [];
+  const [lo, hi] = ia <= ib ? [ia, ib] : [ib, ia];
+  return blocks.slice(lo, hi + 1).map((b) => b.id);
+}
+
 /** A slim horizontal line marking where a dragged block will drop. */
 function DropLine() {
   return (
     <div className="relative h-0" aria-hidden>
       <div className="absolute -left-1 right-0 -top-px h-[2px] rounded-full bg-[color:var(--primary)]" />
       <div className="absolute -left-1 -top-[3px] h-2 w-2 rounded-full bg-[color:var(--primary)]" />
+    </div>
+  );
+}
+
+/** Floating actions shown while one or more blocks are selected. */
+function BlockSelectionBar({
+  count,
+  firstId,
+  rootRef,
+  onDuplicate,
+  onCopy,
+  onDelete,
+  onClear,
+}: {
+  count: number;
+  firstId: string;
+  rootRef: React.MutableRefObject<HTMLDivElement | null>;
+  onDuplicate: () => void;
+  onCopy: () => void;
+  onDelete: () => void;
+  onClear: () => void;
+}) {
+  const el = firstId ? rootRef.current?.querySelector<HTMLElement>(`[data-block-id="${firstId}"]`) : null;
+  const r = el?.getBoundingClientRect();
+  const style: React.CSSProperties = r
+    ? { position: "fixed", top: Math.max(8, r.top - 44), left: r.left, zIndex: 50 }
+    : { position: "fixed", top: 12, left: "50%", transform: "translateX(-50%)", zIndex: 50 };
+  const btn =
+    "inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--row-hover)]";
+  return (
+    <div
+      style={style}
+      // Keep clicks on the bar from clearing the selection.
+      onMouseDown={(e) => e.stopPropagation()}
+      className="flex items-center gap-0.5 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--card)] p-1 shadow-lg"
+    >
+      <span className="px-2 text-[11.5px] font-semibold text-muted-foreground">{count} selected</span>
+      <span className="mx-0.5 h-4 w-px bg-[color:var(--color-border)]" />
+      <button type="button" className={btn} onClick={onDuplicate}>
+        <CopyPlus className="h-3.5 w-3.5" /> Duplicate
+      </button>
+      <button type="button" className={btn} onClick={onCopy}>
+        <ClipboardCopy className="h-3.5 w-3.5" /> Copy
+      </button>
+      <button type="button" className={cn(btn, "text-destructive hover:bg-destructive/10")} onClick={onDelete}>
+        <Trash2 className="h-3.5 w-3.5" /> Delete
+      </button>
+      <span className="mx-0.5 h-4 w-px bg-[color:var(--color-border)]" />
+      <button
+        type="button"
+        aria-label="Clear selection"
+        className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-[color:var(--row-hover)] hover:text-foreground"
+        onClick={onClear}
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
     </div>
   );
 }
@@ -295,6 +362,12 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
   // Set true for the click that immediately follows a drag, so the handle's
   // click-to-open-menu doesn't fire after a move.
   const justDraggedRef = useRef(false);
+
+  // Notion-style block selection: drag across two or more blocks to select
+  // them as objects (highlighted), then Duplicate / Copy / Delete from the
+  // floating toolbar or the keyboard.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const selectRef = useRef<{ down: string | null; active: boolean }>({ down: null, active: false });
 
   // Simulated collaborators: map each active teammate on this entry to a block.
   const allPeers = useProjectPresence(projectId);
@@ -464,6 +537,98 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+  };
+
+  /* --- block selection: drag across blocks to grab them as objects --- */
+
+  const blockAtY = (y: number): string | null => {
+    const root = rootRef.current;
+    if (!root) return null;
+    const els = Array.from(root.querySelectorAll<HTMLElement>("[data-block-id]"));
+    let nearest: string | null = null;
+    let nearestDist = Infinity;
+    for (const el of els) {
+      const r = el.getBoundingClientRect();
+      if (y >= r.top && y <= r.bottom) return el.dataset.blockId ?? null;
+      const d = y < r.top ? r.top - y : y - r.bottom;
+      if (d < nearestDist) { nearestDist = d; nearest = el.dataset.blockId ?? null; }
+    }
+    return nearest;
+  };
+
+  const onRootMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    const t = e.target as HTMLElement;
+    // Leave handles, buttons, inputs, links and widgets alone.
+    if (t.closest("button, a, input, textarea, select, [contenteditable='false'], [role='menu']")) return;
+    if (selectedIds.size) setSelectedIds(new Set()); // fresh interaction clears
+    selectRef.current = { down: blockAtY(e.clientY), active: false };
+    const onMove = (ev: MouseEvent) => {
+      const st = selectRef.current;
+      const to = blockAtY(ev.clientY);
+      if (!st.active) {
+        if (to && st.down && to !== st.down) {
+          st.active = true;
+          document.body.style.userSelect = "none";
+        } else {
+          return; // still inside one block → let native text selection happen
+        }
+      }
+      window.getSelection()?.removeAllRanges(); // suppress ragged text selection
+      if (st.down && to) setSelectedIds(new Set(blockIdsBetween(doc.blocks, st.down, to)));
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      document.body.style.userSelect = "";
+      selectRef.current = { down: null, active: false };
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
+  const deleteBlocks = (ids: Set<string>) => {
+    const idx = doc.blocks.findIndex((b) => ids.has(b.id));
+    const remaining = doc.blocks.filter((b) => !ids.has(b.id));
+    const next = remaining.length ? remaining : [emptyParagraph()];
+    const focusId = (idx > 0 ? doc.blocks[idx - 1]?.id : undefined) ?? next[0]?.id;
+    if (focusId) focusAfterRenderRef.current = { id: focusId };
+    setSelectedIds(new Set());
+    commit({ ...doc, blocks: next });
+  };
+
+  const duplicateBlocks = (ids: Set<string>) => {
+    const selected = doc.blocks.filter((b) => ids.has(b.id));
+    if (selected.length === 0) return;
+    const lastIdx = doc.blocks.reduce((m, b, i) => (ids.has(b.id) ? i : m), -1);
+    const clones: DocBlock[] = selected.map((b) => ({ ...structuredClone(b), id: blockId() }));
+    const blocks = [...doc.blocks];
+    blocks.splice(lastIdx + 1, 0, ...clones);
+    setSelectedIds(new Set(clones.map((c) => c.id)));
+    commit({ ...doc, blocks });
+    toast.success(`${clones.length} block${clones.length > 1 ? "s" : ""} duplicated`);
+  };
+
+  const copyBlocks = (ids: Set<string>) => {
+    const text = doc.blocks
+      .filter((b) => ids.has(b.id))
+      .map((b) => (b.text ?? "").replace(/<[^>]+>/g, ""))
+      .join("\n\n")
+      .trim();
+    navigator.clipboard?.writeText(text).catch(() => {});
+    toast.success(`${ids.size} block${ids.size > 1 ? "s" : ""} copied`);
+  };
+
+  const onSelectionKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (selectedIds.size === 0) return;
+    const mod = e.metaKey || e.ctrlKey;
+    if (e.key === "Escape") { e.preventDefault(); setSelectedIds(new Set()); return; }
+    if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); deleteBlocks(selectedIds); return; }
+    if (mod && (e.key === "d" || e.key === "D")) { e.preventDefault(); duplicateBlocks(selectedIds); return; }
+    if (mod && (e.key === "c" || e.key === "C")) { e.preventDefault(); copyBlocks(selectedIds); return; }
+    if (mod) return;
+    if (e.key.startsWith("Arrow")) { setSelectedIds(new Set()); return; }
+    if (e.key.length === 1) { e.preventDefault(); deleteBlocks(selectedIds); return; }
   };
 
   /* --- slash dispatch: the current (now empty) block becomes the target --- */
@@ -647,7 +812,23 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
 
   return (
     <BlockEditorContext.Provider value={{ projectId }}>
-    <div ref={rootRef} className="bcms-doc-editor relative">
+    <div
+      ref={rootRef}
+      onMouseDown={onRootMouseDown}
+      onKeyDownCapture={onSelectionKeyDown}
+      className="bcms-doc-editor relative"
+    >
+      {selectedIds.size > 0 && (
+        <BlockSelectionBar
+          count={selectedIds.size}
+          firstId={doc.blocks.find((b) => selectedIds.has(b.id))?.id ?? ""}
+          rootRef={rootRef}
+          onDuplicate={() => duplicateBlocks(selectedIds)}
+          onCopy={() => copyBlocks(selectedIds)}
+          onDelete={() => deleteBlocks(selectedIds)}
+          onClear={() => setSelectedIds(new Set())}
+        />
+      )}
       <div className="pointer-events-none absolute right-0 top-[-26px] z-10 flex justify-end">
         <button
           type="button"
@@ -664,6 +845,7 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
           <BlockRow
           block={b}
           isFirst={i === 0}
+          selected={selectedIds.has(b.id)}
           dragging={dragId === b.id}
           onHandlePointerDown={onHandlePointerDown}
           justDraggedRef={justDraggedRef}
@@ -763,6 +945,7 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
 interface RowProps {
   block: DocBlock;
   isFirst: boolean;
+  selected?: boolean;
   dragging?: boolean;
   onHandlePointerDown: (id: string, e: React.PointerEvent<HTMLElement>) => void;
   justDraggedRef: React.MutableRefObject<boolean>;
@@ -787,6 +970,7 @@ interface RowProps {
 
 function BlockRow({
   block,
+  selected,
   dragging,
   onHandlePointerDown,
   justDraggedRef,
@@ -917,11 +1101,11 @@ function BlockRow({
   return (
     <div
       data-block-id={block.id}
+      data-selected={selected ? "true" : undefined}
       className={cn(
-        "bcms-block group/block relative -mx-2 flex gap-1 rounded px-2 py-0.5 transition-[opacity,box-shadow]",
-        dragging
-          ? "opacity-40"
-          : "hover:bg-[color:var(--row-hover)]/30",
+        "bcms-block group/block relative -mx-2 flex gap-1 rounded px-2 py-0.5 transition-[opacity,background-color]",
+        dragging && "opacity-40",
+        !dragging && !selected && "hover:bg-[color:var(--row-hover)]/30",
       )}
     >
       {/* Live collaborators on this paragraph */}

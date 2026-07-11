@@ -579,3 +579,10 @@ aside ::-webkit-scrollbar-thumb {
 .bcms-doc-editor ::selection { background: color-mix(in oklab, var(--primary) 22%, transparent); }
 .bcms-doc-editor ::-moz-selection { background: color-mix(in oklab, var(--primary) 22%, transparent); }
 
+
+/* Selected blocks (multi-block selection) — whole-block highlight. */
+.bcms-doc-editor[data-selecting="true"] ::selection { background: transparent; }
+.bcms-doc-editor [data-block-id][data-selected="true"] {
+  background: color-mix(in oklab, var(--primary) 14%, transparent);
+  border-radius: 6px;
+}
