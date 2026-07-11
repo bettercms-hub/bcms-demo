@@ -40,6 +40,101 @@
 **The plan in numbers** (assumptions labeled in §37–38): a unified Postgres design of ~45 tables (§11); ~90 application endpoints plus a public delivery API with markdown content negotiation (§13–14); a 20-tool MCP server with governance enforcement (§15); Typesense-backed search per SEARCH_PLAN.md (§21); ~94 engineer-weeks across 14 epics with a 4→6 engineer team, GA in roughly 6–7 months, infra costs modeled at ~$915/mo (100 projects) to ~$48k/mo (10k projects); the first 20 tickets are fully written in §40 and the strangler path from demo to production closes the document in §44.
 
 **How to use this document.** Engineers: start at §2–3 (what exists), then §10–11 (data), then §13 (contract), then §40 (tickets). The founder: §41 lists the nine decisions only you can make — pricing enforcement strictness, AI provider defaults, the hosted-rendering strategy for managed sites, self-hosting, data residency, SLAs, which editor and schema systems win, and demo-content migration. Everything else has a recommended default so work can start immediately.
+
+## Feature Overview (at a glance)
+
+Every capability the product ships today, grouped for a quick read. Almost all of it works in the browser now; the status labels ([EXISTING] / [SIMULATED]) and code paths are in §4–6, and each area has a deep dive later. This list is the "what's in the box."
+
+**Content creation & editing**
+
+- Visual editor with Form and Visual modes, live device previews (desktop / tablet / mobile / landscape), edit vs comment interaction modes, x-ray mode, and accessibility vision filters (grayscale / color-blind / blurred).
+- Section library with live rendered previews; insert between sections, reorder, duplicate, delete, swap layout/variant; page templates and save-page-as-template.
+- Per-section **Design panel** (token-based): theme (light/dark), background presets + custom color, independent top/bottom/side spacing, content max-width, alignment, section opacity, corner radius, shadow, borders, full-viewport height, background image with overlay-opacity slider.
+- Inline click-to-edit text with a rich bubble toolbar: H1–H6, bold / italic / underline, and a link editor with an internal page picker, rel and new-tab options.
+- Notion-style entry **BlockEditor**: two-level slash menu (Featured + Basic, drilling into AI / Components / Embeds with scoped search); 20+ block types (headings, lists, to-do, quote, callout with tones, code, table, toggle, button, bookmark, divider); AI commands with prompt inputs (write, continue, summarize, improve, longer/shorter, generate image); reusable component instances; embeds (YouTube, Vimeo, Loom, Figma, CodePen, CodeSandbox, Spotify, generic); a full image block (media-library picker, upload, paste URL, caption, alt text, alignment, hyperlink, crop); Markdown paste (Notion-compatible) and a Markdown view/edit toggle; inline bold/italic and heading turn-into from the text-selection toolbar; per-paragraph presence avatars.
+- Page settings: meta title/description, **canonical URL**, OG image, index/noindex, and JSON-LD with validation.
+
+**Content modeling**
+
+- Schema builder (`/schema`): page / collection / block model kinds; inline field rows with settings for type, required, **searchable**, help text, select options, references, and allowed sections; field groups and section zones; a live JSON + API preview panel.
+- Collections workspace: Table and Gallery views, CSV import/export, column hiding, density, per-entry publish menu, pagination.
+- A realistic 15-field blog example schema (references, multi-reference, select, date, number, URL, image, SEO fields).
+
+**Publishing & workflow**
+
+- Draft / publish / schedule / staging for both pages and entries; unpublish and unschedule.
+- Published snapshots with **Compare versions** (word-level diff, per-field restore).
+- Editorial workflow: customizable stages, a kanban board with drag-between-stages and filters, and publish gates.
+- **Typed requests** — Review / Approval / Feedback — with people suggested by seat, a context note, a due date, and an open-request list you can mark done or withdraw.
+- Copy document / paste document.
+
+**AI & agents**
+
+- Built-in agent (dock + `/agent` page): Plan Mode that plans first, stages drafts, waits for human approval, applies, and offers one-click undo, fully audited.
+- Named agent roster, a skills catalog, and multi-document change review with per-field before/after diffs and a live document preview.
+- BYOK model picker, AI credits, and tiers (Lite / Balanced / Max); runs history and an undo journal.
+- Page generators: SEO pages from keywords (with CSV bulk) and an ABM page builder from an accounts list.
+- **External agents / MCP**: a Connect-your-AI dialog (per-editor install commands for Claude Code, Cursor, VS Code, Windsurf, Claude Desktop) reachable from the top bar and ⌘K, scoped one-time-reveal keys, an MCP endpoint, and project + workspace connected-agent pages.
+- **AI governance** page (credit budget, tier ceiling, per-skill and per-generator toggles, BYOK/external switches) that is actually enforced.
+
+**Delivery, SEO & search**
+
+- Headless API delivery and managed hosting (per project).
+- SEO section: meta / SERP preview, sitemap, redirects, RSS feed, a schema-markup builder with `{{field}}` token chips, and AEO / AI-traffic surfaces.
+- Markdown delivery: `.md` twins of every page, `llms.txt` and `llms-full.txt` (auto or custom), and standalone `.md` files with a draft/publish lifecycle.
+- **Site search**: enable per project, choose what's searchable per collection and per field, a live playground over your real content, install surfaces (hosted embed, REST, React SearchBox), query analytics (top searches, no-result searches), and a plan-gated AI (semantic + typo-tolerant) mode.
+
+**Media**
+
+- Media library with folders, image/video/PDF/Lottie/GIF kinds, favorites and tags; upload; an image **crop** dialog with aspect presets; and a reusable picker dialog.
+
+**Forms**
+
+- Form builder with a field library (including a phone field with a country-code picker and a business-email-only toggle) and a Cloudflare Turnstile option; after-submit config (thank-you, redirect, error); a CRM-style submissions table (a column per field, multi-select bulk actions, IP, Submissions vs Spam tabs); an integrations panel; and an Embed & API code panel (endpoint, HTML, fetch, React).
+
+**Collaboration**
+
+- Simulated multiplayer presence: a top-bar avatar stack with jump-to, live canvas cursors and section outlines, and row / field / paragraph avatars.
+- Comment system: field-anchored threads with pins, reactions, @-mentions, image attachments, reply, and resolve — shown in both visual and form modes.
+
+**Team, roles & access**
+
+- Workspace roles (owner / developer / marketer / editor / reviewer) with a cascading "view as" control.
+- Custom roles with scoped capabilities (including markdown and generators, with element-level depth gated to Enterprise).
+- Members with billable seats, invites, and agency **guest teams** with plan caps.
+- An Access page with the role model and an audit-log table.
+
+**Multi-tenancy & sharing**
+
+- Workspaces → projects → content, with project folders and a projects-first dashboard.
+- Public **share links** (`/p/$token`) as a read-only sandbox (pages render, content model, collections) with a cloneable-template toggle.
+- Project **transfers** (instant within your workspace; email accept-banner loop across workspaces) and project **clone**.
+
+**Billing & usage**
+
+- Two-layer plans (workspace + per-site: free / basic / pro / team / enterprise) with a feature matrix, seats, and AI-credit meters.
+- Split Plan and Usage pages; buy/switch site plans in project settings; deep usage (bandwidth, storage, API requests, AI credits, asset breakdown, export, compute for Cloud sites).
+
+**Brand**
+
+- Brand kit (`/brand`): a token store with a live preview, `design.md` import, an API bar, and versioning; ties into agent voice.
+
+**Platform, settings & shell**
+
+- New Project wizard (headless vs managed/Cloud fork); project card menus (share / transfer / clone).
+- Domains: project-owned domains with SSL status, plus a workspace roll-up grouped by project.
+- Workspace settings: general, members, roles, plans, billing, usage, domains, notifications, AI controls, connected agents, **API keys and webhooks with one-time secret reveal**, audit log, integrations.
+- Project settings: general, access, plan, usage, domains, external agents, a per-framework Integration guide, hosting (repo/build config), transfer.
+- Account area (`/account`): profile, login & security (password, 2FA, sessions), email, connected accounts, preferences (including a working reduce-motion setting).
+- Auth (split-screen sign-in/up, simulated SSO, real Supabase email, guest door), onboarding flow, and standalone workspace creation.
+- Notifications center (per-item and mark-all read, bell badge), command palette (⌘K), shortcut cheatsheet, theme toggle, and the Connect-your-AI dialog.
+
+**Foundations**
+
+- Dark mode (Graphite neutral system, with a dark-remap layer; preview canvases stay light).
+- Device tiers (mobile / tablet / desktop) with capability allow-lists and a "needs a larger screen" interstitial.
+- A module-store architecture where every store's action functions are the draft production API contract.
+
 ## 2. Repository Audit
 
 The repository at `Content Canvas/` is a Lovable-exported TanStack Start application. It is a frontend-complete v1 skeleton: every screen and workflow runs in the browser, and almost all data lives in in-memory module stores seeded from mock data. The audit below is code-verified; where the in-repo `APPLICATION_BLUEPRINT.md` and the code disagree, the code was trusted.
