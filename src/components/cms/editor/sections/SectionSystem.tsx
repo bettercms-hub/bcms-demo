@@ -14,7 +14,7 @@
  * A page is just an ordered list of SectionInstance. Field ids are
  * `${sectionId}.${fieldKey}`, which the comment system and form panel reuse.
  */
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
   Briefcase,
@@ -71,11 +71,66 @@ export interface SectionDef {
   defaults: Record<string, string>;
   render: (p: RenderProps) => ReactNode;
 }
+/** Marketer-set, token-based design overrides on a section instance. Stored
+ *  as structured tokens (never raw CSS) so a headless frontend maps them and
+ *  managed hosting renders them with the maps below. */
+export interface SectionDesign {
+  theme?: "inherit" | "light" | "dark";
+  background?: "default" | "surface" | "muted" | "accent" | "inverse";
+  paddingY?: "none" | "sm" | "md" | "lg" | "xl";
+  paddingX?: "none" | "sm" | "md" | "lg";
+  fullHeight?: boolean;
+  backgroundImage?: string;
+  /** 0-100 dark scrim over the background image, for legibility. */
+  overlayOpacity?: number;
+}
+
 export interface SectionInstance {
   id: string;
   type: string;
   variant: string;
   content: Record<string, string>;
+  /** Optional per-section design overrides (spacing, theme, background…). */
+  design?: SectionDesign;
+}
+
+const DESIGN_PY: Record<string, string> = { none: "py-0", sm: "py-6", md: "py-12", lg: "py-20", xl: "py-32" };
+const DESIGN_PX: Record<string, string> = { none: "px-0", sm: "px-4", md: "px-8", lg: "px-16" };
+const DESIGN_BG: Record<string, string> = {
+  default: "", surface: "bg-slate-50", muted: "bg-slate-100", accent: "bg-indigo-50", inverse: "bg-slate-900 text-white",
+};
+
+/** Has the marketer set anything that changes how the section paints? */
+export function sectionHasDesign(d?: SectionDesign): boolean {
+  if (!d) return false;
+  return !!(
+    (d.theme && d.theme !== "inherit") ||
+    (d.background && d.background !== "default") ||
+    d.paddingY || d.paddingX || d.fullHeight || d.backgroundImage
+  );
+}
+
+/** Token → Tailwind classes for the design wrapper on the canvas. */
+export function sectionDesignClass(d?: SectionDesign): string {
+  if (!d) return "";
+  const cls: string[] = [];
+  if (d.theme === "dark") cls.push("bg-slate-950 text-slate-100");
+  else if (d.theme === "light") cls.push("bg-white text-slate-900");
+  else if (d.background && d.background !== "default") cls.push(DESIGN_BG[d.background] ?? "");
+  if (d.paddingY) cls.push(DESIGN_PY[d.paddingY] ?? "");
+  if (d.paddingX) cls.push(DESIGN_PX[d.paddingX] ?? "");
+  if (d.fullHeight) cls.push("min-h-screen flex flex-col justify-center");
+  return cls.filter(Boolean).join(" ");
+}
+
+export function sectionDesignStyle(d?: SectionDesign): React.CSSProperties | undefined {
+  if (!d?.backgroundImage) return undefined;
+  return { backgroundImage: `url(${d.backgroundImage})`, backgroundSize: "cover", backgroundPosition: "center" };
+}
+
+/** 0..1 scrim opacity, only when a background image is set. */
+export function sectionOverlay(d?: SectionDesign): number {
+  return d?.backgroundImage ? Math.max(0, Math.min(100, d.overlayOpacity ?? 0)) / 100 : 0;
 }
 
 export const SECTION_CATEGORIES = ["Hero", "Content", "Social proof", "Conversion"];

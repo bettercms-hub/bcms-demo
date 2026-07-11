@@ -9,6 +9,7 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
+  Paintbrush2,
   Code2,
   Columns3,
   Copy,
@@ -50,10 +51,16 @@ import {
   createSection,
   getSectionDef,
   instantiateTemplate,
+  sectionDesignClass,
+  sectionDesignStyle,
+  sectionHasDesign,
+  sectionOverlay,
   type PageTemplate,
   type SectionDef,
+  type SectionDesign,
   type SectionInstance,
 } from "@/components/cms/editor/sections/SectionSystem";
+import { Field as DField, Row as DRow, SegmentedField, ToggleField } from "@/components/cms/editor/section-tabs/atoms";
 import { newPageId, pagesActions, usePages, type PageDoc } from "@/lib/cms/pages-store";
 import { PublishMenu } from "@/components/cms/editor/PublishMenu";
 import { PageSettingsDialog } from "@/components/cms/editor/PageSettingsDialog";
@@ -269,6 +276,13 @@ function VisualEditor() {
     patchPage((p) => ({
       ...p,
       sections: p.sections.map((s) => (s.id === sectionId ? { ...s, content: { ...s.content, [key]: value } } : s)),
+      state: touched(p.state),
+    }));
+  }
+  function setDesign(sectionId: string, patch: Partial<SectionDesign>) {
+    patchPage((p) => ({
+      ...p,
+      sections: p.sections.map((s) => (s.id === sectionId ? { ...s, design: { ...s.design, ...patch } } : s)),
       state: touched(p.state),
     }));
   }
@@ -771,6 +785,7 @@ function VisualEditor() {
                           );
                         })}
                       </div>
+                      {canBuild && <SectionDesignPanel section={s} onChange={(patch) => setDesign(s.id, patch)} />}
                     </div>
                   );
                 })}
@@ -1410,6 +1425,103 @@ function InsertPoint({ onClick }: { onClick: () => void }) {
   );
 }
 
+/**
+ * SectionDesignPanel — token-based design controls for a section, right in
+ * the visual editor's form panel: spacing, theme, background, overlay, full
+ * height. Values are tokens (never raw CSS) so they stay on-brand and travel
+ * cleanly to a headless frontend. Marketer-and-up only.
+ */
+function SectionDesignPanel({ section, onChange }: { section: SectionInstance; onChange: (patch: Partial<SectionDesign>) => void }) {
+  const active = sectionHasDesign(section.design);
+  const [open, setOpen] = useState(active);
+  const d = section.design ?? {};
+  return (
+    <div className="mt-3 border-t border-[color:var(--border-hairline)] pt-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <Paintbrush2 className="h-3 w-3" /> Design
+        {active && <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-label="Customized" />}
+        <ChevronDown className={cn("ml-auto h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="mt-3 space-y-3">
+          <SegmentedField
+            label="Theme"
+            value={d.theme ?? "inherit"}
+            onChange={(v) => onChange({ theme: v as SectionDesign["theme"] })}
+            options={[{ value: "inherit", label: "Inherit" }, { value: "light", label: "Light" }, { value: "dark", label: "Dark" }]}
+          />
+          <SegmentedField
+            label="Background"
+            value={d.background ?? "default"}
+            onChange={(v) => onChange({ background: v as SectionDesign["background"] })}
+            options={[
+              { value: "default", label: "None" },
+              { value: "surface", label: "Surface" },
+              { value: "muted", label: "Muted" },
+              { value: "accent", label: "Accent" },
+              { value: "inverse", label: "Dark" },
+            ]}
+          />
+          <DRow>
+            <SegmentedField
+              label="Top and bottom space"
+              value={d.paddingY ?? "none"}
+              onChange={(v) => onChange({ paddingY: v as SectionDesign["paddingY"] })}
+              options={[{ value: "none", label: "0" }, { value: "sm", label: "S" }, { value: "md", label: "M" }, { value: "lg", label: "L" }, { value: "xl", label: "XL" }]}
+            />
+            <SegmentedField
+              label="Side space"
+              value={d.paddingX ?? "none"}
+              onChange={(v) => onChange({ paddingX: v as SectionDesign["paddingX"] })}
+              options={[{ value: "none", label: "0" }, { value: "sm", label: "S" }, { value: "md", label: "M" }, { value: "lg", label: "L" }]}
+            />
+          </DRow>
+          <ToggleField
+            label="Full viewport height"
+            hint="Great for hero sections. Content centers vertically."
+            checked={!!d.fullHeight}
+            onChange={(v) => onChange({ fullHeight: v })}
+          />
+          <DField label="Background image URL" hint="Optional. Adds an overlay control.">
+            <Input
+              value={d.backgroundImage ?? ""}
+              onChange={(e) => onChange({ backgroundImage: e.target.value.trim() || undefined })}
+              placeholder="https://…/image.jpg"
+            />
+          </DField>
+          {d.backgroundImage && (
+            <DField label={`Overlay opacity (${d.overlayOpacity ?? 0}%)`} hint="Dark scrim over the image so text stays readable.">
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={d.overlayOpacity ?? 0}
+                onChange={(e) => onChange({ overlayOpacity: Number(e.target.value) })}
+                aria-label="Overlay opacity"
+                className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-[color:var(--color-border)] accent-[color:var(--primary)]"
+              />
+            </DField>
+          )}
+          {active && (
+            <button
+              type="button"
+              onClick={() => onChange({ theme: undefined, background: undefined, paddingY: undefined, paddingX: undefined, fullHeight: undefined, backgroundImage: undefined, overlayOpacity: undefined })}
+              className="text-[11.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Reset design
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /*
  * SectionShell — wraps a rendered section on the canvas. For marketer and
  * developer roles it adds the composition chrome: a name chip, hover outline,
@@ -1442,9 +1554,23 @@ function SectionShell({
 }) {
   const [variantOpen, setVariantOpen] = useState(false);
   const variantName = def.variants.find((v) => v.id === section.variant)?.name;
+  // Marketer design overrides paint via a token wrapper around the section's
+  // own markup; with nothing set it's a transparent pass-through (no change).
+  const designed = sectionHasDesign(section.design);
+  const overlay = sectionOverlay(section.design);
+  const body = designed ? (
+    <div className={cn("relative", sectionDesignClass(section.design))} style={sectionDesignStyle(section.design)}>
+      {overlay > 0 && (
+        <div aria-hidden className="pointer-events-none absolute inset-0" style={{ backgroundColor: `rgba(0,0,0,${overlay})` }} />
+      )}
+      <div className={overlay > 0 ? "relative" : undefined}>{children}</div>
+    </div>
+  ) : (
+    children
+  );
   return (
     <section data-sec={section.id} className={cn("relative", composing && "group/sec", flash && "ring-2 ring-inset ring-indigo-400")}>
-      {children}
+      {body}
       {composing && (
         <>
           <div className="pointer-events-none absolute inset-0 z-10 hidden ring-1 ring-inset ring-indigo-300/70 group-hover/sec:block" aria-hidden />
