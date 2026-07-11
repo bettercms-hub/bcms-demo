@@ -29,6 +29,7 @@ export function PageSettingsDialog({
   const [path, setPath] = useState(page.path);
   const [seoTitle, setSeoTitle] = useState(page.seoTitle ?? "");
   const [seoDescription, setSeoDescription] = useState(page.seoDescription ?? "");
+  const [canonical, setCanonical] = useState(page.canonical ?? "");
   const [ogImage, setOgImage] = useState(page.ogImage ?? "");
   const [indexing, setIndexing] = useState<"index" | "noindex">(page.indexing ?? "index");
   const [jsonLd, setJsonLd] = useState(page.jsonLd ?? "");
@@ -44,7 +45,13 @@ export function PageSettingsDialog({
       return false;
     }
   })();
-  const valid = title.trim().length > 0 && !taken && jsonLdValid;
+  const canonicalValid = (() => {
+    const v = canonical.trim();
+    if (v === "") return true;
+    return /^https?:\/\/.+/i.test(v) || v.startsWith("/");
+  })();
+
+  const valid = title.trim().length > 0 && !taken && jsonLdValid && canonicalValid;
 
   function save() {
     if (!valid) return;
@@ -54,6 +61,7 @@ export function PageSettingsDialog({
       path: normPath,
       seoTitle: seoTitle.trim() || undefined,
       seoDescription: seoDescription.trim() || undefined,
+      canonical: canonical.trim() || undefined,
       ogImage: ogImage.trim() || undefined,
       indexing,
       jsonLd: jsonLd.trim() || undefined,
@@ -115,6 +123,22 @@ export function PageSettingsDialog({
 
           <FieldRow label="Meta description" hint={`${descLen}/160 characters, the snippet under your title in search.`} error={descLen > 160}>
             <textarea value={seoDescription} onChange={(e) => setSeoDescription(e.target.value)} rows={3} placeholder="A short, compelling summary of this page." className="w-full resize-none rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 py-2 text-[13px] leading-relaxed outline-none transition-colors focus:border-[color:var(--primary)]" />
+          </FieldRow>
+
+          <FieldRow
+            label="Canonical URL"
+            hint={canonicalValid ? "Point duplicate or similar pages at the original so search engines index the right one. Leave blank to use this page's own URL." : "Enter an absolute URL (https://…) or a path starting with /."}
+            error={!canonicalValid}
+          >
+            <input
+              value={canonical}
+              onChange={(e) => setCanonical(e.target.value)}
+              placeholder="https://example.com/original-page"
+              className={cn(
+                "h-9 w-full rounded-md border bg-[color:var(--card)] px-2.5 text-[13px] outline-none transition-colors focus:border-[color:var(--primary)]",
+                canonicalValid ? "border-[color:var(--color-border)]" : "border-rose-400",
+              )}
+            />
           </FieldRow>
 
           <FieldRow label="Search indexing">

@@ -36,6 +36,8 @@ export interface PageDoc {
   /** SEO / page meta, editable in Page settings. */
   seoTitle?: string;
   seoDescription?: string;
+  /** Canonical URL: points duplicate/similar pages at the original. */
+  canonical?: string;
   /** Social preview image URL (og:image / twitter:image). */
   ogImage?: string;
   indexing?: "index" | "noindex";
