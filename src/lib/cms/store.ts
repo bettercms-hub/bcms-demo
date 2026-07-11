@@ -1312,12 +1312,30 @@ export const entryCreateActions = {
 };
 
 export const mediaActions = {
-  add: (projectId: string, input: { name: string; kind?: MediaAsset["kind"]; size?: string; folderId?: string }) => {
+  add: (
+    projectId: string,
+    input: {
+      name: string;
+      kind?: MediaAsset["kind"];
+      size?: string;
+      folderId?: string;
+      url?: string;
+      thumbUrl?: string;
+      width?: number;
+      height?: number;
+      mimeType?: string;
+      altText?: string;
+      tags?: string[];
+    },
+  ) => {
     const id = newId("md");
     set((s) => {
       const asset: MediaAsset = {
         id, projectId, name: input.name,
-        kind: input.kind ?? "image", url: "", size: input.size, folderId: input.folderId,
+        kind: input.kind ?? "image", url: input.url ?? "", thumbUrl: input.thumbUrl,
+        size: input.size, folderId: input.folderId,
+        width: input.width, height: input.height, mimeType: input.mimeType,
+        altText: input.altText, tags: input.tags,
         uploadedAt: new Date().toISOString(),
       };
       return {
@@ -1330,6 +1348,12 @@ export const mediaActions = {
     });
     recordAudit(workspaceForProject(projectId), "media.uploaded", "media", input.name, id);
     return id;
+  },
+  update: (mediaId: string, patch: Partial<MediaAsset>) => {
+    set((s) => ({
+      ...s,
+      media: s.media.map((m) => (m.id === mediaId ? { ...m, ...patch } : m)),
+    }));
   },
   remove: (mediaId: string) => {
     const asset = state.media.find((m) => m.id === mediaId);

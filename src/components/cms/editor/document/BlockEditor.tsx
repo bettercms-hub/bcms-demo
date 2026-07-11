@@ -7,7 +7,9 @@
  * caret never jumps mid-edit.
  */
 import {
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -17,11 +19,15 @@ import {
 import {
   Award,
   Bookmark,
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
   Boxes,
   ChevronRight,
   Code as CodeIcon,
   CornerDownLeft,
   CreditCard,
+  Crop as CropIcon,
   Figma,
   Globe,
   GripVertical,
@@ -39,6 +45,7 @@ import {
   ListOrdered,
   ListTodo,
   Mail,
+  Maximize2,
   Megaphone,
   MessagesSquare,
   MessageSquareQuote,
@@ -46,7 +53,9 @@ import {
   Minus,
   MousePointerClick,
   PenLine,
+  Pencil,
   Plus,
+  Upload,
   Quote,
   Search,
   Sparkles,
@@ -95,9 +104,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useCMS } from "@/lib/cms/store";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useCMS, mediaActions } from "@/lib/cms/store";
 import { useProjectPresence, type PresencePeer } from "@/lib/workspace/presence-store";
 import { PersonTooltipForMember } from "@/components/cms/workflow/PersonTooltip";
+import { MediaPickerDialog } from "@/components/cms/media/MediaPickerDialog";
+import { ImageCropDialog } from "@/components/cms/media/ImageCropDialog";
+
+/** Lets leaf blocks (e.g. the image block's media picker) reach the project
+ *  without prop-drilling through every row. */
+const BlockEditorContext = createContext<{ projectId?: string }>({});
 
 interface Props {
   value: unknown;
@@ -486,6 +502,7 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
   }, []);
 
   return (
+    <BlockEditorContext.Provider value={{ projectId }}>
     <div className="relative">
       {doc.blocks.map((b, i) => (
         <BlockRow
@@ -574,6 +591,7 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
         />
       )}
     </div>
+    </BlockEditorContext.Provider>
   );
 }
 
@@ -841,26 +859,7 @@ function BlockBody({
     );
   }
   if (block.type === "image") {
-    return (
-      <div className="w-full py-2">
-        {block.src ? (
-          <figure className="overflow-hidden rounded-lg border border-border bg-muted">
-            <img src={block.src} alt={block.alt ?? ""} className="block max-h-[480px] w-full object-cover" />
-          </figure>
-        ) : (
-          <div className="grid place-items-center rounded-lg border border-dashed border-border bg-muted/40 px-6 py-10 text-center">
-            <ImageIcon className="mb-2 h-5 w-5 text-muted-foreground" />
-            <input
-              type="url"
-              placeholder="Paste an image URL…"
-              defaultValue={block.src ?? ""}
-              onBlur={(e) => onSrcChange(e.target.value)}
-              className="h-8 w-72 rounded-md border border-border bg-background px-2 text-[12.5px] focus:border-primary focus:outline-none"
-            />
-          </div>
-        )}
-      </div>
-    );
+    return <ImageBlock block={block} onPatch={onPatch} />;
   }
 
   const editable = (
@@ -1029,6 +1028,274 @@ function Editable({
 /* ------------------------------------------------------------------ */
 
 type WidgetProps = { block: DocBlock; onPatch: (patch: Partial<DocBlock>) => void };
+
+/* ------------------------------------------------------------------ */
+/* Image block                                                         */
+/* ------------------------------------------------------------------ */
+
+const IMG_ALIGN_CLASS: Record<NonNullable<DocBlock["align"]>, string> = {
+  full: "w-full",
+  center: "mx-auto max-w-[78%]",
+  left: "mr-auto max-w-[62%]",
+  right: "ml-auto max-w-[62%]",
+};
+
+/**
+ * Rich image block: pick from the media library, upload, or paste a URL;
+ * then caption it, set alt text, align it, hyperlink it, or crop it in place.
+ * Uploaded and cropped images are also saved to the project's media hub so
+ * they can be reused elsewhere.
+ */
+function ImageBlock({ block, onPatch }: WidgetProps) {
+  const { projectId } = useContext(BlockEditorContext);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [urlOpen, setUrlOpen] = useState(false);
+  const [urlDraft, setUrlDraft] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const align = block.align ?? "full";
+
+  function onFile(file?: File) {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = String(reader.result);
+      const name = file.name.replace(/\.[^.]+$/, "");
+      onPatch({ src: url, alt: block.alt || name });
+      if (projectId) mediaActions.add(projectId, { name: file.name, url, thumbUrl: url, mimeType: file.type });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  const hiddenFile = (
+    <input
+      ref={fileRef}
+      type="file"
+      accept="image/*"
+      className="hidden"
+      onChange={(e) => {
+        onFile(e.target.files?.[0]);
+        e.target.value = "";
+      }}
+    />
+  );
+
+  const cropDialog = block.src ? (
+    <ImageCropDialog
+      open={cropOpen}
+      onOpenChange={setCropOpen}
+      src={block.src}
+      onCropped={(dataUrl) => {
+        onPatch({ src: dataUrl });
+        if (projectId) mediaActions.add(projectId, { name: "Cropped image", url: dataUrl, thumbUrl: dataUrl, mimeType: "image/png" });
+      }}
+    />
+  ) : null;
+
+  const picker = projectId ? (
+    <MediaPickerDialog
+      open={pickerOpen}
+      onOpenChange={setPickerOpen}
+      projectId={projectId}
+      onSelect={(url) => onPatch({ src: url })}
+    />
+  ) : null;
+
+  // ---------- Empty state ----------
+  if (!block.src) {
+    return (
+      <div className="w-full py-2" contentEditable={false}>
+        <div className="rounded-lg border border-dashed border-border bg-muted/40 px-5 py-8">
+          <div className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
+            <ImageIcon className="h-6 w-6 text-muted-foreground" />
+            <div className="text-[13px] font-medium text-foreground">Add an image</div>
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
+              {projectId && (
+                <button
+                  type="button"
+                  onClick={() => setPickerOpen(true)}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--row-hover)]"
+                >
+                  <ImageIcon className="h-3.5 w-3.5" /> Media library
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--row-hover)]"
+              >
+                <Upload className="h-3.5 w-3.5" /> Upload
+              </button>
+              <button
+                type="button"
+                onClick={() => setUrlOpen((v) => !v)}
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--row-hover)]"
+              >
+                <Link2 className="h-3.5 w-3.5" /> Paste URL
+              </button>
+            </div>
+            {urlOpen && (
+              <form
+                className="mt-1 flex w-full items-center gap-1.5"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const v = urlDraft.trim();
+                  if (v) onPatch({ src: v });
+                  setUrlOpen(false);
+                  setUrlDraft("");
+                }}
+              >
+                <input
+                  autoFocus
+                  type="url"
+                  value={urlDraft}
+                  onChange={(e) => setUrlDraft(e.target.value)}
+                  placeholder="https://…"
+                  className="h-8 flex-1 rounded-md border border-border bg-background px-2 text-[12.5px] focus:border-primary focus:outline-none"
+                />
+                <button type="submit" className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-[12.5px] font-semibold text-primary-foreground hover:bg-[var(--primary-hover)]">
+                  Add
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+        {hiddenFile}
+        {picker}
+      </div>
+    );
+  }
+
+  // ---------- Filled state ----------
+  const imgEl = (
+    <img
+      src={block.src}
+      alt={block.alt ?? ""}
+      className="block max-h-[520px] w-full rounded-lg object-cover"
+    />
+  );
+
+  return (
+    <div className="w-full py-2" contentEditable={false}>
+      <figure className={IMG_ALIGN_CLASS[align]}>
+        <div className="group relative overflow-hidden rounded-lg border border-border bg-muted">
+          {block.href ? (
+            <a href={block.href} target="_blank" rel="noreferrer" onClick={(e) => e.preventDefault()}>
+              {imgEl}
+            </a>
+          ) : (
+            imgEl
+          )}
+
+          {/* Hover toolbar */}
+          <div className="absolute right-2 top-2 flex items-center gap-0.5 rounded-md border border-border bg-[var(--s-card,var(--s2))]/95 p-0.5 opacity-0 shadow-md backdrop-blur transition-opacity group-hover:opacity-100">
+            <ImgToolButton title="Replace" onClick={() => (projectId ? setPickerOpen(true) : fileRef.current?.click())}>
+              <ImageIcon className="h-3.5 w-3.5" />
+            </ImgToolButton>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <button type="button" title="Align" className="grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-[color:var(--row-hover)] hover:text-foreground">
+                  {align === "left" ? <AlignLeft className="h-3.5 w-3.5" /> : align === "right" ? <AlignRight className="h-3.5 w-3.5" /> : align === "center" ? <AlignCenter className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="flex w-auto gap-0.5 p-1">
+                {([
+                  ["full", Maximize2, "Full width"],
+                  ["center", AlignCenter, "Center"],
+                  ["left", AlignLeft, "Left"],
+                  ["right", AlignRight, "Right"],
+                ] as const).map(([key, Icon, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    title={label}
+                    onClick={() => onPatch({ align: key })}
+                    className={`grid h-7 w-7 place-items-center rounded transition-colors ${
+                      align === key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-[color:var(--row-hover)] hover:text-foreground"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <button type="button" title="Link" className={`grid h-6 w-6 place-items-center rounded hover:bg-[color:var(--row-hover)] hover:text-foreground ${block.href ? "text-primary" : "text-muted-foreground"}`}>
+                  <Link2 className="h-3.5 w-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-64 p-2">
+                <label className="mb-1 block text-[11px] font-medium text-muted-foreground">Link the image to</label>
+                <input
+                  type="url"
+                  defaultValue={block.href ?? ""}
+                  placeholder="https://…"
+                  onBlur={(e) => onPatch({ href: e.target.value.trim() || undefined })}
+                  className="h-8 w-full rounded-md border border-border bg-background px-2 text-[12.5px] focus:border-primary focus:outline-none"
+                />
+              </PopoverContent>
+            </Popover>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <button type="button" title="Alt text" className="grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-[color:var(--row-hover)] hover:text-foreground">
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-64 p-2">
+                <label className="mb-1 block text-[11px] font-medium text-muted-foreground">Alt text (for accessibility and SEO)</label>
+                <input
+                  type="text"
+                  defaultValue={block.alt ?? ""}
+                  placeholder="Describe the image"
+                  onBlur={(e) => onPatch({ alt: e.target.value })}
+                  className="h-8 w-full rounded-md border border-border bg-background px-2 text-[12.5px] focus:border-primary focus:outline-none"
+                />
+              </PopoverContent>
+            </Popover>
+
+            <ImgToolButton title="Crop" onClick={() => setCropOpen(true)}>
+              <CropIcon className="h-3.5 w-3.5" />
+            </ImgToolButton>
+            <ImgToolButton title="Remove image" onClick={() => onPatch({ src: undefined, caption: undefined, href: undefined })}>
+              <X className="h-3.5 w-3.5" />
+            </ImgToolButton>
+          </div>
+        </div>
+
+        {/* Caption */}
+        <input
+          type="text"
+          defaultValue={block.caption ?? ""}
+          placeholder="Add a caption…"
+          onBlur={(e) => onPatch({ caption: e.target.value })}
+          className="mt-1.5 block w-full bg-transparent text-center text-[12.5px] text-muted-foreground outline-none placeholder:text-muted-foreground/50"
+        />
+      </figure>
+      {hiddenFile}
+      {picker}
+      {cropDialog}
+    </div>
+  );
+}
+
+function ImgToolButton({ title, onClick, children }: { title: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      onClick={onClick}
+      className="grid h-6 w-6 place-items-center rounded text-muted-foreground transition-colors hover:bg-[color:var(--row-hover)] hover:text-foreground"
+    >
+      {children}
+    </button>
+  );
+}
 
 /** Empty-state URL capture shared by embed / video / bookmark. */
 function UrlInput({

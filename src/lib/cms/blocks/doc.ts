@@ -40,6 +40,10 @@ export interface DocBlock {
   checked?: boolean;
   src?: string;
   alt?: string;
+  /** Image caption shown under the picture. */
+  caption?: string;
+  /** How an image sits in the column. */
+  align?: "left" | "center" | "right" | "full";
   language?: string;
   emoji?: string;
   // Callout
@@ -215,7 +219,7 @@ export function docToPlainText(doc: DocValue): string {
         case "divider":
           return "";
         case "image":
-          return b.alt ?? "";
+          return b.caption || b.alt || "";
         case "button":
           return b.label ?? "";
         case "bookmark":
