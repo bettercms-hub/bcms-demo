@@ -29,6 +29,7 @@ import {
   CreditCard,
   Crop as CropIcon,
   Figma,
+  FileCode,
   Globe,
   GripVertical,
   Heading1,
@@ -85,6 +86,8 @@ import {
   type DocBlockType,
   type DocValue,
 } from "@/lib/cms/blocks/doc";
+import { blocksToMarkdown, looksLikeMarkdown, markdownToBlocks } from "@/lib/cms/blocks/markdown";
+import { toast } from "sonner";
 import {
   AI_COMMANDS,
   COMPONENT_CATALOG,
@@ -473,6 +476,38 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
     }
   };
 
+  // Markdown mode: view/edit the whole document as Markdown, then flip
+  // back to blocks. The draft only commits when you leave the mode.
+  const [mdMode, setMdMode] = useState(false);
+  const [mdDraft, setMdDraft] = useState("");
+  const enterMd = () => {
+    setMdDraft(blocksToMarkdown(doc));
+    setMdMode(true);
+  };
+  const exitMd = () => {
+    const blocks = markdownToBlocks(mdDraft);
+    commit({ version: 1, blocks: blocks.length ? blocks : [emptyParagraph()] });
+    setMdMode(false);
+  };
+
+  // Pasting Markdown (Notion copies as Markdown) becomes real blocks.
+  const pasteMarkdown = (id: string, text: string) => {
+    const parsed = markdownToBlocks(text);
+    if (parsed.length === 0) return;
+    const idx = doc.blocks.findIndex((b) => b.id === id);
+    if (idx === -1) return;
+    const el = blockRefs.current.get(id);
+    const curText = (el?.textContent ?? doc.blocks[idx].text ?? "").trim();
+    const blocks = [...doc.blocks];
+    if (!curText && doc.blocks[idx].type === "paragraph") blocks.splice(idx, 1, ...parsed);
+    else blocks.splice(idx + 1, 0, ...parsed);
+    focusAfterRenderRef.current = { id: parsed[parsed.length - 1].id };
+    commit({ ...doc, blocks });
+    toast.success("Markdown converted", {
+      description: `${parsed.length} ${parsed.length === 1 ? "block" : "blocks"} added`,
+    });
+  };
+
   // Bridge from the shared text-selection toolbar (SelectionToolbar). It
   // applies bold/italic to the live DOM via execCommand, then asks us to
   // persist the block's HTML; and it turns a block into a heading. Keep the
@@ -501,9 +536,47 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
     };
   }, []);
 
+  if (mdMode) {
+    return (
+      <div className="relative">
+        <div className="mb-1 flex items-center justify-end gap-2">
+          <span className="text-[10.5px] uppercase tracking-wider text-muted-foreground/70">Markdown</span>
+          <button
+            type="button"
+            onClick={exitMd}
+            className="inline-flex h-6 items-center gap-1 rounded-md border border-border px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--row-hover)] hover:text-foreground"
+          >
+            <TextIcon className="h-3 w-3" /> Rich text
+          </button>
+        </div>
+        <textarea
+          value={mdDraft}
+          onChange={(e) => setMdDraft(e.target.value)}
+          spellCheck={false}
+          rows={Math.max(12, mdDraft.split("\n").length + 2)}
+          className="w-full resize-y rounded-lg border border-border bg-[color:var(--s1,var(--background))] px-3.5 py-3 font-mono text-[12.5px] leading-relaxed text-foreground outline-none focus:border-[color:color-mix(in_oklab,var(--primary)_45%,transparent)]"
+          aria-label="Document as Markdown"
+        />
+        <div className="mt-1 text-[11px] text-muted-foreground/70">
+          Standard Markdown, plus: a URL on its own line becomes an embed, and {"> [!info]"} makes a callout. Switching back converts to blocks.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <BlockEditorContext.Provider value={{ projectId }}>
     <div className="relative">
+      <div className="pointer-events-none absolute right-0 top-[-26px] z-10 flex justify-end">
+        <button
+          type="button"
+          onClick={enterMd}
+          title="View and edit this document as Markdown"
+          className="pointer-events-auto inline-flex h-6 items-center gap-1 rounded-md px-2 text-[11px] font-medium text-muted-foreground/60 transition-colors hover:bg-[color:var(--row-hover)] hover:text-foreground"
+        >
+          <FileCode className="h-3 w-3" /> Markdown
+        </button>
+      </div>
       {doc.blocks.map((b, i) => (
         <BlockRow
           key={b.id}
@@ -556,6 +629,7 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
           onChangeType={(t) => changeType(b.id, t)}
           onInsertAfter={() => insertAfter(b.id, emptyParagraph())}
           onSlashEscape={() => setSlash(null)}
+          onPasteMarkdown={(text) => pasteMarkdown(b.id, text)}
         />
       ))}
       {slash && (
@@ -618,6 +692,7 @@ interface RowProps {
   onChangeType: (t: DocBlockType) => void;
   onInsertAfter: () => void;
   onSlashEscape: () => void;
+  onPasteMarkdown: (text: string) => void;
 }
 
 function BlockRow({
@@ -638,6 +713,7 @@ function BlockRow({
   onChangeType,
   onInsertAfter,
   onSlashEscape,
+  onPasteMarkdown,
 }: RowProps) {
   const editableRef = useRef<HTMLDivElement | null>(null);
 
@@ -715,6 +791,17 @@ function BlockRow({
       onCommit(hasInlineMarkup(html) ? html : (el.textContent ?? ""));
     } else {
       onCommit(el.textContent ?? "");
+    }
+  };
+
+  // Multi-line Markdown (e.g. copied from Notion) becomes real blocks.
+  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    if (block.type === "code") return; // code blocks take paste verbatim
+    const text = e.clipboardData.getData("text/plain");
+    if (text && looksLikeMarkdown(text)) {
+      e.preventDefault();
+      onCommitText();
+      onPasteMarkdown(text);
     }
   };
 
@@ -810,6 +897,7 @@ function BlockRow({
         onKeyDown={handleKeyDown}
         onInput={handleInput}
         onBlur={onCommitText}
+        onPaste={handlePaste}
         onCheck={onCheck}
         onSrcChange={onSrcChange}
         onPatch={onPatch}
@@ -829,6 +917,7 @@ interface BodyProps {
   onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => void;
   onInput: () => void;
   onBlur: () => void;
+  onPaste?: (e: React.ClipboardEvent<HTMLDivElement>) => void;
   onCheck: (checked: boolean) => void;
   onSrcChange: (src: string) => void;
   onPatch: (patch: Partial<DocBlock>) => void;
@@ -841,6 +930,7 @@ function BlockBody({
   onKeyDown,
   onInput,
   onBlur,
+  onPaste,
   onCheck,
   onSrcChange,
   onPatch,
@@ -869,6 +959,7 @@ function BlockBody({
       onKeyDown={onKeyDown}
       onInput={onInput}
       onBlur={onBlur}
+      onPaste={onPaste}
       placeholder={placeholder}
     />
   );
@@ -978,6 +1069,7 @@ function Editable({
   onKeyDown,
   onInput,
   onBlur,
+  onPaste,
   placeholder,
 }: {
   block: DocBlock;
@@ -985,6 +1077,7 @@ function Editable({
   onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => void;
   onInput: () => void;
   onBlur: () => void;
+  onPaste?: (e: React.ClipboardEvent<HTMLDivElement>) => void;
   placeholder: string;
 }) {
   const cls = (() => {
@@ -1018,6 +1111,7 @@ function Editable({
       onKeyDown={onKeyDown}
       onInput={onInput}
       onBlur={onBlur}
+      onPaste={onPaste}
       className={`block-editable w-full outline-none ${cls}`}
     />
   );
