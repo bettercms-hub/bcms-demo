@@ -586,3 +586,9 @@ aside ::-webkit-scrollbar-thumb {
   background: color-mix(in oklab, var(--primary) 14%, transparent);
   border-radius: 6px;
 }
+
+/* Fields grabbed by the editor's marquee (title, summary, structured fields). */
+.bcms-grab-field { transition: background-color 0.1s ease; }
+.bcms-grab-field[data-selected="true"] {
+  background: color-mix(in oklab, var(--primary) 14%, transparent);
+}

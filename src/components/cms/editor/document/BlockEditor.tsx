@@ -305,6 +305,7 @@ function BlockSelectionBar({
   count,
   firstId,
   rootRef,
+  canDuplicate = true,
   onDuplicate,
   onCopy,
   onDelete,
@@ -313,12 +314,17 @@ function BlockSelectionBar({
   count: number;
   firstId: string;
   rootRef: React.MutableRefObject<HTMLDivElement | null>;
+  canDuplicate?: boolean;
   onDuplicate: () => void;
   onCopy: () => void;
   onDelete: () => void;
   onClear: () => void;
 }) {
-  const el = firstId ? rootRef.current?.querySelector<HTMLElement>(`[data-block-id="${firstId}"]`) : null;
+  // Anchor above the first selected thing: a body block if any, otherwise the
+  // first selected field element anywhere in the pane.
+  const el =
+    (firstId ? rootRef.current?.querySelector<HTMLElement>(`[data-block-id="${firstId}"]`) : null) ??
+    (findScrollParent(rootRef.current) ?? document.body).querySelector<HTMLElement>('[data-grab-field][data-selected="true"]');
   const r = el?.getBoundingClientRect();
   const style: React.CSSProperties = r
     ? { position: "fixed", top: Math.max(8, r.top - 44), left: r.left, zIndex: 50 }
@@ -334,7 +340,12 @@ function BlockSelectionBar({
     >
       <span className="px-2 text-[11.5px] font-semibold text-muted-foreground">{count} selected</span>
       <span className="mx-0.5 h-4 w-px bg-[color:var(--color-border)]" />
-      <button type="button" className={btn} onClick={onDuplicate}>
+      <button
+        type="button"
+        className={cn(btn, !canDuplicate && "pointer-events-none opacity-40")}
+        title={canDuplicate ? undefined : "Fields can't be duplicated"}
+        onClick={onDuplicate}
+      >
         <CopyPlus className="h-3.5 w-3.5" /> Duplicate
       </button>
       <button type="button" className={btn} onClick={onCopy}>
@@ -383,6 +394,13 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
   // whitespace in the pane) draws a translucent rectangle; blocks it touches
   // are selected. Viewport coords, rendered as a fixed overlay.
   const [marquee, setMarquee] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  // The grab isn't limited to body blocks: any element in the pane marked
+  // data-grab-field (title, summary, structured fields) joins the selection.
+  // The host view listens for these events to highlight / collect / clear.
+  const [selectedFields, setSelectedFields] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    document.dispatchEvent(new CustomEvent("bcms:grab-fields", { detail: { fields: [...selectedFields] } }));
+  }, [selectedFields]);
 
   // Simulated collaborators: map each active teammate on this entry to a block.
   const allPeers = useProjectPresence(projectId);
@@ -495,18 +513,18 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
     });
   };
 
-  // Move a block to a target insertion index (0..len), adjusting for the gap
-  // left where it was removed.
-  const reorderBlock = (id: string, toIndex: number) => {
-    const from = doc.blocks.findIndex((b) => b.id === id);
-    if (from === -1) return;
-    const blocks = [...doc.blocks];
-    const [moved] = blocks.splice(from, 1);
-    let insert = from < toIndex ? toIndex - 1 : toIndex;
-    insert = Math.max(0, Math.min(blocks.length, insert));
-    if (insert === from) return; // dropped in place
-    blocks.splice(insert, 0, moved);
-    focusAfterRenderRef.current = { id };
+  // Move one block — or a whole selection — to a target insertion index
+  // (0..len), adjusting for the gaps the moved blocks leave behind.
+  const reorderBlocks = (ids: string[], toIndex: number) => {
+    const moving = new Set(ids);
+    const moved = doc.blocks.filter((b) => moving.has(b.id)); // keeps doc order
+    if (moved.length === 0) return;
+    const removedBefore = doc.blocks.slice(0, toIndex).filter((b) => moving.has(b.id)).length;
+    const remaining = doc.blocks.filter((b) => !moving.has(b.id));
+    const insert = Math.max(0, Math.min(remaining.length, toIndex - removedBefore));
+    const blocks = [...remaining];
+    blocks.splice(insert, 0, ...moved);
+    focusAfterRenderRef.current = { id: moved[0].id };
     commit({ ...doc, blocks });
   };
 
@@ -524,8 +542,13 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
 
   // Grab handler on a row's ⋮⋮ handle. A small move threshold distinguishes a
   // click (opens the block menu) from a drag (lifts and moves the block).
+  // If the grabbed block is part of the current selection, the WHOLE selection
+  // moves together.
   const onHandlePointerDown = (id: string, e: React.PointerEvent<HTMLElement>) => {
     if (e.button !== 0) return;
+    const group = selectedIds.has(id) && selectedIds.size > 1
+      ? doc.blocks.filter((b) => selectedIds.has(b.id)).map((b) => b.id)
+      : [id];
     const startY = e.clientY;
     let started = false;
     const onMove = (ev: PointerEvent) => {
@@ -543,7 +566,7 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
       document.body.style.userSelect = "";
       document.body.style.cursor = "";
       if (started) {
-        reorderBlock(id, dropIndexAt(ev.clientY));
+        reorderBlocks(group, dropIndexAt(ev.clientY));
         justDraggedRef.current = true; // suppress the click that opens the menu
         setTimeout(() => { justDraggedRef.current = false; }, 0);
       }
@@ -578,7 +601,7 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
     if (t.closest("button, a, input, textarea, select, [contenteditable='false'], [role='menu']")) return;
     // Drags that start on empty space belong to the marquee (document handler).
     if (!t.closest("[contenteditable]")) return;
-    if (selectedIds.size) setSelectedIds(new Set()); // fresh interaction clears
+    if (selectedIds.size || selectedFields.size) clearGrab(); // fresh interaction clears
     selectRef.current = { down: blockAtY(e.clientY), active: false };
     let lastKey = "";
     let curY = e.clientY;
@@ -657,6 +680,7 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
       if (t === pane && e.clientX >= pane.getBoundingClientRect().left + pane.clientWidth) return;
 
       setSelectedIds(new Set()); // fresh interaction clears any selection
+      setSelectedFields(new Set());
       const anchorX = e.clientX;
       const anchorDocY = e.clientY + pane.scrollTop; // survives auto-scroll
       let active = false;
@@ -679,10 +703,20 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
             if (row.dataset.blockId) ids.push(row.dataset.blockId);
           }
         });
-        const key = ids.join(",");
+        // Fields anywhere in the pane (title, summary, structured fields) join
+        // the same grab: anything marked data-grab-field that the rect touches.
+        const fields: string[] = [];
+        pane.querySelectorAll<HTMLElement>("[data-grab-field]").forEach((el) => {
+          const b = el.getBoundingClientRect();
+          if (b.right > x && b.left < x + w && b.bottom > y && b.top < y + h) {
+            if (el.dataset.grabField) fields.push(el.dataset.grabField);
+          }
+        });
+        const key = ids.join(",") + "|" + fields.join(",");
         if (key === lastKey) return; // only re-render when the set changes
         lastKey = key;
         setSelectedIds(new Set(ids));
+        setSelectedFields(new Set(fields));
       };
 
       // Edge auto-scroll keeps the rectangle growing past the fold.
@@ -726,14 +760,27 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
     return () => document.removeEventListener("mousedown", onDown);
   }, []);
 
-  const deleteBlocks = (ids: Set<string>) => {
-    const idx = doc.blocks.findIndex((b) => ids.has(b.id));
-    const remaining = doc.blocks.filter((b) => !ids.has(b.id));
-    const next = remaining.length ? remaining : [emptyParagraph()];
-    const focusId = (idx > 0 ? doc.blocks[idx - 1]?.id : undefined) ?? next[0]?.id;
-    if (focusId) focusAfterRenderRef.current = { id: focusId };
+  const clearGrab = () => {
     setSelectedIds(new Set());
-    commit({ ...doc, blocks: next });
+    setSelectedFields(new Set());
+  };
+
+  const deleteSelection = (ids: Set<string>, fields: Set<string>) => {
+    // Fields clear via the host view (it owns their values).
+    if (fields.size > 0) {
+      document.dispatchEvent(new CustomEvent("bcms:grab-clear", { detail: { fields: [...fields] } }));
+    }
+    if (ids.size > 0) {
+      const idx = doc.blocks.findIndex((b) => ids.has(b.id));
+      const remaining = doc.blocks.filter((b) => !ids.has(b.id));
+      const next = remaining.length ? remaining : [emptyParagraph()];
+      const focusId = (idx > 0 ? doc.blocks[idx - 1]?.id : undefined) ?? next[0]?.id;
+      if (focusId) focusAfterRenderRef.current = { id: focusId };
+      commit({ ...doc, blocks: next });
+    }
+    clearGrab();
+    const n = ids.size + fields.size;
+    if (fields.size > 0) toast.success(`${n} ${n === 1 ? "item" : "items"} cleared`);
   };
 
   const duplicateBlocks = (ids: Set<string>) => {
@@ -744,40 +791,65 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
     const blocks = [...doc.blocks];
     blocks.splice(lastIdx + 1, 0, ...clones);
     setSelectedIds(new Set(clones.map((c) => c.id)));
+    setSelectedFields(new Set());
     commit({ ...doc, blocks });
     toast.success(`${clones.length} block${clones.length > 1 ? "s" : ""} duplicated`);
   };
 
-  const copyBlocks = (ids: Set<string>) => {
-    const text = doc.blocks
-      .filter((b) => ids.has(b.id))
-      .map((b) => (b.text ?? "").replace(/<[^>]+>/g, ""))
-      .join("\n\n")
-      .trim();
+  // Copy is real Markdown, in on-screen order: fields (title, summary, meta)
+  // interleaved with blocks by document position — paste it anywhere, or back
+  // into the editor to recreate the blocks.
+  const copySelection = (ids: Set<string>, fields: Set<string>) => {
+    const root = rootRef.current;
+    const pane = findScrollParent(root) ?? document.body;
+    const parts: { top: number; kind: "field" | "blocks"; name?: string; blocks?: DocBlock[] }[] = [];
+    fields.forEach((name) => {
+      const el = pane.querySelector<HTMLElement>(`[data-grab-field="${name}"]`);
+      parts.push({ top: el ? el.getBoundingClientRect().top : 0, kind: "field", name });
+    });
+    const selBlocks = doc.blocks.filter((b) => ids.has(b.id));
+    if (selBlocks.length > 0) {
+      const firstRow = root?.querySelector<HTMLElement>(`[data-block-id="${selBlocks[0].id}"]`);
+      parts.push({ top: firstRow ? firstRow.getBoundingClientRect().top : Infinity, kind: "blocks", blocks: selBlocks });
+    }
+    parts.sort((a, b) => a.top - b.top);
+    const out: string[] = [];
+    for (const p of parts) {
+      if (p.kind === "blocks" && p.blocks) {
+        out.push(blocksToMarkdown({ version: 1, blocks: p.blocks }).trim());
+      } else if (p.name) {
+        // Host view fills in the field's markdown (it owns the values).
+        const detail = { fields: [p.name], out: [] as string[] };
+        document.dispatchEvent(new CustomEvent("bcms:grab-collect", { detail }));
+        if (detail.out[0]) out.push(detail.out[0]);
+      }
+    }
+    const text = out.filter(Boolean).join("\n\n").trim();
     navigator.clipboard?.writeText(text).catch(() => {});
-    toast.success(`${ids.size} block${ids.size > 1 ? "s" : ""} copied`);
+    const n = ids.size + fields.size;
+    toast.success(`${n} ${n === 1 ? "item" : "items"} copied as Markdown`);
   };
 
-  // Keyboard for an active block selection — document-level so it still works
-  // when a marquee started from empty space and focus sits outside the editor.
+  // Keyboard for an active selection — document-level so it still works when a
+  // marquee started from empty space and focus sits outside the editor.
   useEffect(() => {
-    if (selectedIds.size === 0) return;
+    if (selectedIds.size + selectedFields.size === 0) return;
     function onKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       const mod = e.metaKey || e.ctrlKey;
-      if (e.key === "Escape") { e.preventDefault(); setSelectedIds(new Set()); return; }
-      if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); deleteBlocks(selectedIds); return; }
+      if (e.key === "Escape") { e.preventDefault(); clearGrab(); return; }
+      if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); deleteSelection(selectedIds, selectedFields); return; }
       if (mod && (e.key === "d" || e.key === "D")) { e.preventDefault(); duplicateBlocks(selectedIds); return; }
-      if (mod && (e.key === "c" || e.key === "C")) { e.preventDefault(); copyBlocks(selectedIds); return; }
+      if (mod && (e.key === "c" || e.key === "C")) { e.preventDefault(); copySelection(selectedIds, selectedFields); return; }
       if (mod) return;
-      if (e.key.startsWith("Arrow")) { setSelectedIds(new Set()); return; }
-      if (e.key.length === 1) { e.preventDefault(); deleteBlocks(selectedIds); return; }
+      if (e.key.startsWith("Arrow")) { clearGrab(); return; }
+      if (e.key.length === 1) { e.preventDefault(); deleteSelection(selectedIds, selectedFields); return; }
     }
     document.addEventListener("keydown", onKey, true);
     return () => document.removeEventListener("keydown", onKey, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedIds, doc]);
+  }, [selectedIds, selectedFields, doc]);
 
   /* --- slash dispatch: the current (now empty) block becomes the target --- */
 
@@ -972,15 +1044,16 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
           className="pointer-events-none rounded-[3px] border border-[color:color-mix(in_oklab,var(--primary)_40%,transparent)] bg-[color:color-mix(in_oklab,var(--primary)_9%,transparent)]"
         />
       )}
-      {selectedIds.size > 0 && (
+      {selectedIds.size + selectedFields.size > 0 && (
         <BlockSelectionBar
-          count={selectedIds.size}
+          count={selectedIds.size + selectedFields.size}
           firstId={doc.blocks.find((b) => selectedIds.has(b.id))?.id ?? ""}
           rootRef={rootRef}
+          canDuplicate={selectedIds.size > 0}
           onDuplicate={() => duplicateBlocks(selectedIds)}
-          onCopy={() => copyBlocks(selectedIds)}
-          onDelete={() => deleteBlocks(selectedIds)}
-          onClear={() => setSelectedIds(new Set())}
+          onCopy={() => copySelection(selectedIds, selectedFields)}
+          onDelete={() => deleteSelection(selectedIds, selectedFields)}
+          onClear={clearGrab}
         />
       )}
       <div className="pointer-events-none absolute right-0 top-[-26px] z-10 flex justify-end">
@@ -1000,7 +1073,7 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
           block={b}
           isFirst={i === 0}
           selected={selectedIds.has(b.id)}
-          dragging={dragId === b.id}
+          dragging={dragId === b.id || (dragId !== null && selectedIds.has(dragId) && selectedIds.has(b.id))}
           onHandlePointerDown={onHandlePointerDown}
           justDraggedRef={justDraggedRef}
           placeholder={i === 0 ? placeholder : undefined}

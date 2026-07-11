@@ -8,7 +8,7 @@
  * Non-content settings (status / publishing / SEO / history / comments)
  * live in the surrounding EntrySlideOver tabs.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Image as ImageIcon, X } from "lucide-react";
 import { entryActions, useCMS } from "@/lib/cms/store";
 import type { Entry, Schema, SchemaField } from "@/lib/cms/types";
@@ -40,6 +40,63 @@ export function EntryView({ entryId }: { entryId: string }) {
     }
     return map;
   }, [peers, entryId]);
+
+  // The BlockEditor's grab (marquee) also selects fields marked
+  // data-grab-field. It broadcasts the selected set (for highlighting) and
+  // asks us to collect markdown / clear values, since we own the field state.
+  const [grabbed, setGrabbed] = useState<Set<string>>(() => new Set());
+  const titleKey = schema?.titleFieldName ?? layout.titleField?.name ?? "__title";
+  useEffect(() => {
+    if (!entry || !schema) return;
+    const fieldMarkdown = (name: string): string => {
+      if (name === titleKey) {
+        const v = name !== "__title" && typeof entry.fields[name] === "string" ? (entry.fields[name] as string) : entry.title;
+        return v ? `# ${v}` : "";
+      }
+      const f = schema.fields.find((x) => x.name === name);
+      const v = entry.fields[name];
+      const text = Array.isArray(v) ? v.join(", ") : typeof v === "boolean" ? (v ? "Yes" : "No") : v == null ? "" : String(v);
+      if (!text) return "";
+      if (f && f.name === layout.summaryField?.name) return text;
+      if (f && f.name === layout.slugField?.name) return `Slug: /${text}`;
+      return `**${f?.label ?? name}:** ${text}`;
+    };
+    const clearedValue = (name: string): unknown => {
+      const f = schema.fields.find((x) => x.name === name);
+      if (f?.type === "boolean") return false;
+      if (f?.type === "multiReference") return [];
+      return "";
+    };
+    const onFields = (e: Event) => {
+      const d = (e as CustomEvent).detail;
+      if (d?.fields) setGrabbed(new Set(d.fields as string[]));
+    };
+    const onCollect = (e: Event) => {
+      const d = (e as CustomEvent).detail;
+      if (!d?.fields || !d.out) return;
+      for (const name of d.fields as string[]) d.out.push(fieldMarkdown(name));
+    };
+    const onClear = (e: Event) => {
+      const d = (e as CustomEvent).detail;
+      if (!d?.fields) return;
+      for (const name of d.fields as string[]) {
+        if (name === titleKey) {
+          if (name !== "__title") entryActions.setField(entry.id, name, "");
+          entryActions.update(entry.id, { title: "" });
+        } else {
+          entryActions.setField(entry.id, name, clearedValue(name));
+        }
+      }
+    };
+    document.addEventListener("bcms:grab-fields", onFields);
+    document.addEventListener("bcms:grab-collect", onCollect);
+    document.addEventListener("bcms:grab-clear", onClear);
+    return () => {
+      document.removeEventListener("bcms:grab-fields", onFields);
+      document.removeEventListener("bcms:grab-collect", onCollect);
+      document.removeEventListener("bcms:grab-clear", onClear);
+    };
+  }, [entry, schema, layout, titleKey]);
 
   if (!entry || !schema) return null;
 
@@ -77,19 +134,29 @@ export function EntryView({ entryId }: { entryId: string }) {
       )}
 
       {/* Title */}
-      <input
-        type="text"
-        value={titleValue}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder="Untitled"
-        aria-label="Title"
-        className="block w-full border-none bg-transparent text-[40px] font-semibold leading-[1.1] tracking-tight text-foreground outline-none placeholder:text-muted-foreground/40"
-      />
+      <div
+        data-grab-field={titleKey}
+        data-selected={grabbed.has(titleKey) ? "true" : undefined}
+        className="bcms-grab-field -mx-2 rounded-lg px-2"
+      >
+        <input
+          type="text"
+          value={titleValue}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Untitled"
+          aria-label="Title"
+          className="block w-full border-none bg-transparent text-[40px] font-semibold leading-[1.1] tracking-tight text-foreground outline-none placeholder:text-muted-foreground/40"
+        />
+      </div>
 
       {/* Slug + Summary */}
       <div className="mt-3 space-y-2">
         {layout.slugField && (
-          <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+          <div
+            data-grab-field={layout.slugField.name}
+            data-selected={grabbed.has(layout.slugField.name) ? "true" : undefined}
+            className="bcms-grab-field -mx-2 flex items-center gap-2 rounded-lg px-2 text-[13px] text-muted-foreground"
+          >
             <span className="opacity-60">/</span>
             <input
               type="text"
@@ -103,15 +170,21 @@ export function EntryView({ entryId }: { entryId: string }) {
           </div>
         )}
         {layout.summaryField && (
-          <input
-            type="text"
-            value={(summaryValue ?? "") as string}
-            placeholder={layout.summaryField.placeholder ?? "Write a short summary…"}
-            onChange={(e) =>
-              entryActions.setField(entry.id, layout.summaryField!.name, e.target.value)
-            }
-            className="block w-full bg-transparent text-[15px] text-muted-foreground outline-none placeholder:text-muted-foreground/40"
-          />
+          <div
+            data-grab-field={layout.summaryField.name}
+            data-selected={grabbed.has(layout.summaryField.name) ? "true" : undefined}
+            className="bcms-grab-field -mx-2 rounded-lg px-2"
+          >
+            <input
+              type="text"
+              value={(summaryValue ?? "") as string}
+              placeholder={layout.summaryField.placeholder ?? "Write a short summary…"}
+              onChange={(e) =>
+                entryActions.setField(entry.id, layout.summaryField!.name, e.target.value)
+              }
+              className="block w-full bg-transparent text-[15px] text-muted-foreground outline-none placeholder:text-muted-foreground/40"
+            />
+          </div>
         )}
       </div>
 
@@ -157,7 +230,7 @@ export function EntryView({ entryId }: { entryId: string }) {
           {detailsOpen && (
             <div className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2">
               {layout.detailFields.map((f) => (
-                <FieldRow key={f.id} field={f} entry={entry} peer={fieldPeers[f.name]} />
+                <FieldRow key={f.id} field={f} entry={entry} peer={fieldPeers[f.name]} grabbed={grabbed.has(f.name)} />
               ))}
             </div>
           )}
@@ -292,11 +365,15 @@ function CoverField({
    Detail field row (Details accordion)
    ========================================================================= */
 
-function FieldRow({ field, entry, peer }: { field: SchemaField; entry: Entry; peer?: PresencePeer }) {
+function FieldRow({ field, entry, peer, grabbed }: { field: SchemaField; entry: Entry; peer?: PresencePeer; grabbed?: boolean }) {
   const value = entry.fields[field.name];
   const error = validateField(field, value);
   return (
-    <div>
+    <div
+      data-grab-field={field.name}
+      data-selected={grabbed ? "true" : undefined}
+      className="bcms-grab-field -mx-2 rounded-lg px-2 py-1"
+    >
       <div className="mb-1 flex items-center gap-2">
         <label className="text-[11.5px] font-medium uppercase tracking-wider text-muted-foreground">
           {field.label}
