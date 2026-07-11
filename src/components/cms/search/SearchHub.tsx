@@ -12,11 +12,14 @@ import { useParams } from "@tanstack/react-router";
 import {
   BarChart3,
   Check,
+  ChevronDown,
   Copy,
   Database,
   FileText,
   KeySquare,
+  ListFilter,
   Lock,
+  MoreHorizontal,
   Plug,
   RefreshCw,
   Search as SearchIcon,
@@ -26,8 +29,14 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getProjectBySlug } from "@/lib/cms/use-cms";
 import { getCMSState, useCMSVersion } from "@/lib/cms/store";
-import { usePages, type PageDoc } from "@/lib/cms/pages-store";
+import { usePages } from "@/lib/cms/pages-store";
 import { Paginator, clampPage, type PageSize } from "@/components/cms/Paginator";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { firstPlanWith, siteHas, SITE_PLANS } from "@/lib/billing/pricing";
 import {
   searchActions,
@@ -158,6 +167,8 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint?:
 
 function OverviewTab({ projectId, docs, hasAi }: { projectId: string; docs: number; hasAi: boolean }) {
   const config = useSearchConfig(projectId);
+  const pages = usePages(projectId);
+  const indexedPages = pages.filter((p) => !config.pageOff?.[p.id]).length;
   const collectionsOn = Object.values(config.collections).filter(Boolean).length;
   const copy = (v: string, label: string) => {
     navigator.clipboard?.writeText(v).catch(() => {});
@@ -168,7 +179,7 @@ function OverviewTab({ projectId, docs, hasAi }: { projectId: string; docs: numb
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Documents" value={String(docs)} hint="pages + entries in the index" />
         <StatCard label="Collections" value={String(collectionsOn)} hint="opted into search" />
-        <StatCard label="Pages" value={config.includePages ? "On" : "Off"} hint="site pages indexed" />
+        <StatCard label="Pages" value={String(indexedPages)} hint="site pages indexed" />
         <StatCard label="Last synced" value={config.enabled ? "Live" : "Paused"} hint="reindexes on publish (demo)" />
       </div>
 
@@ -232,12 +243,37 @@ function OverviewTab({ projectId, docs, hasAi }: { projectId: string; docs: numb
 
 /* ------------------------------------------------------------- content */
 
+type SourceFilter = "all" | "indexed" | "excluded" | "pages" | "collections";
+
+const FILTER_OPTIONS: { id: SourceFilter; label: string }[] = [
+  { id: "all", label: "All sources" },
+  { id: "indexed", label: "Indexed" },
+  { id: "excluded", label: "Excluded" },
+  { id: "pages", label: "Pages" },
+  { id: "collections", label: "Collections" },
+];
+
+const PAGE_STATE_BADGE: Record<string, string> = {
+  published: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10",
+  draft: "text-muted-foreground bg-[color:var(--s2)]",
+  scheduled: "text-amber-600 dark:text-amber-400 bg-amber-500/12",
+  modified: "text-sky-600 dark:text-sky-400 bg-sky-500/12",
+  archived: "text-muted-foreground bg-[color:var(--s2)]",
+};
+
+interface PageSource { kind: "page"; id: string; title: string; path: string; state: string; indexed: boolean }
+interface CollectionSource { kind: "collection"; id: string; name: string; entries: number; fields: { name: string; label: string }[]; indexed: boolean }
+type SourceRow = PageSource | CollectionSource;
+
+/** One unified, searchable, paginated index over BOTH site pages and CMS
+ *  collections — a single search bar, one filter, one paginator. */
 function ContentTab({ projectId }: { projectId: string }) {
   const config = useSearchConfig(projectId);
+  const pages = usePages(projectId);
   // Derive via version + memo: building fresh objects inside a useCMS
   // selector defeats its shallow-compare and loops the snapshot.
   const cmsV = useCMSVersion();
-  const data = useMemo(() => {
+  const collections = useMemo(() => {
     const s = getCMSState();
     const project = s.projects.find((p) => p.id === projectId);
     return (project?.collectionIds ?? [])
@@ -258,52 +294,119 @@ function ContentTab({ projectId }: { projectId: string }) {
       .filter(Boolean) as { id: string; name: string; entries: number; fields: { name: string; label: string }[] }[];
   }, [projectId, cmsV]);
 
+  const [q, setQ] = useState("");
+  const [filter, setFilter] = useState<SourceFilter>("all");
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState<PageSize>(50);
+
+  // Pages and collections live in one list — the same search, filter and pager.
+  const rows: SourceRow[] = useMemo(() => {
+    const pageRows: SourceRow[] = pages.map((p) => ({
+      kind: "page", id: p.id, title: p.title, path: p.path, state: p.state, indexed: !config.pageOff?.[p.id],
+    }));
+    const colRows: SourceRow[] = collections.map((c) => ({
+      kind: "collection", id: c.id, name: c.name, entries: c.entries, fields: c.fields, indexed: !!config.collections[c.id],
+    }));
+    return [...pageRows, ...colRows];
+  }, [pages, collections, config.pageOff, config.collections]);
+
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return rows.filter((r) => {
+      const hay = r.kind === "page" ? `${r.title} ${r.path}` : r.name;
+      if (needle && !hay.toLowerCase().includes(needle)) return false;
+      if (filter === "indexed" && !r.indexed) return false;
+      if (filter === "excluded" && r.indexed) return false;
+      if (filter === "pages" && r.kind !== "page") return false;
+      if (filter === "collections" && r.kind !== "collection") return false;
+      return true;
+    });
+  }, [rows, q, filter]);
+
+  const indexedCount = useMemo(() => rows.filter((r) => r.indexed).length, [rows]);
+  const safePage = clampPage(page, filtered.length, size);
+  const slice = filtered.slice(safePage * size, safePage * size + size);
+  const reset = () => setPage(0);
+
+  const bulk = (on: boolean) =>
+    searchActions.setSourcesBulk(
+      projectId,
+      {
+        pageIds: filtered.filter((r) => r.kind === "page").map((r) => r.id),
+        collectionIds: filtered.filter((r) => r.kind === "collection").map((r) => r.id),
+      },
+      on,
+    );
+
+  const filterLabel = FILTER_OPTIONS.find((o) => o.id === filter)?.label ?? "All sources";
+
   return (
     <div className="space-y-3">
-      {/* Per-page index manager: search, filter, paginate, and toggle each
-          page individually — index the home page but exclude the about page. */}
-      <PagesPanel projectId={projectId} config={config} />
+      {/* one toolbar for everything: search + a simple dropdown filter + bulk */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[200px] flex-1">
+          <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={q}
+            onChange={(e) => { setQ(e.target.value); reset(); }}
+            placeholder="Search pages and content…"
+            className="h-9 w-full rounded-lg border border-[color:var(--color-border)] bg-[color:var(--card)] pl-8 pr-3 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-[color:color-mix(in_oklab,var(--primary)_45%,transparent)]"
+          />
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--card)] px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--s2)]">
+              <ListFilter className="h-3.5 w-3.5 text-muted-foreground" />
+              {filterLabel}
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-[168px]">
+            {FILTER_OPTIONS.map((o) => (
+              <DropdownMenuItem key={o.id} className="justify-between text-[13px]" onSelect={() => { setFilter(o.id); reset(); }}>
+                {o.label}
+                {filter === o.id && <Check className="h-3.5 w-3.5 text-primary" />}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" aria-label="Bulk actions" className="grid h-9 w-9 place-items-center rounded-lg border border-[color:var(--color-border)] bg-[color:var(--card)] text-muted-foreground transition-colors hover:bg-[color:var(--s2)] hover:text-foreground">
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-[210px]">
+            <DropdownMenuItem className="text-[13px]" disabled={filtered.length === 0} onSelect={() => bulk(true)}>
+              Index all{filtered.length ? ` (${filtered.length})` : ""}
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-[13px]" disabled={filtered.length === 0} onSelect={() => bulk(false)}>
+              Exclude all{filtered.length ? ` (${filtered.length})` : ""}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
-      {data.map((col) => {
-        const on = !!config.collections[col.id];
-        return (
-          <div key={col.id} className="rounded-xl border border-[color:var(--color-border)] bg-[color:var(--card)] px-4 py-3">
-            <div className="flex items-center gap-3">
-              <Database className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-medium text-foreground">{col.name}</p>
-                <p className="text-[11.5px] text-muted-foreground">{col.entries} {col.entries === 1 ? "entry" : "entries"}</p>
-              </div>
-              <MiniSwitch checked={on} onChange={(v) => searchActions.setCollection(projectId, col.id, v)} label={`Index ${col.name}`} />
-            </div>
-            {on && col.fields.length > 0 && (
-              <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-[color:var(--border-hairline)] pt-2.5">
-                {col.fields.map((f) => {
-                  const fieldOn = !config.fieldOff[`${col.id}.${f.name}`];
-                  return (
-                    <button
-                      key={f.name}
-                      type="button"
-                      onClick={() => searchActions.setField(projectId, col.id, f.name, !fieldOn)}
-                      aria-pressed={fieldOn}
-                      title={fieldOn ? "Searchable. Click to exclude." : "Excluded from the index."}
-                      className={cn(
-                        "inline-flex h-6.5 items-center gap-1 rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors",
-                        fieldOn
-                          ? "border-[color:color-mix(in_oklab,var(--primary)_40%,transparent)] bg-[color:color-mix(in_oklab,var(--primary)_7%,transparent)] text-foreground"
-                          : "border-[color:var(--color-border)] text-muted-foreground/70 line-through",
-                      )}
-                    >
-                      {fieldOn && <Check className="h-3 w-3 text-primary" />}
-                      {f.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+      <p className="px-0.5 text-[11.5px] text-muted-foreground">
+        {indexedCount} of {rows.length} sources indexed · site pages and CMS content in one index.
+      </p>
+
+      {/* one unified list */}
+      <div className="overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-[color:var(--card)]">
+        {slice.length === 0 ? (
+          <p className="px-4 py-10 text-center text-[12.5px] text-muted-foreground">
+            {rows.length === 0 ? "Nothing to index yet." : "No pages or content match your search."}
+          </p>
+        ) : (
+          <div>
+            {slice.map((row) => (
+              <SourceRowItem key={`${row.kind}_${row.id}`} projectId={projectId} row={row} config={config} />
+            ))}
           </div>
-        );
-      })}
+        )}
+        <Paginator total={filtered.length} page={safePage} size={size} onPage={setPage} onSize={(s) => { setSize(s); reset(); }} noun="source" />
+      </div>
+
       <p className="px-1 text-[11.5px] text-muted-foreground">
         Only searchable fields leave the CMS. Anything excluded here never reaches the index, so it can't leak through the search endpoint.
       </p>
@@ -311,142 +414,72 @@ function ContentTab({ projectId }: { projectId: string }) {
   );
 }
 
-type PageFilter = "all" | "indexed" | "excluded";
-
-const PAGE_STATE_BADGE: Record<string, string> = {
-  published: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10",
-  draft: "text-muted-foreground bg-[color:var(--s2)]",
-  scheduled: "text-amber-600 dark:text-amber-400 bg-amber-500/12",
-  modified: "text-sky-600 dark:text-sky-400 bg-sky-500/12",
-  archived: "text-muted-foreground bg-[color:var(--s2)]",
-};
-
-/** Site pages, individually toggleable, with search + filter + pagination —
- *  built for projects with hundreds of pages. */
-function PagesPanel({ projectId, config }: { projectId: string; config: SearchConfig }) {
-  const pages = usePages(projectId);
-  const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<PageFilter>("all");
-  const [page, setPage] = useState(0);
-  const [size, setSize] = useState<PageSize>(50);
-
-  const master = config.includePages;
-  const isIndexed = (p: PageDoc) => master && !config.pageOff?.[p.id];
-
-  const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return pages.filter((p) => {
-      if (needle && !(p.title.toLowerCase().includes(needle) || p.path.toLowerCase().includes(needle))) return false;
-      if (filter === "indexed" && !isIndexed(p)) return false;
-      if (filter === "excluded" && isIndexed(p)) return false;
-      return true;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pages, q, filter, master, config.pageOff]);
-
-  const indexedCount = useMemo(() => pages.filter((p) => isIndexed(p)).length, [pages, master, config.pageOff]);
-  const safePage = clampPage(page, filtered.length, size);
-  const slice = filtered.slice(safePage * size, safePage * size + size);
-  const reset = () => setPage(0);
-
+function TypeBadge({ kind }: { kind: "page" | "collection" }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-[color:var(--card)]">
-      {/* header */}
-      <div className="flex items-center gap-3 px-4 py-3">
+    <span className="shrink-0 rounded-full bg-[color:var(--s2)] px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+      {kind === "page" ? "Page" : "Collection"}
+    </span>
+  );
+}
+
+/** A single row in the unified list — a site page or a CMS collection.
+ *  Collections expand to per-field searchable chips when indexed. */
+function SourceRowItem({ projectId, row, config }: { projectId: string; row: SourceRow; config: SearchConfig }) {
+  if (row.kind === "page") {
+    return (
+      <div className="flex items-center gap-3 border-b border-[color:var(--border-hairline)] px-4 py-2.5 last:border-b-0">
         <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-foreground">Site pages</p>
-          <p className="text-[11.5px] text-muted-foreground">
-            {master
-              ? `${indexedCount} of ${pages.length} ${pages.length === 1 ? "page" : "pages"} indexed · titles, section copy, and meta descriptions.`
-              : "Turn on to index page titles, section copy, and meta descriptions."}
-          </p>
-        </div>
-        <MiniSwitch
-          checked={master}
-          onChange={(v) => searchActions.patch(projectId, { includePages: v })}
-          label="Index site pages"
-        />
-      </div>
-
-      {master && (
-        <>
-          {/* toolbar: search + filter + bulk */}
-          <div className="flex flex-wrap items-center gap-2 border-t border-[color:var(--border-hairline)] px-4 py-2.5">
-            <div className="relative min-w-[180px] flex-1">
-              <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={q}
-                onChange={(e) => { setQ(e.target.value); reset(); }}
-                placeholder="Search pages by title or path…"
-                className="h-8 w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--background)] pl-8 pr-3 text-[12.5px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-[color:color-mix(in_oklab,var(--primary)_45%,transparent)]"
-              />
-            </div>
-            <div className="flex h-8 items-center rounded-md border border-[color:var(--color-border)] p-0.5">
-              {(["all", "indexed", "excluded"] as const).map((f) => (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => { setFilter(f); reset(); }}
-                  aria-pressed={filter === f}
-                  className={cn(
-                    "h-7 rounded px-2.5 text-[11.5px] font-medium capitalize transition-colors",
-                    filter === f ? "bg-[color:var(--s2)] text-foreground" : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => searchActions.setPagesBulk(projectId, filtered.map((p) => p.id), true)}
-                disabled={filtered.length === 0}
-                className="inline-flex h-8 items-center rounded-md border border-[color:var(--color-border)] px-2.5 text-[11.5px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
-              >
-                Index all
-              </button>
-              <button
-                type="button"
-                onClick={() => searchActions.setPagesBulk(projectId, filtered.map((p) => p.id), false)}
-                disabled={filtered.length === 0}
-                className="inline-flex h-8 items-center rounded-md border border-[color:var(--color-border)] px-2.5 text-[11.5px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
-              >
-                Exclude all
-              </button>
-            </div>
+          <div className="flex items-center gap-2">
+            <span className="min-w-0 truncate text-[12.5px] font-medium text-foreground">{row.title}</span>
+            <TypeBadge kind="page" />
+            <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide", PAGE_STATE_BADGE[row.state] ?? PAGE_STATE_BADGE.draft)}>
+              {row.state}
+            </span>
           </div>
-
-          {/* list */}
-          {slice.length === 0 ? (
-            <p className="border-t border-[color:var(--border-hairline)] px-4 py-8 text-center text-[12.5px] text-muted-foreground">
-              {pages.length === 0 ? "This project has no pages yet." : "No pages match your search."}
-            </p>
-          ) : (
-            <div className="border-t border-[color:var(--border-hairline)]">
-              {slice.map((p) => {
-                const on = isIndexed(p);
-                return (
-                  <div key={p.id} className="flex items-center gap-3 border-b border-[color:var(--border-hairline)] px-4 py-2 last:border-b-0">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="min-w-0 truncate text-[12.5px] font-medium text-foreground">{p.title}</span>
-                        <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide", PAGE_STATE_BADGE[p.state] ?? PAGE_STATE_BADGE.draft)}>
-                          {p.state}
-                        </span>
-                      </div>
-                      <span className="truncate font-mono text-[11px] text-muted-foreground">{p.path}</span>
-                    </div>
-                    <MiniSwitch checked={on} onChange={(v) => searchActions.setPage(projectId, p.id, v)} label={`Index ${p.title}`} />
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          <Paginator total={filtered.length} page={safePage} size={size} onPage={setPage} onSize={(s) => { setSize(s); reset(); }} noun="page" />
-        </>
+          <span className="truncate font-mono text-[11px] text-muted-foreground">{row.path}</span>
+        </div>
+        <MiniSwitch checked={row.indexed} onChange={(v) => searchActions.setPage(projectId, row.id, v)} label={`Index ${row.title}`} />
+      </div>
+    );
+  }
+  return (
+    <div className="border-b border-[color:var(--border-hairline)] px-4 py-2.5 last:border-b-0">
+      <div className="flex items-center gap-3">
+        <Database className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="min-w-0 truncate text-[12.5px] font-medium text-foreground">{row.name}</span>
+            <TypeBadge kind="collection" />
+          </div>
+          <span className="text-[11px] text-muted-foreground">{row.entries} {row.entries === 1 ? "entry" : "entries"}</span>
+        </div>
+        <MiniSwitch checked={row.indexed} onChange={(v) => searchActions.setCollection(projectId, row.id, v)} label={`Index ${row.name}`} />
+      </div>
+      {row.indexed && row.fields.length > 0 && (
+        <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-[color:var(--border-hairline)] pl-7 pt-2.5">
+          {row.fields.map((f) => {
+            const fieldOn = !config.fieldOff[`${row.id}.${f.name}`];
+            return (
+              <button
+                key={f.name}
+                type="button"
+                onClick={() => searchActions.setField(projectId, row.id, f.name, !fieldOn)}
+                aria-pressed={fieldOn}
+                title={fieldOn ? "Searchable. Click to exclude." : "Excluded from the index."}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors",
+                  fieldOn
+                    ? "border-[color:color-mix(in_oklab,var(--primary)_40%,transparent)] bg-[color:color-mix(in_oklab,var(--primary)_7%,transparent)] text-foreground"
+                    : "border-[color:var(--color-border)] text-muted-foreground/70 line-through",
+                )}
+              >
+                {fieldOn && <Check className="h-3 w-3 text-primary" />}
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
       )}
     </div>
   );

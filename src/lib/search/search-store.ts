@@ -146,6 +146,19 @@ export const searchActions = {
     db.configs = { ...db.configs, [projectId]: { ...cur, pageOff } };
     emit();
   },
+  /** Bulk toggle a mix of pages and collections in one write (unified list). */
+  setSourcesBulk(projectId: string, ids: { pageIds: string[]; collectionIds: string[] }, on: boolean) {
+    const cur = getSearchConfig(projectId);
+    const pageOff = { ...cur.pageOff };
+    for (const id of ids.pageIds) {
+      if (on) delete pageOff[id];
+      else pageOff[id] = true;
+    }
+    const collections = { ...cur.collections };
+    for (const id of ids.collectionIds) collections[id] = on;
+    db.configs = { ...db.configs, [projectId]: { ...cur, pageOff, collections } };
+    emit();
+  },
   setCollection(projectId: string, collectionId: string, on: boolean) {
     const cur = getSearchConfig(projectId);
     db.configs = {
@@ -229,16 +242,16 @@ export function useSearchIndex(projectId: string, config: SearchConfig): SearchD
   // and the playground re-runs per keystroke anyway, so cmsV + config suffice.
   return useMemo(() => {
     const docs: SearchDoc[] = [];
-    if (config.includePages) {
-      for (const p of getPages(projectId)) {
-        if (config.pageOff?.[p.id]) continue; // excluded from the index
-        const fields: Record<string, string> = { title: p.title, path: p.path };
-        if (p.seoDescription) fields.description = p.seoDescription;
-        const copy: string[] = [];
-        for (const sec of p.sections) for (const v of Object.values(sec.content)) copy.push(flatten(v));
-        fields.body = copy.filter(Boolean).join(" ");
-        docs.push({ id: `page_${p.id}`, kind: "page", title: p.title, where: p.path, fields });
-      }
+    // Pages are indexed individually (per-page opt-out via pageOff); there is
+    // no master pages toggle anymore — the unified list controls each source.
+    for (const p of getPages(projectId)) {
+      if (config.pageOff?.[p.id]) continue; // excluded from the index
+      const fields: Record<string, string> = { title: p.title, path: p.path };
+      if (p.seoDescription) fields.description = p.seoDescription;
+      const copy: string[] = [];
+      for (const sec of p.sections) for (const v of Object.values(sec.content)) copy.push(flatten(v));
+      fields.body = copy.filter(Boolean).join(" ");
+      docs.push({ id: `page_${p.id}`, kind: "page", title: p.title, where: p.path, fields });
     }
     const s = getCMSState();
     const project = s.projects.find((pr) => pr.id === projectId);
