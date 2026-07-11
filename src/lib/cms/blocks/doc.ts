@@ -157,6 +157,56 @@ function htmlToBlocks(html: string): DocBlock[] {
   return blocks;
 }
 
+/* --------------------------------------------------------- inline marks */
+
+/** Block types whose text is prose and may carry inline bold/italic/etc. */
+export const RICH_TEXT_TYPES = new Set<DocBlockType>([
+  "paragraph", "h1", "h2", "h3", "h4", "h5", "h6",
+  "quote", "callout", "bullet", "numbered", "todo",
+]);
+
+export function isRichTextType(t: DocBlockType): boolean {
+  return RICH_TEXT_TYPES.has(t);
+}
+
+/** Does a stored value carry inline formatting tags (vs. plain text)? */
+export function hasInlineMarkup(s: string): boolean {
+  return /<(b|strong|i|em|u|a|br)\b|<\/(b|strong|i|em|u|a)>/i.test(s);
+}
+
+const INLINE_ALLOWED = new Set(["B", "STRONG", "I", "EM", "U", "A", "BR"]);
+
+/**
+ * Keep only safe inline tags (bold/italic/underline/link/line-break),
+ * unwrapping anything else while preserving its text. Used when committing
+ * a contentEditable block so `execCommand` output is normalised and no
+ * arbitrary markup is stored.
+ */
+export function sanitizeInlineHtml(html: string): string {
+  if (typeof document === "undefined") return html.replace(/<[^>]+>/g, "");
+  const tpl = document.createElement("template");
+  tpl.innerHTML = html;
+  const clean = (parent: Node) => {
+    for (const node of Array.from(parent.childNodes)) {
+      if (node.nodeType !== 1) continue;
+      const el = node as HTMLElement;
+      if (INLINE_ALLOWED.has(el.tagName)) {
+        for (const a of Array.from(el.attributes)) {
+          if (!(el.tagName === "A" && a.name === "href")) el.removeAttribute(a.name);
+        }
+        clean(el);
+      } else {
+        while (el.firstChild) parent.insertBefore(el.firstChild, el);
+        parent.removeChild(el);
+      }
+    }
+  };
+  // Two passes: unwrapping an outer element exposes any nested wrappers.
+  clean(tpl.content);
+  clean(tpl.content);
+  return tpl.innerHTML.replace(/&nbsp;/g, " ");
+}
+
 /** Plain-text projection (used for previews, summaries, search). */
 export function docToPlainText(doc: DocValue): string {
   return doc.blocks
@@ -180,7 +230,7 @@ export function docToPlainText(doc: DocValue): string {
         case "component":
           return b.title || b.component || "";
         default:
-          return b.text ?? "";
+          return (b.text ?? "").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ");
       }
     })
     .filter(Boolean)

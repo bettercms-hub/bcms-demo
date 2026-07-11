@@ -68,7 +68,10 @@ import {
   BLOCK_PLACEHOLDER,
   blockId,
   emptyParagraph,
+  hasInlineMarkup,
+  isRichTextType,
   parseDoc,
+  sanitizeInlineHtml,
   type DocBlock,
   type DocBlockType,
   type DocValue,
@@ -454,6 +457,33 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
     }
   };
 
+  // Bridge from the shared text-selection toolbar (SelectionToolbar). It
+  // applies bold/italic to the live DOM via execCommand, then asks us to
+  // persist the block's HTML; and it turns a block into a heading. Keep the
+  // latest handlers in a ref so listeners never go stale.
+  const bridgeRef = useRef({ changeType, updateBlock, blockRefs });
+  bridgeRef.current = { changeType, updateBlock, blockRefs };
+  useEffect(() => {
+    function onTurn(e: Event) {
+      const { blockId: bid, type } = (e as CustomEvent).detail ?? {};
+      const { changeType, blockRefs } = bridgeRef.current;
+      if (bid && type && blockRefs.current.has(bid)) changeType(bid, type as DocBlockType);
+    }
+    function onFormat(e: Event) {
+      const { blockId: bid } = (e as CustomEvent).detail ?? {};
+      const { updateBlock, blockRefs } = bridgeRef.current;
+      const el = blockRefs.current.get(bid);
+      if (!el) return;
+      const html = sanitizeInlineHtml(el.innerHTML);
+      updateBlock(bid, { text: hasInlineMarkup(html) ? html : (el.textContent ?? "") });
+    }
+    window.addEventListener("bcms:doc-turn", onTurn);
+    window.addEventListener("bcms:doc-format", onFormat);
+    return () => {
+      window.removeEventListener("bcms:doc-turn", onTurn);
+      window.removeEventListener("bcms:doc-format", onFormat);
+    };
+  }, []);
 
   return (
     <div className="relative">
@@ -607,7 +637,13 @@ function BlockRow({
     if (!el) return;
     const incoming = block.text ?? "";
     if (document.activeElement === el) return;
-    if (el.textContent !== incoming) el.textContent = incoming;
+    // Blocks with inline formatting render as HTML; plain text stays plain
+    // (so raw "<" / "&" a writer types can't be misread as markup).
+    if (isRichTextType(block.type) && hasInlineMarkup(incoming)) {
+      if (el.innerHTML !== incoming) el.innerHTML = incoming;
+    } else if (el.textContent !== incoming) {
+      el.textContent = incoming;
+    }
   }, [block.text, block.type]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -655,7 +691,13 @@ function BlockRow({
   const onCommitText = () => {
     const el = editableRef.current;
     if (!el) return;
-    onCommit(el.textContent ?? "");
+    if (isRichTextType(block.type)) {
+      const html = sanitizeInlineHtml(el.innerHTML);
+      // Keep it plain unless real inline formatting is present.
+      onCommit(hasInlineMarkup(html) ? html : (el.textContent ?? ""));
+    } else {
+      onCommit(el.textContent ?? "");
+    }
   };
 
   const handleInput = () => {
@@ -972,6 +1014,8 @@ function Editable({
       contentEditable
       suppressContentEditableWarning
       data-placeholder={placeholder}
+      data-doc-block-id={block.id}
+      data-doc-block-type={block.type}
       onKeyDown={onKeyDown}
       onInput={onInput}
       onBlur={onBlur}

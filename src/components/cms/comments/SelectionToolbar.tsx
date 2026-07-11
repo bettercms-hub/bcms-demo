@@ -1,8 +1,23 @@
 import { useEffect, useRef, useState } from "react";
-import { Copy, Link2, MessageSquarePlus, Wand2 } from "lucide-react";
+import { Bold, Copy, Heading1, Heading2, Heading3, Italic, Link2, MessageSquarePlus, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { commentsUi } from "@/lib/cms/comments-store";
 import type { AnchorKind, AnchorRef, CommentSurface } from "@/lib/comments/types";
+
+/** If the selection sits inside an editable content-editor block, return its
+ *  id + current type so the toolbar can offer formatting. */
+function editableBlockFor(range: Range): { blockId: string; blockType: string } | null {
+  let node: Node | null = range.commonAncestorContainer;
+  while (node && node !== document.body) {
+    if (node.nodeType === 1) {
+      const el = node as HTMLElement;
+      const id = el.dataset?.docBlockId;
+      if (id && el.isContentEditable) return { blockId: id, blockType: el.dataset.docBlockType ?? "paragraph" };
+    }
+    node = node.parentNode;
+  }
+  return null;
+}
 
 interface Props {
   surface: CommentSurface;
@@ -20,6 +35,7 @@ export function SelectionToolbar({ surface, pageId, resolveAnchor }: Props) {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const [text, setText] = useState("");
   const [range, setRange] = useState<Range | null>(null);
+  const [editable, setEditable] = useState<{ blockId: string; blockType: string } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const rangeRef = useRef<Range | null>(null);
   const textRef = useRef("");
@@ -57,6 +73,7 @@ export function SelectionToolbar({ surface, pageId, resolveAnchor }: Props) {
       setRange(nextRange);
       setText(nextText);
       setPos(nextPos);
+      setEditable(editableBlockFor(r));
     }
     function onDown(e: MouseEvent) {
       if (ref.current && ref.current.contains(e.target as Node)) return;
@@ -103,6 +120,22 @@ export function SelectionToolbar({ surface, pageId, resolveAnchor }: Props) {
     setPos(null);
   }
 
+  function applyMark(cmd: "bold" | "italic") {
+    if (!editable) return;
+    // The selection is still live (the toolbar suppresses mousedown), so
+    // execCommand applies the mark to it. Force tags, not inline styles.
+    document.execCommand("styleWithCSS", false, "false");
+    document.execCommand(cmd, false, "");
+    window.dispatchEvent(new CustomEvent("bcms:doc-format", { detail: { blockId: editable.blockId } }));
+  }
+
+  function turnInto(type: "h1" | "h2" | "h3") {
+    if (!editable) return;
+    const next = editable.blockType === type ? "paragraph" : type;
+    window.dispatchEvent(new CustomEvent("bcms:doc-turn", { detail: { blockId: editable.blockId, type: next } }));
+    setPos(null);
+  }
+
   return (
     <div
       ref={ref}
@@ -112,6 +145,27 @@ export function SelectionToolbar({ surface, pageId, resolveAnchor }: Props) {
       onMouseDown={(e) => e.preventDefault()}
       onClick={(e) => e.stopPropagation()}
     >
+      {editable && (
+        <>
+          <IconButton title="Bold" onClick={() => applyMark("bold")}>
+            <Bold className="h-3.5 w-3.5" />
+          </IconButton>
+          <IconButton title="Italic" onClick={() => applyMark("italic")}>
+            <Italic className="h-3.5 w-3.5" />
+          </IconButton>
+          <span className="mx-0.5 h-3.5 w-px bg-border/70" />
+          <IconButton title="Heading 1" active={editable.blockType === "h1"} onClick={() => turnInto("h1")}>
+            <Heading1 className="h-3.5 w-3.5" />
+          </IconButton>
+          <IconButton title="Heading 2" active={editable.blockType === "h2"} onClick={() => turnInto("h2")}>
+            <Heading2 className="h-3.5 w-3.5" />
+          </IconButton>
+          <IconButton title="Heading 3" active={editable.blockType === "h3"} onClick={() => turnInto("h3")}>
+            <Heading3 className="h-3.5 w-3.5" />
+          </IconButton>
+          <span className="mx-0.5 h-3.5 w-px bg-border/70" />
+        </>
+      )}
       <ToolButton onClick={() => startComment(false)} icon={<MessageSquarePlus className="h-3 w-3" />}>
         Comment
       </ToolButton>
@@ -140,6 +194,33 @@ export function SelectionToolbar({ surface, pageId, resolveAnchor }: Props) {
         Link
       </ToolButton>
     </div>
+  );
+}
+
+function IconButton({
+  children,
+  title,
+  active,
+  onClick,
+}: {
+  children: React.ReactNode;
+  title: string;
+  active?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      aria-pressed={active}
+      onClick={onClick}
+      className={`grid h-6 w-6 place-items-center rounded transition-colors hover:bg-[color:var(--color-row-hover)] ${
+        active ? "bg-[color:var(--color-row-hover)] text-foreground" : "text-foreground/85"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
