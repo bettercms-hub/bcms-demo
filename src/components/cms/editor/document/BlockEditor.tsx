@@ -1342,18 +1342,19 @@ function SlashMenu({
   // Build the flat, keyboard-navigable rows and the section headers to show.
   const { rows, sections } = useMemo(() => {
     const rows: Row[] = [];
-    const sections: { title?: string; idx: number[] }[] = [];
+    const sections: { title?: string; idx: number[]; divider?: boolean }[] = [];
     const inCategory = view !== "root";
 
     if (!inCategory && !q) {
-      // Compact root: basics up front, AI + Components + Embeds collapsed.
-      ROOT_BLOCKS.forEach((it) => rows.push({ t: "insert", item: it }));
-      sections.push({ title: "Basic", idx: ROOT_BLOCKS.map((_, i) => i) });
-      const drillStart = rows.length;
+      // Compact root: the featured pickers (AI, Components, Embeds) sit up top,
+      // then the everyday basic blocks below.
       rows.push({ t: "drill", view: "ai", label: "AI", desc: "Write and edit with AI", icon: Sparkles, count: AI_ITEMS.length });
       rows.push({ t: "drill", view: "components", label: "Components", desc: "Reusable blocks for your site", icon: Boxes, count: COMPONENT_ITEMS.length });
       rows.push({ t: "drill", view: "embeds", label: "Embeds", desc: "YouTube, Figma, Loom, and more", icon: Youtube, count: EMBED_ITEMS.length });
-      sections.push({ title: "More", idx: [drillStart, drillStart + 1, drillStart + 2] });
+      sections.push({ title: "Featured", idx: [0, 1, 2] });
+      const blockStart = rows.length;
+      ROOT_BLOCKS.forEach((it) => rows.push({ t: "insert", item: it }));
+      sections.push({ title: "Basic", idx: ROOT_BLOCKS.map((_, i) => blockStart + i), divider: true });
     } else if (!inCategory && q) {
       // Global fuzzy search across everything, grouped by category.
       const hits = SLASH_ITEMS.filter((it) => matchItem(it, q));
@@ -1447,7 +1448,7 @@ function SlashMenu({
           <div className="px-4 py-6 text-center text-[12px] text-muted-foreground">No matches</div>
         )}
         {sections.map((sec, si) => (
-          <div key={si} className={`px-1.5 pb-1 ${sec.title === "More" ? "mt-1 border-t border-border/50 pt-1" : ""}`}>
+          <div key={si} className={`px-1.5 pb-1 ${sec.divider ? "mt-1 border-t border-border/50 pt-1" : ""}`}>
             {sec.title && (
               <div className="px-2 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                 {sec.title}
