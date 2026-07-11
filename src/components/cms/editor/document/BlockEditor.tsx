@@ -563,24 +563,66 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
     if (t.closest("button, a, input, textarea, select, [contenteditable='false'], [role='menu']")) return;
     if (selectedIds.size) setSelectedIds(new Set()); // fresh interaction clears
     selectRef.current = { down: blockAtY(e.clientY), active: false };
+    let lastKey = "";
+    let curY = e.clientY;
+    let raf = 0;
+    // Nearest scrollable ancestor (the entry pane / page), for edge auto-scroll.
+    let sc: HTMLElement | null = rootRef.current?.parentElement ?? null;
+    while (sc) {
+      const oy = getComputedStyle(sc).overflowY;
+      if ((oy === "auto" || oy === "scroll") && sc.scrollHeight > sc.clientHeight) break;
+      sc = sc.parentElement;
+    }
+    const applyRange = () => {
+      const st = selectRef.current;
+      const to = blockAtY(curY);
+      if (!st.down || !to) return;
+      const ids = blockIdsBetween(doc.blocks, st.down, to);
+      const key = ids.join(",");
+      if (key === lastKey) return; // only re-render when the range changes
+      lastKey = key;
+      setSelectedIds(new Set(ids));
+    };
+    // While dragging near the top/bottom edge, scroll and keep extending —
+    // this is what makes selecting past the fold feel smooth.
+    const tick = () => {
+      if (!selectRef.current.active) { raf = 0; return; }
+      const r = sc ? sc.getBoundingClientRect() : { top: 0, bottom: window.innerHeight };
+      const EDGE = 56;
+      let dy = 0;
+      if (curY < r.top + EDGE) dy = -Math.min(18, (r.top + EDGE - curY) / 3 + 2);
+      else if (curY > r.bottom - EDGE) dy = Math.min(18, (curY - (r.bottom - EDGE)) / 3 + 2);
+      if (dy !== 0) {
+        if (sc) sc.scrollTop += dy;
+        else window.scrollBy(0, dy);
+        applyRange();
+      }
+      raf = requestAnimationFrame(tick);
+    };
     const onMove = (ev: MouseEvent) => {
       const st = selectRef.current;
+      curY = ev.clientY;
       const to = blockAtY(ev.clientY);
       if (!st.active) {
-        if (to && st.down && to !== st.down) {
-          st.active = true;
-          document.body.style.userSelect = "none";
-        } else {
-          return; // still inside one block → let native text selection happen
-        }
+        // Still inside one block → let native text selection happen.
+        if (!to || !st.down || to === st.down) return;
+        // Crossed a boundary: commit to block selection. Suppress the native
+        // text selection ONCE, then keep it off — no per-move tug-of-war.
+        st.active = true;
+        document.body.style.userSelect = "none";
+        rootRef.current?.setAttribute("data-selecting", "true");
+        window.getSelection()?.removeAllRanges();
+        if (!raf) raf = requestAnimationFrame(tick);
       }
-      window.getSelection()?.removeAllRanges(); // suppress ragged text selection
-      if (st.down && to) setSelectedIds(new Set(blockIdsBetween(doc.blocks, st.down, to)));
+      ev.preventDefault(); // stop the browser from re-extending a text range
+      applyRange();
     };
     const onUp = () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      if (raf) cancelAnimationFrame(raf);
       document.body.style.userSelect = "";
+      rootRef.current?.removeAttribute("data-selecting");
       selectRef.current = { down: null, active: false };
     };
     window.addEventListener("mousemove", onMove);
@@ -1103,7 +1145,7 @@ function BlockRow({
       data-block-id={block.id}
       data-selected={selected ? "true" : undefined}
       className={cn(
-        "bcms-block group/block relative -mx-2 flex gap-1 rounded px-2 py-0.5 transition-[opacity,background-color]",
+        "bcms-block group/block relative -mx-2 flex gap-1 rounded px-2 py-0.5 transition-opacity",
         dragging && "opacity-40",
         !dragging && !selected && "hover:bg-[color:var(--row-hover)]/30",
       )}
