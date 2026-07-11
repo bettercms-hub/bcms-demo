@@ -242,6 +242,7 @@ export function BlockEditor({ value, onChange, placeholder }: Props) {
   const initial = useMemo(() => parseDoc(value), [value]);
   const [doc, setDoc] = useState<DocValue>(initial);
   const [slash, setSlash] = useState<SlashState | null>(null);
+  const [aiPrompt, setAiPrompt] = useState<{ blockId: string; cmd: AiCommand; base: DocBlock[]; rect: { top: number; left: number } } | null>(null);
   const blockRefs = useRef<Map<string, HTMLElement>>(new Map());
   const focusAfterRenderRef = useRef<{ id: string; toStart?: boolean } | null>(null);
 
@@ -362,15 +363,22 @@ export function BlockEditor({ value, onChange, placeholder }: Props) {
     commit({ ...doc, blocks });
   };
 
-  const runAi = (base: DocBlock[], id: string, cmd: AiCommand) => {
+  const runAi = (base: DocBlock[], id: string, cmd: AiCommand, prompt?: string) => {
     const idx = base.findIndex((b) => b.id === id);
     if (idx === -1) return;
     const priorText = base.slice(0, idx + 1).map((b) => b.text ?? "").filter(Boolean).join(" ");
     const selfText = base[idx].text ?? "";
-    const out = simulateAi(cmd, cmd.mode === "replace" ? selfText : priorText);
+    const context = cmd.needsPrompt ? (prompt ?? "") : cmd.mode === "replace" ? selfText : priorText;
+    const out = simulateAi(cmd, context);
 
     if (cmd.mode === "image") {
-      replaceWithWidget(base, id, { type: "image", src: gradientImageDataUri(id), alt: "AI generated image", text: "AI generated image (demo)" });
+      const p = (prompt ?? "").trim();
+      replaceWithWidget(base, id, {
+        type: "image",
+        src: gradientImageDataUri(p || id),
+        alt: p || "AI generated image",
+        text: p ? `AI image: ${p} (demo)` : "AI generated image (demo)",
+      });
       return;
     }
     if (cmd.mode === "replace") {
@@ -411,6 +419,10 @@ export function BlockEditor({ value, onChange, placeholder }: Props) {
       replaceWithWidget(base, id, {
         type: "component", component: a.key, title: d.title, desc: d.desc, componentProps: d.props ?? {},
       });
+    } else if (a.cmd.needsPrompt) {
+      // Commit the cleaned text now, then ask for a prompt before running.
+      commit({ ...doc, blocks: base });
+      setAiPrompt({ blockId: id, cmd: a.cmd, base, rect: slash.rect });
     } else {
       runAi(base, id, a.cmd);
     }
@@ -476,7 +488,32 @@ export function BlockEditor({ value, onChange, placeholder }: Props) {
         <SlashMenu
           state={slash}
           onSelect={onSlashSelect}
-          onClose={() => setSlash(null)}
+          onClose={() => {
+            // Drop the leftover "/" (and any query typed into the menu) and
+            // return the caret to the block.
+            const id = slash.blockId;
+            const el = blockRefs.current.get(id);
+            if (el) {
+              const cleaned = (el.textContent ?? "").replace(/\/[^\s\/]*$/, "");
+              if (el.textContent !== cleaned) {
+                el.textContent = cleaned;
+                commit({ ...doc, blocks: doc.blocks.map((b) => (b.id === id ? { ...b, text: cleaned } : b)) });
+              }
+              focusAfterRenderRef.current = { id };
+            }
+            setSlash(null);
+          }}
+        />
+      )}
+      {aiPrompt && (
+        <AiPromptPanel
+          cmd={aiPrompt.cmd}
+          rect={aiPrompt.rect}
+          onCancel={() => setAiPrompt(null)}
+          onSubmit={(text) => {
+            runAi(aiPrompt.base, aiPrompt.blockId, aiPrompt.cmd, text);
+            setAiPrompt(null);
+          }}
         />
       )}
     </div>
@@ -1306,6 +1343,71 @@ function ToggleBody({ block, onPatch }: WidgetProps) {
 }
 
 /* ------------------------------------------------------------------ */
+/* AI prompt panel                                                     */
+/* ------------------------------------------------------------------ */
+
+function AiPromptPanel({
+  cmd,
+  rect,
+  onCancel,
+  onSubmit,
+}: {
+  cmd: AiCommand;
+  rect: { top: number; left: number };
+  onCancel: () => void;
+  onSubmit: (text: string) => void;
+}) {
+  const [v, setV] = useState("");
+  const ref = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    ref.current?.focus();
+  }, []);
+  const Icon = cmd.mode === "image" ? ImagePlus : Wand2;
+  const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
+  const left = Math.max(8, Math.min(rect.left, vw - 400));
+  const submit = () => onSubmit(v.trim());
+  return (
+    <div
+      style={{ position: "fixed", top: rect.top + 6, left }}
+      className="z-50 w-[384px] rounded-xl border border-border bg-popover p-2 shadow-lg animate-in fade-in zoom-in-95 duration-100"
+    >
+      <div className="flex items-center gap-2">
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white">
+          <Icon className="h-3.5 w-3.5" />
+        </span>
+        <input
+          ref={ref}
+          value={v}
+          onChange={(e) => setV(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              submit();
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              onCancel();
+            }
+          }}
+          placeholder={cmd.promptPlaceholder ?? "Describe what you want"}
+          className="min-w-0 flex-1 bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground"
+        />
+        <button
+          type="button"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            submit();
+          }}
+          className="inline-flex h-7 shrink-0 items-center rounded-md bg-primary px-2.5 text-[12px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
+        >
+          {cmd.mode === "image" ? "Create" : "Generate"}
+        </button>
+      </div>
+      <div className="mt-1 px-1 text-[10.5px] text-muted-foreground">{cmd.label} · AI (demo)</div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Slash menu                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -1337,7 +1439,20 @@ function SlashMenu({
 }) {
   const [view, setView] = useState<SlashView>("root");
   const [active, setActive] = useState(0);
-  const q = state.query.trim().toLowerCase();
+  // The search input owns the query so clicking it and typing works. Seed it
+  // from whatever the writer typed right after "/" before the menu grabbed focus.
+  const [query, setQuery] = useState(() => state.query);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const focusedRef = useRef(false);
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+  // Until the input actually has focus, keep mirroring characters that still
+  // land in the editor (covers the split-second before focus lands).
+  useEffect(() => {
+    if (!focusedRef.current) setQuery(state.query);
+  }, [state.query]);
+  const q = query.trim().toLowerCase();
 
   // Build the flat, keyboard-navigable rows and the section headers to show.
   const { rows, sections } = useMemo(() => {
@@ -1431,16 +1546,23 @@ function SlashMenu({
       className="z-50 flex max-h-[420px] w-[340px] flex-col overflow-hidden rounded-xl border border-border bg-popover shadow-lg animate-in fade-in zoom-in-95 duration-100"
       role="listbox"
     >
-      {/* search-bar header reflecting what you type after "/" */}
+      {/* a real search input: click and type, or just keep typing after "/" */}
       <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2">
         <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        {q ? (
-          <span className="truncate text-[12.5px] text-foreground">{state.query}</span>
-        ) : (
-          <span className="text-[12.5px] text-muted-foreground">
-            {view === "root" ? "Search or pick a block" : `Search ${view === "ai" ? "AI commands" : view}`}
-          </span>
-        )}
+        <input
+          ref={inputRef}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => {
+            focusedRef.current = true;
+          }}
+          onKeyDown={(e) => {
+            // Let the menu's own key handler drive arrows / enter / escape.
+            if (["ArrowDown", "ArrowUp", "Enter", "Escape"].includes(e.key)) e.preventDefault();
+          }}
+          placeholder={view === "root" ? "Search or pick a block" : `Search ${view === "ai" ? "AI commands" : view}`}
+          className="min-w-0 flex-1 bg-transparent text-[12.5px] text-foreground outline-none placeholder:text-muted-foreground"
+        />
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto py-1">

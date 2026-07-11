@@ -100,7 +100,12 @@ export function parseDoc(value: unknown): DocValue {
   if (typeof value === "string") {
     const text = value.trim();
     if (!text) return emptyDoc();
-    // Split on double newlines into paragraphs.
+    // Seeded/imported content often arrives as an HTML string. Turn its
+    // block-level tags into real editor blocks so it renders formatted.
+    if (/<(p|h[1-6]|ul|ol|li|blockquote|pre|hr)\b/i.test(text)) {
+      const blocks = htmlToBlocks(text);
+      if (blocks.length) return { version: 1, blocks };
+    }
     const paragraphs = text.split(/\n{2,}/g);
     return {
       version: 1,
@@ -108,6 +113,48 @@ export function parseDoc(value: unknown): DocValue {
     };
   }
   return emptyDoc();
+}
+
+const HTML_TO_TYPE: Record<string, DocBlockType> = {
+  h1: "h1", h2: "h2", h3: "h3", h4: "h4", h5: "h5", h6: "h6",
+  blockquote: "quote", pre: "code",
+};
+
+function decode(s: string): string {
+  return s
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Lightweight, dependency-free HTML → DocBlock[] (block-level only). */
+function htmlToBlocks(html: string): DocBlock[] {
+  const blocks: DocBlock[] = [];
+  const re = /<(p|h[1-6]|blockquote|pre|ul|ol|hr)\b[^>]*>([\s\S]*?)<\/\1>|<hr\s*\/?>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    const tag = (m[1] ?? "hr").toLowerCase();
+    const inner = m[2] ?? "";
+    if (tag === "hr") {
+      blocks.push({ id: blockId(), type: "divider", text: "" });
+    } else if (tag === "ul" || tag === "ol") {
+      const items = inner.match(/<li\b[^>]*>([\s\S]*?)<\/li>/gi) ?? [];
+      for (const li of items) {
+        const t = decode(li);
+        if (t) blocks.push({ id: blockId(), type: tag === "ol" ? "numbered" : "bullet", text: t });
+      }
+    } else {
+      const t = decode(inner);
+      if (t) blocks.push({ id: blockId(), type: HTML_TO_TYPE[tag] ?? "paragraph", text: t });
+    }
+  }
+  return blocks;
 }
 
 /** Plain-text projection (used for previews, summaries, search). */

@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { entryActions, useCMS } from "@/lib/cms/store";
 import { diffText } from "@/lib/cms/diff-text";
 import { relativeTime } from "@/lib/cms/snapshots";
+import { docToPlainText, type DocValue } from "@/lib/cms/blocks/doc";
 import { Switch } from "@/components/ui/switch";
 import type { Entry, SchemaField } from "@/lib/cms/types";
 
@@ -31,6 +32,11 @@ function asText(v: unknown): string {
   if (v == null) return "";
   if (typeof v === "string") return v;
   if (typeof v === "number" || typeof v === "boolean") return String(v);
+  // A rich-text DocValue renders as readable prose, not raw JSON.
+  if (v && typeof v === "object" && (v as DocValue).version === 1 && Array.isArray((v as DocValue).blocks)) {
+    return docToPlainText(v as DocValue);
+  }
+  if (Array.isArray(v)) return v.map((x) => asText(x)).filter(Boolean).join(", ");
   return JSON.stringify(v, null, 2);
 }
 

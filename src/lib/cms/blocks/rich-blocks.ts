@@ -171,15 +171,20 @@ export type AiCommand = {
   icon: string;
   /** How the result is applied. */
   mode: "append" | "replace" | "callout" | "image";
+  /** Ask the writer for a prompt before running. */
+  needsPrompt?: boolean;
+  /** Placeholder shown in the prompt box. */
+  promptPlaceholder?: string;
 };
 
 export const AI_COMMANDS: AiCommand[] = [
+  { id: "write", label: "Write with a prompt", desc: "Describe what to write", icon: "Wand2", mode: "append", needsPrompt: true, promptPlaceholder: "e.g. an intro paragraph about headless CMS" },
   { id: "continue", label: "Continue writing", desc: "Let AI extend from here", icon: "PenLine", mode: "append" },
   { id: "summary", label: "Summarize", desc: "Add a short summary callout", icon: "ListChecks", mode: "callout" },
-  { id: "improve", label: "Improve writing", desc: "Rewrite this block more clearly", icon: "Wand2", mode: "replace" },
+  { id: "improve", label: "Improve writing", desc: "Rewrite this block more clearly", icon: "Sparkles", mode: "replace" },
   { id: "longer", label: "Make longer", desc: "Expand this block with detail", icon: "StretchHorizontal", mode: "replace" },
   { id: "shorter", label: "Make shorter", desc: "Tighten this block", icon: "Minimize2", mode: "replace" },
-  { id: "image", label: "Generate image", desc: "Create a placeholder image", icon: "ImagePlus", mode: "image" },
+  { id: "image", label: "Generate image", desc: "Describe an image to create", icon: "ImagePlus", mode: "image", needsPrompt: true, promptPlaceholder: "e.g. a calm minimal workspace, soft light" },
 ];
 
 const LOREM = [
@@ -194,6 +199,10 @@ const LOREM = [
 export function simulateAi(cmd: AiCommand, context: string): string {
   const base = context.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
   switch (cmd.id) {
+    case "write": {
+      const topic = base || "your topic";
+      return `Here's a first pass on ${topic.replace(/\.$/, "")}. ${LOREM[0]} ${LOREM[3]}`;
+    }
     case "continue":
       return LOREM[Math.floor((base.length || 1) % LOREM.length)];
     case "summary": {

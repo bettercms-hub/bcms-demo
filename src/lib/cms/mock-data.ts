@@ -414,10 +414,90 @@ export const entries: Entry[] = [
   const hasContent = new Set(collections.map((c) => c.projectId));
   const IMG = (id: string) =>
     `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=960&h=540&q=80`;
-  const POSTS: [string, string, string][] = [
-    ["Launching our new site", "launching-our-new-site", IMG("1460925895917-afdab827c52f")],
-    ["How we think about design", "how-we-think-about-design", IMG("1541462608143-67571c6738dd")],
-    ["Shipping faster with sections", "shipping-faster-with-sections", IMG("1498050108023-c5249f4df085")],
+  // Topic tags shared by every seeded blog. Index is stable, so a post can
+  // reference a tag entry by name via TAGS.indexOf(name).
+  const TAGS = ["Product", "Engineering", "Design", "Company", "Announcements"];
+  // Full blog posts: real schema fields, real copy. `authorIdx` points at the
+  // Team members collection (e_<suf>_t<idx>); `tags` are tag names resolved to
+  // tag entry ids at build time.
+  const POST_DATA: {
+    title: string;
+    slug: string;
+    cover: string;
+    excerpt: string;
+    authorIdx: number;
+    category: string;
+    tags: string[];
+    readingTime: number;
+    indexing: "index" | "noindex";
+    body: string;
+  }[] = [
+    {
+      title: "Launching our new site",
+      slug: "launching-our-new-site",
+      cover: IMG("1460925895917-afdab827c52f"),
+      excerpt:
+        "We rebuilt our marketing site on structured sections so the whole team can edit and publish without waiting on a deploy.",
+      authorIdx: 0,
+      category: "Company",
+      tags: ["Company", "Announcements", "Product"],
+      readingTime: 4,
+      indexing: "index",
+      body: [
+        "<p>Today we launched a completely rebuilt marketing site, and the way we got here says as much as the pages themselves. Every screen is now assembled from structured sections that anyone on the team can edit, reorder, and publish without opening a code editor.</p>",
+        "<h2>Why we rebuilt from scratch</h2>",
+        "<p>Our old site had grown into a tangle of one-off templates. A small copy change meant a pull request, a review, and a deploy. Marketing waited on engineering for work that should have taken minutes, and the backlog only got longer.</p>",
+        "<p>We wanted a site that the people closest to the message could own end to end. That meant moving away from bespoke pages and toward a shared library of sections with clear, editable fields.</p>",
+        "<h2>What changed</h2>",
+        "<ul><li>Every page is now a list of sections drawn from one reusable catalog.</li><li>Content lives in typed fields, so previews always match production.</li><li>Publishing is a single click, with a full draft and review history behind it.</li></ul>",
+        "<blockquote>We shipped the new homepage, pricing page, and three landing pages in a single week.</blockquote>",
+        "<p>This is only the first step. Over the next few releases we will open the same workflow to campaign pages and localized content, so every market can move at the same pace.</p>",
+      ].join(""),
+    },
+    {
+      title: "How we think about design",
+      slug: "how-we-think-about-design",
+      cover: IMG("1541462608143-67571c6738dd"),
+      excerpt:
+        "Why we build from small, reusable sections: consistency by construction, faster reviews, and a brand that stays coherent as the team grows.",
+      authorIdx: 1,
+      category: "Design",
+      tags: ["Design", "Product"],
+      readingTime: 6,
+      indexing: "index",
+      body: [
+        "<p>Good design at our size is less about any single screen and more about the system underneath it. We build from small, reusable sections instead of one-off layouts, and that decision shapes everything downstream.</p>",
+        "<h2>Consistency by construction</h2>",
+        "<p>When a button, a card, or a hero comes from a shared component, it looks and behaves the same everywhere. Designers stop policing spacing and color across dozens of pages and spend their time on the parts that actually differ.</p>",
+        "<h2>Fast reviews</h2>",
+        "<p>Because the building blocks are already agreed on, design reviews focus on content and hierarchy rather than pixels. A new landing page becomes a conversation about the message, not a debate about margins.</p>",
+        "<p>We keep a tight set of tokens for color, type, and spacing, and we resist adding new ones until a real need shows up. Constraints keep the surface area small and the brand coherent.</p>",
+        "<h2>Design that scales with the team</h2>",
+        "<p>The payoff is that a marketer, an engineer, and a designer can all touch the same page and trust the result. The system does the heavy lifting, so people can focus on the work that needs judgment.</p>",
+      ].join(""),
+    },
+    {
+      title: "Shipping faster with sections",
+      slug: "shipping-faster-with-sections",
+      cover: IMG("1498050108023-c5249f4df085"),
+      excerpt:
+        "How composing pages from a shared section library cut our time to publish a campaign page by roughly two thirds.",
+      authorIdx: 2,
+      category: "Engineering",
+      tags: ["Engineering", "Product"],
+      readingTime: 5,
+      indexing: "noindex",
+      body: [
+        "<p>Sections changed how quickly we can put a page in front of customers. What used to take a designer and an engineer a few days now takes an afternoon, and the quality is higher because every piece is already tested.</p>",
+        "<h2>From draft to publish</h2>",
+        "<p>A marketer starts a new page, picks sections from the library, and fills in the fields. A live preview shows exactly how it will render. When it is ready, they send it for review, and an editor approves it in place.</p>",
+        "<ol><li>Compose the page from existing sections.</li><li>Write and edit content directly in typed fields.</li><li>Preview, review, and publish without a deploy.</li></ol>",
+        "<h2>Where the time goes</h2>",
+        "<p>The slow part of publishing was never the writing. It was the handoffs, the deploys, and the small fixes that piled up afterward. By removing those steps, we cut the time to publish a campaign page by roughly two thirds.</p>",
+        "<p>Sections also make it easy to reuse what works. A pricing block or a testimonial row that performs well on one page drops straight into the next, so good patterns spread instead of getting rebuilt.</p>",
+        "<p>The team ships more, waits less, and spends its energy on the message rather than the mechanics.</p>",
+      ].join(""),
+    },
   ];
   const PEOPLE: [string, string, string][] = [
     ["Maya Chen", "Head of Growth", IMG("1494790108377-be9c29b29330")],
@@ -429,11 +509,6 @@ export const entries: Entry[] = [
     ["The team edits everything without waiting on engineering.", "Vertex"],
   ];
   const DATES = ["2026-06-28T10:00:00Z", "2026-06-21T15:30:00Z", "2026-06-12T09:15:00Z"];
-  const BODIES = [
-    "<p>Our new site is live. We rebuilt every page on structured sections, so the whole team can ship updates without waiting on a deploy.</p>",
-    "<p>We build from small, reusable sections instead of one-off pages. It keeps the brand consistent and design reviews stay fast.</p>",
-    "<p>Sections let marketers compose pages in a third of the time. This post shows the workflow end to end, from draft to publish.</p>",
-  ];
 
   for (const pr of projects) {
     if (hasContent.has(pr.id)) continue;
@@ -442,22 +517,67 @@ export const entries: Entry[] = [
     const mids = workspaces.find((w) => w.id === pr.workspaceId)?.memberIds ?? [];
     const mid = (i: number) => mids[i % Math.max(mids.length, 1)];
 
+    // Canonical host for SEO fields, e.g. https://bettercms.ai/blog/<slug>.
+    const host = pr.domain ?? `${pr.slug}.com`;
+
+    // Tag taxonomy — referenced by Blog posts via multiReference.
+    const cTags: Collection = { id: `c_${suf}_tags`, projectId: pr.id, name: "Tags", slug: "tags", schemaId: `sch_${suf}_tags`, entryIds: [] };
+    schemas.push({
+      id: cTags.schemaId,
+      ownerType: "collection",
+      ownerId: cTags.id,
+      titleFieldName: "name",
+      listFieldNames: ["slug"],
+      fields: [
+        { id: `f_${suf}_tag_name`, name: "name", label: "Name", type: "text", required: true },
+        { id: `f_${suf}_tag_slug`, name: "slug", label: "Slug", type: "text", required: true, unique: true },
+      ],
+    });
+    TAGS.forEach((name, i) => {
+      const id = `e_${suf}_tag${i}`;
+      cTags.entryIds.push(id);
+      entries.push({
+        id,
+        collectionId: cTags.id,
+        title: name,
+        fields: { name, slug: name.toLowerCase() },
+        updatedAt: DATES[0],
+        status: "published",
+      });
+    });
+    collections.push(cTags);
+
     const cPosts: Collection = { id: `c_${suf}_posts`, projectId: pr.id, name: "Blog posts", slug: "posts", schemaId: `sch_${suf}_posts`, entryIds: [] };
     schemas.push({
       id: cPosts.schemaId,
       ownerType: "collection",
       ownerId: cPosts.id,
       titleFieldName: "title",
-      listFieldNames: ["slug", "published"],
+      listFieldNames: ["category", "author", "publishedAt", "readingTime"],
+      groups: [
+        { id: `g_${suf}_content`, name: "content", label: "Content" },
+        { id: `g_${suf}_details`, name: "details", label: "Details" },
+        { id: `g_${suf}_seo`, name: "seo", label: "SEO", description: "Search and social metadata." },
+      ],
       fields: [
-        { id: `f_${suf}_p_title`, name: "title", label: "Title", type: "text", required: true },
-        { id: `f_${suf}_p_slug`, name: "slug", label: "Slug", type: "text", required: true, unique: true },
-        { id: `f_${suf}_p_cover`, name: "cover", label: "Cover", type: "image" },
-        { id: `f_${suf}_p_body`, name: "body", label: "Body", type: "richText" },
-        { id: `f_${suf}_p_pub`, name: "published", label: "Published", type: "boolean" },
+        { id: `f_${suf}_p_title`, name: "title", label: "Title", type: "text", required: true, groupId: `g_${suf}_content` },
+        { id: `f_${suf}_p_slug`, name: "slug", label: "Slug", type: "text", required: true, unique: true, groupId: `g_${suf}_content`, description: "URL segment, lowercase, hyphenated." },
+        { id: `f_${suf}_p_excerpt`, name: "excerpt", label: "Excerpt", type: "text", groupId: `g_${suf}_content`, description: "One or two sentences used in listings and previews.", placeholder: "Short summary…" },
+        { id: `f_${suf}_p_cover`, name: "cover", label: "Cover image", type: "image", groupId: `g_${suf}_content` },
+        { id: `f_${suf}_p_body`, name: "body", label: "Body", type: "richText", groupId: `g_${suf}_content` },
+        { id: `f_${suf}_p_author`, name: "author", label: "Author", type: "reference", refCollectionId: `c_${suf}_team`, groupId: `g_${suf}_details` },
+        { id: `f_${suf}_p_category`, name: "category", label: "Category", type: "select", options: ["Product", "Engineering", "Company", "Design"], groupId: `g_${suf}_details` },
+        { id: `f_${suf}_p_tags`, name: "tags", label: "Tags", type: "multiReference", refCollectionId: cTags.id, groupId: `g_${suf}_details` },
+        { id: `f_${suf}_p_reading`, name: "readingTime", label: "Reading time (min)", type: "number", groupId: `g_${suf}_details`, validation: { min: 1, max: 60 } },
+        { id: `f_${suf}_p_pubat`, name: "publishedAt", label: "Published at", type: "date", groupId: `g_${suf}_details` },
+        { id: `f_${suf}_p_metatitle`, name: "metaTitle", label: "Meta title", type: "text", groupId: `g_${suf}_seo`, validation: { maxLength: 70 } },
+        { id: `f_${suf}_p_metadesc`, name: "metaDescription", label: "Meta description", type: "text", groupId: `g_${suf}_seo`, validation: { maxLength: 160 } },
+        { id: `f_${suf}_p_ogimage`, name: "ogImage", label: "Social image", type: "image", groupId: `g_${suf}_seo` },
+        { id: `f_${suf}_p_canonical`, name: "canonicalUrl", label: "Canonical URL", type: "url", groupId: `g_${suf}_seo` },
+        { id: `f_${suf}_p_indexing`, name: "indexing", label: "Indexing", type: "select", options: ["index", "noindex"], groupId: `g_${suf}_seo` },
       ],
     });
-    POSTS.forEach(([title, slug, cover], i) => {
+    POST_DATA.forEach((p, i) => {
       const id = `e_${suf}_p${i}`;
       cPosts.entryIds.push(id);
       // Spread posts across the workflow: one live, one sent back with a
@@ -476,13 +596,36 @@ export const entries: Entry[] = [
                 workflowDueDate: "2026-07-09T12:00:00Z",
               }
             : { workflowAssigneeIds: [mid(1)] };
+      const canonical = `https://${host}/blog/${p.slug}`;
+      const metaTitle = `${p.title} | ${pr.name}`;
       entries.push({
         id,
         collectionId: cPosts.id,
-        title,
-        fields: { slug, cover, body: BODIES[i], published: i === 0 },
+        title: p.title,
+        fields: {
+          slug: p.slug,
+          excerpt: p.excerpt,
+          cover: p.cover,
+          body: p.body,
+          author: `e_${suf}_t${p.authorIdx}`,
+          category: p.category,
+          tags: p.tags.map((t) => `e_${suf}_tag${TAGS.indexOf(t)}`),
+          readingTime: p.readingTime,
+          publishedAt: DATES[i],
+          metaTitle,
+          metaDescription: p.excerpt,
+          ogImage: p.cover,
+          canonicalUrl: canonical,
+          indexing: p.indexing,
+        },
         updatedAt: DATES[i],
         status: i === 0 ? "published" : "draft",
+        // Populate the dedicated SEO tab as well as the schema fields.
+        metaTitle,
+        metaDescription: p.excerpt,
+        canonical,
+        ogImage: p.cover,
+        indexing: p.indexing,
         ...workflow,
       });
     });
@@ -542,7 +685,7 @@ export const entries: Entry[] = [
 
     // Register on the project so the editor content tree lists them. This also
     // fixes projects whose collectionIds pointed at another project's data.
-    pr.collectionIds = [cPosts.id, cTeam.id, cQuotes.id];
+    pr.collectionIds = [cPosts.id, cTeam.id, cTags.id, cQuotes.id];
   }
 })();
 
