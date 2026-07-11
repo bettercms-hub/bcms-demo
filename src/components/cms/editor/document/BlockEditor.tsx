@@ -270,6 +270,17 @@ function gradientImageDataUri(seed: string): string {
 /* Main editor                                                         */
 /* ------------------------------------------------------------------ */
 
+/** Nearest scrollable ancestor, for drag edge auto-scroll. */
+function findScrollParent(el: HTMLElement | null): HTMLElement | null {
+  let sc = el?.parentElement ?? null;
+  while (sc) {
+    const oy = getComputedStyle(sc).overflowY;
+    if ((oy === "auto" || oy === "scroll") && sc.scrollHeight > sc.clientHeight) return sc;
+    sc = sc.parentElement;
+  }
+  return null;
+}
+
 /** Every block id in document order between two blocks, inclusive. */
 function blockIdsBetween(blocks: DocBlock[], aId: string, bId: string): string[] {
   const ia = blocks.findIndex((b) => b.id === aId);
@@ -368,6 +379,10 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
   // floating toolbar or the keyboard.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const selectRef = useRef<{ down: string | null; active: boolean }>({ down: null, active: false });
+  // Notion-style marquee: dragging from empty space (margins, gaps, other
+  // whitespace in the pane) draws a translucent rectangle; blocks it touches
+  // are selected. Viewport coords, rendered as a fixed overlay.
+  const [marquee, setMarquee] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
 
   // Simulated collaborators: map each active teammate on this entry to a block.
   const allPeers = useProjectPresence(projectId);
@@ -561,18 +576,15 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
     const t = e.target as HTMLElement;
     // Leave handles, buttons, inputs, links and widgets alone.
     if (t.closest("button, a, input, textarea, select, [contenteditable='false'], [role='menu']")) return;
+    // Drags that start on empty space belong to the marquee (document handler).
+    if (!t.closest("[contenteditable]")) return;
     if (selectedIds.size) setSelectedIds(new Set()); // fresh interaction clears
     selectRef.current = { down: blockAtY(e.clientY), active: false };
     let lastKey = "";
     let curY = e.clientY;
     let raf = 0;
     // Nearest scrollable ancestor (the entry pane / page), for edge auto-scroll.
-    let sc: HTMLElement | null = rootRef.current?.parentElement ?? null;
-    while (sc) {
-      const oy = getComputedStyle(sc).overflowY;
-      if ((oy === "auto" || oy === "scroll") && sc.scrollHeight > sc.clientHeight) break;
-      sc = sc.parentElement;
-    }
+    const sc = findScrollParent(rootRef.current);
     const applyRange = () => {
       const st = selectRef.current;
       const to = blockAtY(curY);
@@ -629,6 +641,91 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
     window.addEventListener("mouseup", onUp);
   };
 
+  // Marquee from empty space: a left-button drag that starts anywhere in the
+  // editor's scroll pane but NOT on text or a control draws the translucent
+  // rectangle and selects every block it touches — Notion's grab.
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (e.button !== 0) return;
+      const root = rootRef.current;
+      if (!root) return;
+      const t = e.target as HTMLElement;
+      if (t.closest("button, a, input, textarea, select, [contenteditable], [role='menu'], [data-selection-bar]")) return;
+      const pane = findScrollParent(root) ?? document.body;
+      if (!pane.contains(t)) return;
+      // Ignore grabs on a classic scrollbar (target is the pane, x past content).
+      if (t === pane && e.clientX >= pane.getBoundingClientRect().left + pane.clientWidth) return;
+
+      setSelectedIds(new Set()); // fresh interaction clears any selection
+      const anchorX = e.clientX;
+      const anchorDocY = e.clientY + pane.scrollTop; // survives auto-scroll
+      let active = false;
+      let raf = 0;
+      let curX = e.clientX;
+      let curY = e.clientY;
+      let lastKey = "";
+
+      const update = () => {
+        const ay = anchorDocY - pane.scrollTop;
+        const x = Math.min(anchorX, curX);
+        const y = Math.min(ay, curY);
+        const w = Math.abs(curX - anchorX);
+        const h = Math.abs(curY - ay);
+        setMarquee({ x, y, w, h });
+        const ids: string[] = [];
+        root.querySelectorAll<HTMLElement>("[data-block-id]").forEach((row) => {
+          const b = row.getBoundingClientRect();
+          if (b.right > x && b.left < x + w && b.bottom > y && b.top < y + h) {
+            if (row.dataset.blockId) ids.push(row.dataset.blockId);
+          }
+        });
+        const key = ids.join(",");
+        if (key === lastKey) return; // only re-render when the set changes
+        lastKey = key;
+        setSelectedIds(new Set(ids));
+      };
+
+      // Edge auto-scroll keeps the rectangle growing past the fold.
+      const tick = () => {
+        if (!active) { raf = 0; return; }
+        const r = pane.getBoundingClientRect();
+        const EDGE = 56;
+        let dy = 0;
+        if (curY < r.top + EDGE) dy = -Math.min(18, (r.top + EDGE - curY) / 3 + 2);
+        else if (curY > r.bottom - EDGE) dy = Math.min(18, (curY - (r.bottom - EDGE)) / 3 + 2);
+        if (dy !== 0) { pane.scrollTop += dy; update(); }
+        raf = requestAnimationFrame(tick);
+      };
+
+      const onMove = (ev: MouseEvent) => {
+        curX = ev.clientX;
+        curY = ev.clientY;
+        if (!active) {
+          if (Math.abs(curX - anchorX) < 4 && Math.abs(curY + pane.scrollTop - anchorDocY) < 4) return;
+          active = true;
+          document.body.style.userSelect = "none";
+          rootRef.current?.setAttribute("data-selecting", "true");
+          window.getSelection()?.removeAllRanges();
+          if (!raf) raf = requestAnimationFrame(tick);
+        }
+        ev.preventDefault();
+        update();
+      };
+      const onUp = () => {
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+        if (raf) cancelAnimationFrame(raf);
+        document.body.style.userSelect = "";
+        rootRef.current?.removeAttribute("data-selecting");
+        setMarquee(null); // rectangle goes, the block selection stays
+      };
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
   const deleteBlocks = (ids: Set<string>) => {
     const idx = doc.blocks.findIndex((b) => ids.has(b.id));
     const remaining = doc.blocks.filter((b) => !ids.has(b.id));
@@ -661,17 +758,26 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
     toast.success(`${ids.size} block${ids.size > 1 ? "s" : ""} copied`);
   };
 
-  const onSelectionKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  // Keyboard for an active block selection — document-level so it still works
+  // when a marquee started from empty space and focus sits outside the editor.
+  useEffect(() => {
     if (selectedIds.size === 0) return;
-    const mod = e.metaKey || e.ctrlKey;
-    if (e.key === "Escape") { e.preventDefault(); setSelectedIds(new Set()); return; }
-    if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); deleteBlocks(selectedIds); return; }
-    if (mod && (e.key === "d" || e.key === "D")) { e.preventDefault(); duplicateBlocks(selectedIds); return; }
-    if (mod && (e.key === "c" || e.key === "C")) { e.preventDefault(); copyBlocks(selectedIds); return; }
-    if (mod) return;
-    if (e.key.startsWith("Arrow")) { setSelectedIds(new Set()); return; }
-    if (e.key.length === 1) { e.preventDefault(); deleteBlocks(selectedIds); return; }
-  };
+    function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      const mod = e.metaKey || e.ctrlKey;
+      if (e.key === "Escape") { e.preventDefault(); setSelectedIds(new Set()); return; }
+      if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); deleteBlocks(selectedIds); return; }
+      if (mod && (e.key === "d" || e.key === "D")) { e.preventDefault(); duplicateBlocks(selectedIds); return; }
+      if (mod && (e.key === "c" || e.key === "C")) { e.preventDefault(); copyBlocks(selectedIds); return; }
+      if (mod) return;
+      if (e.key.startsWith("Arrow")) { setSelectedIds(new Set()); return; }
+      if (e.key.length === 1) { e.preventDefault(); deleteBlocks(selectedIds); return; }
+    }
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedIds, doc]);
 
   /* --- slash dispatch: the current (now empty) block becomes the target --- */
 
@@ -857,9 +963,15 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
     <div
       ref={rootRef}
       onMouseDown={onRootMouseDown}
-      onKeyDownCapture={onSelectionKeyDown}
       className="bcms-doc-editor relative"
     >
+      {marquee && marquee.w + marquee.h > 3 && (
+        <div
+          aria-hidden
+          style={{ position: "fixed", left: marquee.x, top: marquee.y, width: marquee.w, height: marquee.h, zIndex: 40 }}
+          className="pointer-events-none rounded-[3px] border border-[color:color-mix(in_oklab,var(--primary)_40%,transparent)] bg-[color:color-mix(in_oklab,var(--primary)_9%,transparent)]"
+        />
+      )}
       {selectedIds.size > 0 && (
         <BlockSelectionBar
           count={selectedIds.size}
