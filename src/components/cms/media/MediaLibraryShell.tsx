@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Clock,
   Copy,
+  Crop as CropIcon,
   Database,
   Download,
   FileIcon,
@@ -75,7 +76,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { media as MEDIA } from "@/lib/cms/mock-data";
-import { mediaFolderActions, useCMS } from "@/lib/cms/store";
+import { mediaActions, mediaFolderActions, useCMS } from "@/lib/cms/store";
+import { ImageCropDialog } from "./ImageCropDialog";
 import type { MediaAsset, MediaFolder } from "@/lib/cms/types";
 import { toast } from "sonner";
 
@@ -1811,6 +1813,12 @@ function AssetInspector({
 }) {
   const folderName = folders.find((f) => f.id === asset.folderId)?.name ?? "—";
   const ref = referenceCount(asset);
+  const [cropOpen, setCropOpen] = useState(false);
+  const canCrop =
+    asset.kind === "image" &&
+    !!asset.url &&
+    asset.mimeType !== "image/svg+xml" &&
+    asset.mimeType !== "image/gif";
 
   return (
     <aside
@@ -1895,7 +1903,7 @@ function AssetInspector({
         )}
 
         {/* Ghost quick actions */}
-        <div className="grid grid-cols-5 gap-1 border-b border-border px-3 pb-4">
+        <div className={`grid ${canCrop ? "grid-cols-6" : "grid-cols-5"} gap-1 border-b border-border px-3 pb-4`}>
           <QuickAction
             icon={Copy}
             label="Copy"
@@ -1905,6 +1913,7 @@ function AssetInspector({
             }}
           />
           <QuickAction icon={ArrowLeftRight} label="Replace" onClick={() => toast("Coming soon")} />
+          {canCrop && <QuickAction icon={CropIcon} label="Crop" onClick={() => setCropOpen(true)} />}
           <QuickAction icon={Download} label="Download" onClick={() => toast("Download starting")} />
           {asset.kind === "image" && asset.mimeType !== "image/svg+xml" ? (
             <QuickAction icon={Zap} label="Convert" onClick={onConvert} />
@@ -1915,6 +1924,21 @@ function AssetInspector({
           )}
           <QuickAction icon={Trash2} label="Trash" onClick={onDelete} danger />
         </div>
+
+        {canCrop && (
+          <ImageCropDialog
+            open={cropOpen}
+            onOpenChange={setCropOpen}
+            src={asset.url}
+            title={`Crop ${asset.name}`}
+            onCropped={(dataUrl, size) => {
+              const patch = { url: dataUrl, thumbUrl: dataUrl, width: size.width, height: size.height };
+              onUpdate(patch);
+              mediaActions.update(asset.id, patch);
+              toast.success("Image cropped");
+            }}
+          />
+        )}
 
         <Tabs defaultValue="details" className="px-0">
           <TabsList className="relative h-10 w-full justify-start gap-0 rounded-none border-b border-border bg-transparent p-0">
