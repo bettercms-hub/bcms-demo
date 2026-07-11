@@ -145,3 +145,44 @@ export function getVisibleSectionSchema(
 /** Field-name set that the layout/visibility groups own — excluded from content tab. */
 export const LAYOUT_PROP_KEYS = ["background", "spacing", "align", "hidden", "showFrom", "showUntil"];
 
+/* ------------------------------------------------------- design controls */
+
+/**
+ * The design knobs a marketer can turn on a section, keyed so developers
+ * can trim the set per section kind (the way you'd only expose the spacing
+ * variables you actually want a client to use). Everything is token-based:
+ * values travel through the API as structured data, never raw CSS, so a
+ * headless frontend maps tokens to its own styles.
+ */
+export type DesignControlKey =
+  | "background"      // surface / muted / accent / inverse / custom color
+  | "backgroundImage" // image URL + conditional overlay
+  | "theme"           // section-scoped light / dark
+  | "typography"      // text tone + font scale
+  | "shape"           // radius, shadow, borders
+  | "width"           // container width preset
+  | "align"           // horizontal alignment
+  | "padding"         // vertical + horizontal padding tokens
+  | "gap"             // gap between blocks
+  | "columns"         // grid column count (grid kinds only)
+  | "fullHeight";     // stretch to viewport height
+
+const DESIGN_DEFAULT: DesignControlKey[] = [
+  "background", "backgroundImage", "theme", "typography", "shape",
+  "width", "align", "padding", "gap", "columns",
+];
+
+/** Per-kind overrides. Chrome sections own their own width/padding, so they
+ * only expose surface-level knobs; heroes and CTAs may go full-viewport. */
+const DESIGN_OVERRIDES: Partial<Record<SectionKind, DesignControlKey[]>> = {
+  hero: [...DESIGN_DEFAULT, "fullHeight"],
+  cta: [...DESIGN_DEFAULT, "fullHeight"],
+  navigation: ["background", "theme", "typography"],
+  header: ["background", "theme", "typography"],
+  footer: ["background", "theme", "typography"],
+};
+
+export function sectionDesignControls(kind: SectionKind): Set<DesignControlKey> {
+  return new Set(DESIGN_OVERRIDES[kind] ?? DESIGN_DEFAULT);
+}
+

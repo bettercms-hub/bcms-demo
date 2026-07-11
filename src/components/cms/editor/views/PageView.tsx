@@ -28,6 +28,8 @@ import { AdvancedTab } from "../section-tabs/AdvancedTab";
 
 
 import { blockActions, pageActions, sectionActions, useCMS } from "@/lib/cms/store";
+import { useParams } from "@tanstack/react-router";
+import { canCompose, useEffectiveRole } from "@/lib/workspace/my-role";
 import type { Block, ComponentMaster, Section, SectionKind, SchemaField } from "@/lib/cms/types";
 
 import { BLOCK_REGISTRY, isContainer, type BlockGroup } from "@/lib/cms/blocks/registry";
@@ -1461,6 +1463,14 @@ const SectionWorkspace = memo(function SectionWorkspace({
 }) {
   const [tab, setTab] = useState<WorkspaceTab>("content");
   const blocks = section.blocks ?? [];
+  // Design power is a marketer-and-up capability: content editors write copy,
+  // they don't restyle sections. Below marketer, only Content + SEO show.
+  const { workspace: wsSlug } = useParams({ strict: false }) as { workspace?: string };
+  const { effective } = useEffectiveRole(wsSlug ?? "");
+  const designAllowed = canCompose(effective);
+  const visibleSectionTabs = designAllowed
+    ? SECTION_TABS
+    : SECTION_TABS.filter((t) => t.id === "content" || t.id === "seo");
   const boundComponent = useCMS((s) =>
     section.componentId ? s.components.find((c) => c.id === section.componentId) : undefined,
   );
@@ -1604,7 +1614,7 @@ const SectionWorkspace = memo(function SectionWorkspace({
         {/* Left: tabbed editor pane */}
         <div className="flex min-w-0 flex-col">
           <div className="mb-4 flex items-center gap-1 border-b border-border">
-            {SECTION_TABS.map((t) => {
+            {visibleSectionTabs.map((t) => {
               const active = t.id === tab;
               return (
                 <button
@@ -1651,10 +1661,10 @@ const SectionWorkspace = memo(function SectionWorkspace({
               </div>
             )}
 
-            {tab === "layout" && <LayoutTab section={section} />}
-            {tab === "style" && <StyleTab section={section} />}
+            {tab === "layout" && designAllowed && <LayoutTab section={section} />}
+            {tab === "style" && designAllowed && <StyleTab section={section} />}
             {tab === "seo" && <SeoTab section={section} />}
-            {tab === "advanced" && <AdvancedTab section={section} />}
+            {tab === "advanced" && designAllowed && <AdvancedTab section={section} />}
           </div>
         </div>
 

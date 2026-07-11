@@ -301,12 +301,20 @@ export interface SectionLayout {
   paddingX?: "none" | "sm" | "md" | "lg";
   gap?: "none" | "sm" | "md" | "lg";
   columns?: 1 | 2 | 3 | 4;
+  /** Stretch the section to fill the viewport and center its content. */
+  fullHeight?: boolean;
 }
 
 export interface SectionStyle {
   background?: "transparent" | "surface" | "muted" | "accent" | "inverse" | "custom";
   backgroundColor?: string;
   backgroundImage?: string;
+  /** Section-scoped theme. Dark flips the section (and every block inside)
+   * onto the dark token set; light pins it light regardless of context. */
+  theme?: "inherit" | "light" | "dark";
+  /** 0-100 dark scrim over the background image, for text legibility.
+   * Only meaningful (and only shown) when a background image is set. */
+  overlayOpacity?: number;
   textTone?: "default" | "muted" | "inverse";
   fontScale?: "sm" | "md" | "lg";
   radius?: "none" | "sm" | "md" | "lg" | "xl";

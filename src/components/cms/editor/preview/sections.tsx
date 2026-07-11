@@ -80,7 +80,17 @@ function Frame({ section, children }: { section: Section; children: React.ReactN
   const advanced = section.advanced ?? {};
 
   const bgKey = style.background ?? str(section.props.background, "default");
-  const bg = BG_CLASS[bgKey] ?? BG_CLASS.default;
+  let bg = BG_CLASS[bgKey] ?? BG_CLASS.default;
+  // Section-scoped theme. Dark rides the app's `.dark` token remap so every
+  // block inside flips with it; when no explicit surface is set we supply one.
+  const theme = style.theme ?? "inherit";
+  const themeCls =
+    theme === "dark" ? "dark" : "";
+  if (theme === "dark" && (bgKey === "default" || bgKey === "transparent") && !style.backgroundColor && !style.backgroundImage) {
+    bg = "bg-neutral-950 text-neutral-100";
+  } else if (theme === "light" && (bgKey === "default" || bgKey === "transparent") && !style.backgroundColor) {
+    bg = "bg-white text-neutral-900";
+  }
   const sp = layout.paddingY || layout.paddingX
     ? `${PY_CLASS[layout.paddingY ?? "md"]} ${PX_CLASS[layout.paddingX ?? "md"]}`
     : SPACING_CLASS[str(section.props.spacing, "comfortable")] ?? SPACING_CLASS.comfortable;
@@ -109,6 +119,11 @@ function Frame({ section, children }: { section: Section; children: React.ReactN
     inlineStyle.zIndex = advanced.zIndex;
     inlineStyle.position = inlineStyle.position ?? "relative";
   }
+  // Full viewport height: stretch and center the content vertically.
+  const fullHeight = !!layout.fullHeight;
+  if (fullHeight) inlineStyle.minHeight = "100vh";
+  // Legibility scrim over the background image (0-100).
+  const overlay = style.backgroundImage ? Math.max(0, Math.min(100, style.overlayOpacity ?? 0)) / 100 : 0;
 
   const hidden = !!advanced.hidden || !!section.props.hidden;
   if (hidden) {
@@ -148,16 +163,23 @@ function Frame({ section, children }: { section: Section; children: React.ReactN
           aria-label={seo.ariaLabel || undefined}
           className={
             isChrome
-              ? `${bg} ${toneCls} ${fontCls} ${borderCls} ${deviceCls} ${advanced.customClassName ?? ""}`.trim()
-              : `${bg} ${sp} ${toneCls} ${fontCls} ${radiusCls} ${shadowCls} ${borderCls} ${deviceCls} ${advanced.customClassName ?? ""}`.trim()
+              ? `${themeCls} ${bg} ${toneCls} ${fontCls} ${borderCls} ${deviceCls} ${advanced.customClassName ?? ""}`.trim()
+              : `${themeCls} ${overlay > 0 ? "relative" : ""} ${fullHeight ? "flex flex-col justify-center" : ""} ${bg} ${sp} ${toneCls} ${fontCls} ${radiusCls} ${shadowCls} ${borderCls} ${deviceCls} ${advanced.customClassName ?? ""}`.trim()
           }
           style={inlineStyle}
           {...extraAttrs}
         >
+          {overlay > 0 && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0"
+              style={{ backgroundColor: `rgba(0,0,0,${overlay})`, borderRadius: "inherit" }}
+            />
+          )}
           {isChrome ? (
             children
           ) : (
-            <div className={`mx-auto flex flex-col ${widthCls} ${gapCls} ${al}`}>{children}</div>
+            <div className={`${overlay > 0 ? "relative" : ""} mx-auto flex w-full flex-col ${widthCls} ${gapCls} ${al}`}>{children}</div>
           )}
         </Tag>
       </SectionSelectable>
