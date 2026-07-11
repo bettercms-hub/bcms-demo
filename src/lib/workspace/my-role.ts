@@ -78,7 +78,7 @@ export function effectiveRoleFor(wsSlug: string): WorkspaceRole {
 
 /** Project nav tabs visible per role. Keys match ProjectNav tab keys. */
 const ALL_TABS = new Set([
-  "content", "schema", "media", "visual", "agent", "seo", "forms", "analytics", "hosting", "settings",
+  "content", "schema", "media", "visual", "agent", "seo", "forms", "search", "analytics", "hosting", "settings",
   "pages", "collections", "components", "publishing", "workflow",
 ]);
 // Lower roles get explicit allow-lists so their workspace stays minimal.

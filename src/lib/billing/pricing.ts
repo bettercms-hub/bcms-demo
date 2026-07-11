@@ -366,6 +366,7 @@ export const FEATURE_MATRIX: FeatureRow[] = [
   { key: "form-files", label: "Form file upload and well-known files", values: F(false, true, true, true, true) },
   { key: "seo", label: "SEO and AEO built in", values: F(false, true, true, true, true) },
   { key: "search", label: "Site search", values: F(false, true, true, true, true) },
+  { key: "ai-search", label: "AI search (semantic + typo tolerant)", values: F(false, false, true, true, true) },
   { key: "analytics", label: "Analytics", values: F(false, "Basic", "Advanced", "Advanced", "Advanced") },
   { key: "ai-traffic", label: "AI traffic insights", values: F(false, false, true, true, true) },
   { key: "aeo-agents", label: "AEO agents", values: F(false, false, "Coming soon", true, true) },

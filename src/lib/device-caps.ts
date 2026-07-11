@@ -42,6 +42,7 @@ const MOBILE_BLOCKED_PROJECT: Array<{ test: RegExp; feature: string }> = [
   { test: /\/schema(\/|$)/, feature: "The schema builder" },
   { test: /\/seo(\/|$)/, feature: "The SEO workspace" },
   { test: /\/forms(\/|$)/, feature: "The form builder" },
+  { test: /\/search(\/|$)/, feature: "Site search" },
   { test: /\/analytics(\/|$)/, feature: "Analytics" },
   { test: /\/hosting(\/|$)/, feature: "Hosting" },
   { test: /\/agent$/, feature: "The agent workspace" },

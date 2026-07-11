@@ -1017,18 +1017,35 @@ function FieldSettings({
         )}
 
         {field.type !== "group" && field.type !== "sections" && (
-          <label className="flex items-center gap-2 text-[12.5px] text-foreground">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={!!field.required}
-              onClick={() => set({ required: !field.required })}
-              className={cn("relative h-5 w-9 rounded-full transition-colors", field.required ? "bg-primary" : "bg-[color:var(--s3)]")}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <label className="flex items-center gap-2 text-[12.5px] text-foreground">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={!!field.required}
+                onClick={() => set({ required: !field.required })}
+                className={cn("relative h-5 w-9 rounded-full transition-colors", field.required ? "bg-primary" : "bg-[color:var(--s3)]")}
+              >
+                <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all", field.required ? "left-[18px]" : "left-0.5")} />
+              </button>
+              Required
+            </label>
+            <label
+              className="flex items-center gap-2 text-[12.5px] text-foreground"
+              title="Include this field in site search. Searchable fields are indexed and exposed through the search endpoint."
             >
-              <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all", field.required ? "left-[18px]" : "left-0.5")} />
-            </button>
-            Required
-          </label>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={!!field.searchable}
+                onClick={() => set({ searchable: !field.searchable })}
+                className={cn("relative h-5 w-9 rounded-full transition-colors", field.searchable ? "bg-primary" : "bg-[color:var(--s3)]")}
+              >
+                <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all", field.searchable ? "left-[18px]" : "left-0.5")} />
+              </button>
+              Searchable
+            </label>
+          </div>
         )}
       </div>
     </div>

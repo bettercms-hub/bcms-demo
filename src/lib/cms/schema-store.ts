@@ -42,6 +42,8 @@ export interface ModelField {
   apiId: string;
   type: FieldType;
   required?: boolean;
+  /** Include this field in site search (see SEARCH_PLAN.md). */
+  searchable?: boolean;
   help?: string;
   /** select */
   options?: string[];
