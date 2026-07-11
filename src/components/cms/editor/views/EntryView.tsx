@@ -125,6 +125,8 @@ export function EntryView({ entryId }: { entryId: string }) {
                 entryActions.setField(entry.id, layout.contentField!.name, next)
               }
               placeholder="Press '/' for blocks, or just start writing…"
+              projectId={collection?.projectId}
+              entryId={entryId}
             />
           </div>
         ) : (

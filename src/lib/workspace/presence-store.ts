@@ -47,6 +47,8 @@ export interface PresencePeer {
   entryId?: string;
   entryTitle?: string;
   fieldName?: string;
+  /** Which block of a rich-text field they're near (mapped to an index). */
+  blockSeed?: number;
 }
 
 /** Accent palette for presence signals. Distinct from the brand pink. */
@@ -152,7 +154,7 @@ function seedProject(projectId: string): PresencePeer[] {
   }
   const data = dataFor(projectId);
 
-  return chosen.map((m, i) => {
+  const peers = chosen.map((m, i) => {
     const peer: PresencePeer = {
       id: m.id,
       name: m.name,
@@ -166,6 +168,23 @@ function seedProject(projectId: string): PresencePeer[] {
     placeSomewhere(peer, data, rnd);
     return peer;
   });
+  // Seed one editor into a blog-post entry so per-paragraph presence is
+  // visible the moment you open it (they still wander off over time).
+  const firstEntry = data.entries.find((e) => /post|blog|article/i.test(e.collectionName)) ?? data.entries[0];
+  const editorPeer = peers.find((p) => canEdit(p.seat));
+  if (firstEntry && editorPeer) {
+    editorPeer.status = "active";
+    editorPeer.surface = "entry";
+    editorPeer.collectionId = firstEntry.collectionId;
+    editorPeer.collectionName = firstEntry.collectionName;
+    editorPeer.entryId = firstEntry.entryId;
+    editorPeer.entryTitle = firstEntry.entryTitle;
+    editorPeer.fieldName = firstEntry.fieldNames.find((n) => /body|content/i.test(n)) ?? firstEntry.fieldNames[0];
+    editorPeer.blockSeed = 4;
+    editorPeer.pagePath = undefined;
+    editorPeer.cursor = undefined;
+  }
+  return peers;
 }
 
 /** Drop a peer onto a plausible location given their seat. */
@@ -180,6 +199,7 @@ function placeSomewhere(peer: PresencePeer, data: ProjectData, rnd: () => number
     peer.entryId = e.entryId;
     peer.entryTitle = e.entryTitle;
     peer.fieldName = pick(e.fieldNames, rnd);
+    peer.blockSeed = Math.floor(rnd() * 997);
     peer.pagePath = undefined;
     peer.pageTitle = undefined;
     peer.sectionId = undefined;
@@ -248,10 +268,26 @@ function tick() {
       } else if (peer.surface === "entry") {
         const roll = rnd();
         const home = data.entries.filter((e) => e.entryId === peer.entryId);
-        if (roll < 0.1 || !home.length) {
-          placeSomewhere(peer, data, rnd);
-        } else if (roll < 0.45) {
-          peer.fieldName = pick(home[0].fieldNames, rnd); // move to another field
+        const bodyField = home[0]?.fieldNames.find((n) => /body|content/i.test(n));
+        const onBody = !!peer.fieldName && /body|content/i.test(peer.fieldName);
+        if (roll < 0.06 || !home.length) {
+          placeSomewhere(peer, data, rnd); // wander off entirely
+        } else if (onBody) {
+          // Stay in the body most of the time, hopping between paragraphs so the
+          // per-paragraph avatar keeps moving; occasionally dip into a field.
+          if (roll < 0.86) {
+            peer.blockSeed = ((peer.blockSeed ?? 0) + (rnd() < 0.5 ? 1 : -1) + 997) % 997;
+          } else {
+            peer.fieldName = pick(home[0].fieldNames, rnd);
+          }
+        } else {
+          // In a structured field — likely to come back to writing the body.
+          if (roll < 0.5 && bodyField) {
+            peer.fieldName = bodyField;
+            peer.blockSeed = Math.floor(rnd() * 997);
+          } else if (roll < 0.75) {
+            peer.fieldName = pick(home[0].fieldNames, rnd);
+          }
         }
       } else if (rnd() < 0.4) {
         placeSomewhere(peer, data, rnd); // stop browsing, do something
@@ -289,11 +325,19 @@ function subscribe(l: () => void) {
 
 /* ---------------------------------------------------------------- API */
 
+/** Projects we've already seeded, so a legitimately-empty project doesn't
+ *  re-seed on every render. */
+const seededProjects = new Set<string>();
+
 export function ensurePresence(projectId: string) {
   if (typeof window === "undefined") return;
-  if (!byProject[projectId]) {
-    byProject = { ...byProject, [projectId]: seedProject(projectId) };
-  }
+  if (seededProjects.has(projectId)) return;
+  // The CMS store hydrates a beat after first paint. Seeding before its data
+  // is ready yields zero teammates and would cache an empty list forever, so
+  // hold off until members exist.
+  if (getCMSState().members.length === 0) return;
+  seededProjects.add(projectId);
+  byProject = { ...byProject, [projectId]: seedProject(projectId) };
 }
 
 /** Everyone active in a project. Stable EMPTY when unknown. */
@@ -302,7 +346,7 @@ export function useProjectPresence(projectId: string | undefined): PresencePeer[
     subscribe,
     () => {
       if (!projectId) return EMPTY;
-      if (!byProject[projectId]) ensurePresence(projectId);
+      ensurePresence(projectId);
       return byProject[projectId] ?? EMPTY;
     },
     () => EMPTY,

@@ -92,12 +92,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useCMS } from "@/lib/cms/store";
+import { useProjectPresence, type PresencePeer } from "@/lib/workspace/presence-store";
+import { PersonTooltipForMember } from "@/components/cms/workflow/PersonTooltip";
 
 interface Props {
   value: unknown;
   onChange: (next: DocValue) => void;
   /** Render-time placeholder for the first empty block. */
   placeholder?: string;
+  /** Context used to show which teammate is on which paragraph. */
+  projectId?: string;
+  entryId?: string;
 }
 
 interface SlashState {
@@ -238,13 +244,33 @@ function gradientImageDataUri(seed: string): string {
 /* Main editor                                                         */
 /* ------------------------------------------------------------------ */
 
-export function BlockEditor({ value, onChange, placeholder }: Props) {
+export function BlockEditor({ value, onChange, placeholder, projectId, entryId }: Props) {
   const initial = useMemo(() => parseDoc(value), [value]);
   const [doc, setDoc] = useState<DocValue>(initial);
   const [slash, setSlash] = useState<SlashState | null>(null);
   const [aiPrompt, setAiPrompt] = useState<{ blockId: string; cmd: AiCommand; base: DocBlock[]; rect: { top: number; left: number } } | null>(null);
   const blockRefs = useRef<Map<string, HTMLElement>>(new Map());
   const focusAfterRenderRef = useRef<{ id: string; toStart?: boolean } | null>(null);
+
+  // Simulated collaborators: map each active teammate on this entry to a block.
+  const allPeers = useProjectPresence(projectId);
+  const blockPeers = useMemo(() => {
+    const map = new Map<string, PresencePeer[]>();
+    if (!entryId || doc.blocks.length === 0) return map;
+    for (const p of allPeers) {
+      if (p.entryId !== entryId || p.status !== "active") continue;
+      // Only show a paragraph avatar when they're actually in the body. When
+      // they move to a structured field, the Details section shows their
+      // avatar there instead, so we avoid double-marking the same person.
+      if (p.fieldName && !/body|content|article|post/i.test(p.fieldName)) continue;
+      const b = doc.blocks[(p.blockSeed ?? 0) % doc.blocks.length];
+      if (!b) continue;
+      const arr = map.get(b.id) ?? [];
+      arr.push(p);
+      map.set(b.id, arr);
+    }
+    return map;
+  }, [allPeers, entryId, doc.blocks]);
 
   // When external value changes wholesale (e.g. switching entries), reset.
   useEffect(() => {
@@ -438,6 +464,7 @@ export function BlockEditor({ value, onChange, placeholder }: Props) {
           isFirst={i === 0}
           placeholder={i === 0 ? placeholder : undefined}
           refMap={blockRefs}
+          peers={blockPeers.get(b.id)}
           onTextInput={(text, rect) => {
             // Detect slash trigger at end of current line.
             const m = text.match(/\/([^\s\/]*)$/);
@@ -529,6 +556,7 @@ interface RowProps {
   isFirst: boolean;
   placeholder?: string;
   refMap: React.MutableRefObject<Map<string, HTMLElement>>;
+  peers?: PresencePeer[];
   onTextInput: (text: string, rect: { top: number; left: number } | null) => void;
   onCommit: (text: string) => void;
   onCheck: (checked: boolean) => void;
@@ -548,6 +576,7 @@ function BlockRow({
   block,
   placeholder,
   refMap,
+  peers,
   onTextInput,
   onCommit,
   onCheck,
@@ -646,6 +675,14 @@ function BlockRow({
 
   return (
     <div className="group/block relative -mx-2 flex gap-1 rounded px-2 py-0.5 hover:bg-[color:var(--row-hover)]/30">
+      {/* Live collaborators on this paragraph */}
+      {peers && peers.length > 0 && (
+        <div className="absolute left-[-64px] top-1 hidden items-center sm:flex">
+          {peers.slice(0, 3).map((p) => (
+            <PresenceDot key={p.id} peer={p} />
+          ))}
+        </div>
+      )}
       {/* Hover handles */}
       <div className="absolute left-[-44px] top-1 hidden items-center gap-0.5 text-muted-foreground group-hover/block:flex">
         <button
@@ -1340,6 +1377,25 @@ function ToggleBody({ block, onPatch }: WidgetProps) {
       className="block-editable min-h-[24px] text-[14px] leading-relaxed text-muted-foreground outline-none"
     />
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* Presence                                                            */
+/* ------------------------------------------------------------------ */
+
+function PresenceDot({ peer }: { peer: PresencePeer }) {
+  const member = useCMS((s) => s.members.find((m) => m.id === peer.id));
+  const inner = (
+    <span
+      tabIndex={0}
+      className="-ml-1.5 grid h-[18px] w-[18px] shrink-0 select-none place-items-center rounded-full text-[8.5px] font-semibold text-white outline-none ring-2 ring-[color:var(--canvas)] first:ml-0"
+      style={{ backgroundColor: peer.color }}
+      title={member ? undefined : peer.name}
+    >
+      {peer.initials}
+    </span>
+  );
+  return member ? <PersonTooltipForMember member={member}>{inner}</PersonTooltipForMember> : inner;
 }
 
 /* ------------------------------------------------------------------ */
