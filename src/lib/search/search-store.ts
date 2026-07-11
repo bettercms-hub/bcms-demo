@@ -24,6 +24,9 @@ export interface SearchConfig {
   enabled: boolean;
   /** Index the project's pages (titles, section copy, meta description). */
   includePages: boolean;
+  /** Per-page opt-outs, keyed by page id = true. Lets you index the home
+   *  page but exclude the about page, etc. (only applies when includePages). */
+  pageOff: Record<string, boolean>;
   /** Collections opted into the index, keyed by collection id. */
   collections: Record<string, boolean>;
   /** Per-field opt-outs, keyed by `${collectionId}.${fieldName}` = false. */
@@ -97,6 +100,7 @@ export function defaultConfig(projectId: string): SearchConfig {
   return {
     enabled: false,
     includePages: true,
+    pageOff: {},
     collections,
     fieldOff: {},
     aiSearch: false,
@@ -105,7 +109,10 @@ export function defaultConfig(projectId: string): SearchConfig {
 }
 
 export function getSearchConfig(projectId: string): SearchConfig {
-  return db.configs[projectId] ?? defaultConfig(projectId);
+  const stored = db.configs[projectId];
+  // Back-fill fields added after a config was first persisted.
+  if (stored) return { ...stored, pageOff: stored.pageOff ?? {} };
+  return defaultConfig(projectId);
 }
 
 export function useSearchConfig(projectId: string): SearchConfig {
@@ -119,6 +126,24 @@ export const searchActions = {
     const next = { ...cur, ...patch };
     if (patch.enabled && !cur.enabled) next.enabledAt = new Date().toISOString();
     db.configs = { ...db.configs, [projectId]: next };
+    emit();
+  },
+  setPage(projectId: string, pageId: string, on: boolean) {
+    const cur = getSearchConfig(projectId);
+    const pageOff = { ...cur.pageOff };
+    if (on) delete pageOff[pageId];
+    else pageOff[pageId] = true;
+    db.configs = { ...db.configs, [projectId]: { ...cur, pageOff } };
+    emit();
+  },
+  setPagesBulk(projectId: string, pageIds: string[], on: boolean) {
+    const cur = getSearchConfig(projectId);
+    const pageOff = { ...cur.pageOff };
+    for (const id of pageIds) {
+      if (on) delete pageOff[id];
+      else pageOff[id] = true;
+    }
+    db.configs = { ...db.configs, [projectId]: { ...cur, pageOff } };
     emit();
   },
   setCollection(projectId: string, collectionId: string, on: boolean) {
@@ -206,6 +231,7 @@ export function useSearchIndex(projectId: string, config: SearchConfig): SearchD
     const docs: SearchDoc[] = [];
     if (config.includePages) {
       for (const p of getPages(projectId)) {
+        if (config.pageOff?.[p.id]) continue; // excluded from the index
         const fields: Record<string, string> = { title: p.title, path: p.path };
         if (p.seoDescription) fields.description = p.seoDescription;
         const copy: string[] = [];

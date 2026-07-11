@@ -1,6 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { SearchHub } from "@/components/cms/search/SearchHub";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+// Search moved under SEO. Keep the old path alive for bookmarks / deep links.
 export const Route = createFileRoute("/w/$workspace/p/$project/search")({
-  component: SearchHub,
+  beforeLoad: ({ params }) => {
+    throw redirect({ to: "/w/$workspace/p/$project/seo/search", params });
+  },
 });

@@ -13,6 +13,7 @@ interface Props {
 
 const TABS: Tab[] = [
   { key: "pages", label: "Pages", to: "/w/$workspace/p/$project/seo/pages" },
+  { key: "search", label: "Search", to: "/w/$workspace/p/$project/seo/search" },
   { key: "schema", label: "Schema markup", to: "/w/$workspace/p/$project/seo/schema" },
   { key: "sitemap", label: "Sitemap", to: "/w/$workspace/p/$project/seo/sitemap" },
   { key: "rss", label: "RSS feed", to: "/w/$workspace/p/$project/seo/rss" },

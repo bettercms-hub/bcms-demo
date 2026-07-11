@@ -26,6 +26,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getProjectBySlug } from "@/lib/cms/use-cms";
 import { getCMSState, useCMSVersion } from "@/lib/cms/store";
+import { usePages, type PageDoc } from "@/lib/cms/pages-store";
+import { Paginator, clampPage, type PageSize } from "@/components/cms/Paginator";
 import { firstPlanWith, siteHas, SITE_PLANS } from "@/lib/billing/pricing";
 import {
   searchActions,
@@ -33,6 +35,7 @@ import {
   useSearchAnalytics,
   useSearchConfig,
   useSearchIndex,
+  type SearchConfig,
   type SearchHit,
 } from "@/lib/search/search-store";
 
@@ -64,7 +67,7 @@ export function SearchHub() {
     const needed = firstPlanWith("search");
     const planName = needed ? SITE_PLANS[needed].name : "Basic";
     return (
-      <div className="mx-auto w-full max-w-[720px] px-6 py-16 text-center">
+      <div className="mx-auto w-full max-w-[720px] py-12 text-center">
         <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-[color:var(--s2)] text-muted-foreground">
           <Lock className="h-5 w-5" />
         </span>
@@ -77,7 +80,7 @@ export function SearchHub() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[880px] px-6 py-8">
+    <div className="w-full">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <h1 className="text-[20px] font-semibold tracking-tight text-foreground">Search</h1>
@@ -257,15 +260,9 @@ function ContentTab({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-3">
-      {/* pages row */}
-      <div className="flex items-center gap-3 rounded-xl border border-[color:var(--color-border)] bg-[color:var(--card)] px-4 py-3">
-        <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-foreground">Site pages</p>
-          <p className="text-[11.5px] text-muted-foreground">Titles, section copy, and meta descriptions.</p>
-        </div>
-        <MiniSwitch checked={config.includePages} onChange={(v) => searchActions.patch(projectId, { includePages: v })} label="Index site pages" />
-      </div>
+      {/* Per-page index manager: search, filter, paginate, and toggle each
+          page individually — index the home page but exclude the about page. */}
+      <PagesPanel projectId={projectId} config={config} />
 
       {data.map((col) => {
         const on = !!config.collections[col.id];
@@ -310,6 +307,147 @@ function ContentTab({ projectId }: { projectId: string }) {
       <p className="px-1 text-[11.5px] text-muted-foreground">
         Only searchable fields leave the CMS. Anything excluded here never reaches the index, so it can't leak through the search endpoint.
       </p>
+    </div>
+  );
+}
+
+type PageFilter = "all" | "indexed" | "excluded";
+
+const PAGE_STATE_BADGE: Record<string, string> = {
+  published: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10",
+  draft: "text-muted-foreground bg-[color:var(--s2)]",
+  scheduled: "text-amber-600 dark:text-amber-400 bg-amber-500/12",
+  modified: "text-sky-600 dark:text-sky-400 bg-sky-500/12",
+  archived: "text-muted-foreground bg-[color:var(--s2)]",
+};
+
+/** Site pages, individually toggleable, with search + filter + pagination —
+ *  built for projects with hundreds of pages. */
+function PagesPanel({ projectId, config }: { projectId: string; config: SearchConfig }) {
+  const pages = usePages(projectId);
+  const [q, setQ] = useState("");
+  const [filter, setFilter] = useState<PageFilter>("all");
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState<PageSize>(50);
+
+  const master = config.includePages;
+  const isIndexed = (p: PageDoc) => master && !config.pageOff?.[p.id];
+
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return pages.filter((p) => {
+      if (needle && !(p.title.toLowerCase().includes(needle) || p.path.toLowerCase().includes(needle))) return false;
+      if (filter === "indexed" && !isIndexed(p)) return false;
+      if (filter === "excluded" && isIndexed(p)) return false;
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pages, q, filter, master, config.pageOff]);
+
+  const indexedCount = useMemo(() => pages.filter((p) => isIndexed(p)).length, [pages, master, config.pageOff]);
+  const safePage = clampPage(page, filtered.length, size);
+  const slice = filtered.slice(safePage * size, safePage * size + size);
+  const reset = () => setPage(0);
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-[color:var(--card)]">
+      {/* header */}
+      <div className="flex items-center gap-3 px-4 py-3">
+        <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-medium text-foreground">Site pages</p>
+          <p className="text-[11.5px] text-muted-foreground">
+            {master
+              ? `${indexedCount} of ${pages.length} ${pages.length === 1 ? "page" : "pages"} indexed · titles, section copy, and meta descriptions.`
+              : "Turn on to index page titles, section copy, and meta descriptions."}
+          </p>
+        </div>
+        <MiniSwitch
+          checked={master}
+          onChange={(v) => searchActions.patch(projectId, { includePages: v })}
+          label="Index site pages"
+        />
+      </div>
+
+      {master && (
+        <>
+          {/* toolbar: search + filter + bulk */}
+          <div className="flex flex-wrap items-center gap-2 border-t border-[color:var(--border-hairline)] px-4 py-2.5">
+            <div className="relative min-w-[180px] flex-1">
+              <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={q}
+                onChange={(e) => { setQ(e.target.value); reset(); }}
+                placeholder="Search pages by title or path…"
+                className="h-8 w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--background)] pl-8 pr-3 text-[12.5px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-[color:color-mix(in_oklab,var(--primary)_45%,transparent)]"
+              />
+            </div>
+            <div className="flex h-8 items-center rounded-md border border-[color:var(--color-border)] p-0.5">
+              {(["all", "indexed", "excluded"] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => { setFilter(f); reset(); }}
+                  aria-pressed={filter === f}
+                  className={cn(
+                    "h-7 rounded px-2.5 text-[11.5px] font-medium capitalize transition-colors",
+                    filter === f ? "bg-[color:var(--s2)] text-foreground" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => searchActions.setPagesBulk(projectId, filtered.map((p) => p.id), true)}
+                disabled={filtered.length === 0}
+                className="inline-flex h-8 items-center rounded-md border border-[color:var(--color-border)] px-2.5 text-[11.5px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+              >
+                Index all
+              </button>
+              <button
+                type="button"
+                onClick={() => searchActions.setPagesBulk(projectId, filtered.map((p) => p.id), false)}
+                disabled={filtered.length === 0}
+                className="inline-flex h-8 items-center rounded-md border border-[color:var(--color-border)] px-2.5 text-[11.5px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+              >
+                Exclude all
+              </button>
+            </div>
+          </div>
+
+          {/* list */}
+          {slice.length === 0 ? (
+            <p className="border-t border-[color:var(--border-hairline)] px-4 py-8 text-center text-[12.5px] text-muted-foreground">
+              {pages.length === 0 ? "This project has no pages yet." : "No pages match your search."}
+            </p>
+          ) : (
+            <div className="border-t border-[color:var(--border-hairline)]">
+              {slice.map((p) => {
+                const on = isIndexed(p);
+                return (
+                  <div key={p.id} className="flex items-center gap-3 border-b border-[color:var(--border-hairline)] px-4 py-2 last:border-b-0">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="min-w-0 truncate text-[12.5px] font-medium text-foreground">{p.title}</span>
+                        <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide", PAGE_STATE_BADGE[p.state] ?? PAGE_STATE_BADGE.draft)}>
+                          {p.state}
+                        </span>
+                      </div>
+                      <span className="truncate font-mono text-[11px] text-muted-foreground">{p.path}</span>
+                    </div>
+                    <MiniSwitch checked={on} onChange={(v) => searchActions.setPage(projectId, p.id, v)} label={`Index ${p.title}`} />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <Paginator total={filtered.length} page={safePage} size={size} onPage={setPage} onSize={(s) => { setSize(s); reset(); }} noun="page" />
+        </>
+      )}
     </div>
   );
 }
@@ -400,7 +538,7 @@ function HitRow({ hit }: { hit: SearchHit }) {
 
 function InstallTab({ projectId }: { projectId: string }) {
   const config = useSearchConfig(projectId);
-  const [mode, setMode] = useState<"embed" | "api" | "react">("embed");
+  const [mode, setMode] = useState<"embed" | "webcomponent" | "api" | "react">("embed");
   const endpoint = `https://search.bettercms.site/v1/projects/${projectId}/search`;
   const copy = (v: string) => {
     navigator.clipboard?.writeText(v).catch(() => {});
@@ -415,6 +553,31 @@ function InstallTab({ projectId }: { projectId: string }) {
   defer
 ></script>
 <!-- Adds a search overlay on Cmd/Ctrl+K and to any element with data-bcms-search-trigger -->`;
+
+  const webcomponent = `<!-- Stylable web component — drop it in any HTML and theme it with your own CSS -->
+<script type="module" src="https://cdn.bettercms.site/search-element.js"></script>
+
+<bcms-search
+  project="${projectId}"
+  key="${config.publicKey}"
+  placeholder="Search…"
+></bcms-search>
+
+<style>
+  bcms-search::part(input)  { border-radius: 12px; }
+  bcms-search::part(hit)    { padding: 12px; }
+</style>
+
+<!-- Or drive your own markup with the vanilla JS client (no framework) -->
+<script type="module">
+  import { createSearchClient } from "https://cdn.bettercms.site/search-client.js";
+  const search = createSearchClient({
+    project: "${projectId}",
+    searchKey: "${config.publicKey}",
+  });
+  const { hits, found } = await search.query("pricing", { perPage: 8 });
+  // render hits into your own DOM, Vue, Svelte, Alpine, htmx…
+</script>`;
 
   const api = `curl "${endpoint}?q=pricing&per_page=8" \\
   -H "X-Search-Key: ${config.publicKey}"
@@ -439,13 +602,15 @@ function SiteSearch() {
   );
 }`;
 
-  const current = mode === "embed" ? embed : mode === "api" ? api : react;
+  const current =
+    mode === "embed" ? embed : mode === "webcomponent" ? webcomponent : mode === "api" ? api : react;
 
   return (
     <div>
-      <div className="flex gap-1.5">
+      <div className="flex flex-wrap gap-1.5">
         {([
           ["embed", "Hosted embed"],
+          ["webcomponent", "HTML / Web Component"],
           ["api", "REST API"],
           ["react", "React"],
         ] as const).map(([id, label]) => (
@@ -467,10 +632,12 @@ function SiteSearch() {
       </div>
       <p className="mt-2 px-0.5 text-[12px] text-muted-foreground">
         {mode === "embed"
-          ? "For sites hosted on BetterCMS Cloud: paste once, get a ready search overlay."
-          : mode === "api"
-            ? "For any stack: a scoped, search-only endpoint. The key can read the index and nothing else."
-            : "Headless React primitives, unstyled and composable, with built-in highlighting."}
+          ? "Zero-config: paste one script tag, get a ready-styled search overlay on any site (⌘K or your own trigger)."
+          : mode === "webcomponent"
+            ? "Framework-agnostic: a stylable <bcms-search> element you theme with CSS, or a tiny JS client for your own markup — Vue, Svelte, Angular, plain HTML."
+            : mode === "api"
+              ? "For any stack: a scoped, search-only endpoint. The key can read the index and nothing else."
+              : "Headless React primitives, unstyled and composable, with built-in highlighting."}
       </p>
       <div className="group relative mt-3 rounded-xl border border-[color:var(--color-border)] bg-[color:var(--s2)]">
         <pre className="overflow-x-auto px-4 py-3.5 pr-12 font-mono text-[11.5px] leading-relaxed text-foreground"><code>{current}</code></pre>

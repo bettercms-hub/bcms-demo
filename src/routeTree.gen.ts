@@ -84,6 +84,7 @@ import { Route as WWorkspacePProjectSettingsApiRouteImport } from './routes/w.$w
 import { Route as WWorkspacePProjectSettingsAgentsRouteImport } from './routes/w.$workspace.p.$project.settings.agents'
 import { Route as WWorkspacePProjectSettingsAccessRouteImport } from './routes/w.$workspace.p.$project.settings.access'
 import { Route as WWorkspacePProjectSeoSitemapRouteImport } from './routes/w.$workspace.p.$project.seo.sitemap'
+import { Route as WWorkspacePProjectSeoSearchRouteImport } from './routes/w.$workspace.p.$project.seo.search'
 import { Route as WWorkspacePProjectSeoSchemaRouteImport } from './routes/w.$workspace.p.$project.seo.schema'
 import { Route as WWorkspacePProjectSeoRssRouteImport } from './routes/w.$workspace.p.$project.seo.rss'
 import { Route as WWorkspacePProjectSeoRobotsRouteImport } from './routes/w.$workspace.p.$project.seo.robots'
@@ -513,6 +514,12 @@ const WWorkspacePProjectSeoSitemapRoute =
     path: '/sitemap',
     getParentRoute: () => WWorkspacePProjectSeoRoute,
   } as any)
+const WWorkspacePProjectSeoSearchRoute =
+  WWorkspacePProjectSeoSearchRouteImport.update({
+    id: '/search',
+    path: '/search',
+    getParentRoute: () => WWorkspacePProjectSeoRoute,
+  } as any)
 const WWorkspacePProjectSeoSchemaRoute =
   WWorkspacePProjectSeoSchemaRouteImport.update({
     id: '/schema',
@@ -622,6 +629,7 @@ export interface FileRoutesByFullPath {
   '/w/$workspace/p/$project/seo/robots': typeof WWorkspacePProjectSeoRobotsRoute
   '/w/$workspace/p/$project/seo/rss': typeof WWorkspacePProjectSeoRssRoute
   '/w/$workspace/p/$project/seo/schema': typeof WWorkspacePProjectSeoSchemaRoute
+  '/w/$workspace/p/$project/seo/search': typeof WWorkspacePProjectSeoSearchRoute
   '/w/$workspace/p/$project/seo/sitemap': typeof WWorkspacePProjectSeoSitemapRoute
   '/w/$workspace/p/$project/settings/access': typeof WWorkspacePProjectSettingsAccessRoute
   '/w/$workspace/p/$project/settings/agents': typeof WWorkspacePProjectSettingsAgentsRoute
@@ -703,6 +711,7 @@ export interface FileRoutesByTo {
   '/w/$workspace/p/$project/seo/robots': typeof WWorkspacePProjectSeoRobotsRoute
   '/w/$workspace/p/$project/seo/rss': typeof WWorkspacePProjectSeoRssRoute
   '/w/$workspace/p/$project/seo/schema': typeof WWorkspacePProjectSeoSchemaRoute
+  '/w/$workspace/p/$project/seo/search': typeof WWorkspacePProjectSeoSearchRoute
   '/w/$workspace/p/$project/seo/sitemap': typeof WWorkspacePProjectSeoSitemapRoute
   '/w/$workspace/p/$project/settings/access': typeof WWorkspacePProjectSettingsAccessRoute
   '/w/$workspace/p/$project/settings/agents': typeof WWorkspacePProjectSettingsAgentsRoute
@@ -789,6 +798,7 @@ export interface FileRoutesById {
   '/w/$workspace/p/$project/seo/robots': typeof WWorkspacePProjectSeoRobotsRoute
   '/w/$workspace/p/$project/seo/rss': typeof WWorkspacePProjectSeoRssRoute
   '/w/$workspace/p/$project/seo/schema': typeof WWorkspacePProjectSeoSchemaRoute
+  '/w/$workspace/p/$project/seo/search': typeof WWorkspacePProjectSeoSearchRoute
   '/w/$workspace/p/$project/seo/sitemap': typeof WWorkspacePProjectSeoSitemapRoute
   '/w/$workspace/p/$project/settings/access': typeof WWorkspacePProjectSettingsAccessRoute
   '/w/$workspace/p/$project/settings/agents': typeof WWorkspacePProjectSettingsAgentsRoute
@@ -876,6 +886,7 @@ export interface FileRouteTypes {
     | '/w/$workspace/p/$project/seo/robots'
     | '/w/$workspace/p/$project/seo/rss'
     | '/w/$workspace/p/$project/seo/schema'
+    | '/w/$workspace/p/$project/seo/search'
     | '/w/$workspace/p/$project/seo/sitemap'
     | '/w/$workspace/p/$project/settings/access'
     | '/w/$workspace/p/$project/settings/agents'
@@ -957,6 +968,7 @@ export interface FileRouteTypes {
     | '/w/$workspace/p/$project/seo/robots'
     | '/w/$workspace/p/$project/seo/rss'
     | '/w/$workspace/p/$project/seo/schema'
+    | '/w/$workspace/p/$project/seo/search'
     | '/w/$workspace/p/$project/seo/sitemap'
     | '/w/$workspace/p/$project/settings/access'
     | '/w/$workspace/p/$project/settings/agents'
@@ -1042,6 +1054,7 @@ export interface FileRouteTypes {
     | '/w/$workspace/p/$project/seo/robots'
     | '/w/$workspace/p/$project/seo/rss'
     | '/w/$workspace/p/$project/seo/schema'
+    | '/w/$workspace/p/$project/seo/search'
     | '/w/$workspace/p/$project/seo/sitemap'
     | '/w/$workspace/p/$project/settings/access'
     | '/w/$workspace/p/$project/settings/agents'
@@ -1608,6 +1621,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WWorkspacePProjectSeoSitemapRouteImport
       parentRoute: typeof WWorkspacePProjectSeoRoute
     }
+    '/w/$workspace/p/$project/seo/search': {
+      id: '/w/$workspace/p/$project/seo/search'
+      path: '/search'
+      fullPath: '/w/$workspace/p/$project/seo/search'
+      preLoaderRoute: typeof WWorkspacePProjectSeoSearchRouteImport
+      parentRoute: typeof WWorkspacePProjectSeoRoute
+    }
     '/w/$workspace/p/$project/seo/schema': {
       id: '/w/$workspace/p/$project/seo/schema'
       path: '/schema'
@@ -1748,6 +1768,7 @@ interface WWorkspacePProjectSeoRouteChildren {
   WWorkspacePProjectSeoRobotsRoute: typeof WWorkspacePProjectSeoRobotsRoute
   WWorkspacePProjectSeoRssRoute: typeof WWorkspacePProjectSeoRssRoute
   WWorkspacePProjectSeoSchemaRoute: typeof WWorkspacePProjectSeoSchemaRoute
+  WWorkspacePProjectSeoSearchRoute: typeof WWorkspacePProjectSeoSearchRoute
   WWorkspacePProjectSeoSitemapRoute: typeof WWorkspacePProjectSeoSitemapRoute
 }
 
@@ -1758,6 +1779,7 @@ const WWorkspacePProjectSeoRouteChildren: WWorkspacePProjectSeoRouteChildren = {
   WWorkspacePProjectSeoRobotsRoute: WWorkspacePProjectSeoRobotsRoute,
   WWorkspacePProjectSeoRssRoute: WWorkspacePProjectSeoRssRoute,
   WWorkspacePProjectSeoSchemaRoute: WWorkspacePProjectSeoSchemaRoute,
+  WWorkspacePProjectSeoSearchRoute: WWorkspacePProjectSeoSearchRoute,
   WWorkspacePProjectSeoSitemapRoute: WWorkspacePProjectSeoSitemapRoute,
 }
 

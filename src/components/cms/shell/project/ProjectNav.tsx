@@ -83,12 +83,6 @@ const HEADLESS_TABS: Tab[] = [
     match: (p) => p.includes("/forms"),
   },
   {
-    key: "search",
-    label: "Search",
-    to: "/w/$workspace/p/$project/search",
-    match: (p) => /\/search(\/|$)/.test(p),
-  },
-  {
     key: "analytics",
     label: "Analytics",
     to: "/w/$workspace/p/$project/analytics",
@@ -158,12 +152,6 @@ const TABS: Tab[] = [
     label: "Forms",
     to: "/w/$workspace/p/$project/forms",
     match: (p) => p.includes("/forms"),
-  },
-  {
-    key: "search",
-    label: "Search",
-    to: "/w/$workspace/p/$project/search",
-    match: (p) => /\/search(\/|$)/.test(p),
   },
   {
     key: "analytics",
