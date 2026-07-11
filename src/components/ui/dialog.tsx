@@ -21,7 +21,11 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/30 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      // No keyframe animation: Radix waits for animationend to unmount, and if
+      // that never fires (reduced motion, backgrounded tab, throttling) the
+      // overlay sticks and body stays pointer-events:none, freezing the app.
+      // A transition fades it without gating unmount.
+      "fixed inset-0 z-50 bg-black/30 backdrop-blur-[2px] opacity-0 transition-opacity duration-150 data-[state=open]:opacity-100",
       className,
     )}
     {...props}
@@ -38,7 +42,10 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-border bg-[var(--elevated-modal)] p-6 shadow-[var(--shadow-3)] duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 rounded-xl",
+        // Transition (not keyframe animation) so the panel is visible the
+        // instant it opens and unmounts immediately on close — never gated on
+        // an animationend that may not fire. See DialogOverlay note.
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-border bg-[var(--elevated-modal)] p-6 shadow-[var(--shadow-3)] rounded-xl opacity-0 scale-95 transition-[opacity,transform] duration-150 data-[state=open]:opacity-100 data-[state=open]:scale-100",
         className,
       )}
       {...props}
