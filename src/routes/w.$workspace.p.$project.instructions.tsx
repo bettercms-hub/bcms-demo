@@ -18,14 +18,21 @@ import {
   AtSign,
   BookOpen,
   Bold,
+  Boxes,
+  ChevronRight,
   Code,
   CopyPlus,
+  Database,
   Download,
   FileText,
   FileUp,
+  Film,
   Heading2,
+  Image as ImageIcon,
   Italic,
+  LayoutTemplate,
   List,
+  Palette,
   Plus,
   Search,
   Shield,
@@ -33,6 +40,7 @@ import {
   Trash2,
   Type,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -40,6 +48,8 @@ import { getProjectBySlug } from "@/lib/cms/use-cms";
 import { canCompose, useEffectiveRole } from "@/lib/workspace/my-role";
 import { getPages } from "@/lib/cms/pages-store";
 import { useModels } from "@/lib/cms/schema-store";
+import { useCMS } from "@/lib/cms/store";
+import type { MediaAsset } from "@/lib/cms/types";
 import { COMPONENT_CATALOG } from "@/lib/cms/blocks/rich-blocks";
 import { SECTION_DEFS } from "@/components/cms/editor/sections/SectionSystem";
 import {
@@ -71,6 +81,7 @@ const KIND_META: Record<InstructionKind, { label: string; plural: string; blurb:
 
 /** Chip tint per reference type, shared by the preview and the insert menu. */
 const REF_TINT: Record<string, string> = {
+  Asset: "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-500/10 dark:text-teal-300 dark:border-teal-500/20",
   Collection: "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/20",
   Field: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20",
   Component: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20",
@@ -79,6 +90,19 @@ const REF_TINT: Record<string, string> = {
   "Brand token": "bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-500/10 dark:text-pink-300 dark:border-pink-500/20",
   Skill: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/20",
   Rule: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/20",
+};
+
+/** Icon per reference category, shown on the drill-down rows. */
+const REF_ICON: Record<string, LucideIcon> = {
+  Asset: ImageIcon,
+  Collection: Database,
+  Field: Type,
+  Component: Boxes,
+  Section: LayoutTemplate,
+  Page: FileText,
+  "Brand token": Palette,
+  Skill: BookOpen,
+  Rule: Shield,
 };
 
 function InstructionsPage() {
@@ -358,6 +382,9 @@ function InstructionEditor({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const richRef = useRef<HTMLDivElement>(null);
+  // The caret in the rich editor at the moment the reference menu opened, so an
+  // inserted chip lands where the writer was, not at the document start.
+  const savedRange = useRef<Range | null>(null);
   const set = (patch: Partial<Instruction>) => instructionActions.update(wsId, ins.id, patch);
   const offHere = ins.disabledFor.includes(projectId);
 
@@ -417,10 +444,27 @@ function InstructionEditor({
   const doBold = () => (view === "markdown" ? wrapSelection("**", "bold text") : richCmd("bold"));
   const doItalic = () => (view === "markdown" ? wrapSelection("*", "italic text") : richCmd("italic"));
   const doList = () => (view === "markdown" ? insertAtCursor("\n- ") : richCmd("insertUnorderedList"));
+  /** Open the reference menu, remembering the rich caret first. */
+  function openReferenceMenu() {
+    if (view === "text") {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount && richRef.current?.contains(sel.anchorNode)) {
+        savedRange.current = sel.getRangeAt(0).cloneRange();
+      }
+    }
+    setRefOpen((v) => !v);
+  }
   function insertReference(type: ReferenceType, label: string) {
     if (view === "markdown") insertAtCursor(refToken(type, label));
     else {
       richRef.current?.focus();
+      // Put the caret back where the writer was before the menu took focus.
+      const r = savedRange.current;
+      if (r) {
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(r);
+      }
       document.execCommand("insertHTML", false, `${chipHtml(type, label)}&nbsp;`);
       serializeRich();
     }
@@ -558,7 +602,8 @@ function InstructionEditor({
               <div className="relative">
                 <button
                   type="button"
-                  onClick={() => setRefOpen((v) => !v)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={openReferenceMenu}
                   aria-expanded={refOpen}
                   className={cn(
                     "ml-1 inline-flex h-6 items-center gap-1 rounded-md border px-1.5 text-[11.5px] font-medium transition-colors",
@@ -699,6 +744,23 @@ function EditorBtn({ children, label, onClick }: { children: React.ReactNode; la
 
 /* --------------------------------------------------------- reference menu */
 
+interface RefItem {
+  label: string;
+  /** Media only: thumbnail + media kind for the picker rows. */
+  thumb?: string;
+  mediaKind?: MediaAsset["kind"];
+}
+interface RefGroup {
+  type: ReferenceType;
+  items: RefItem[];
+}
+
+/**
+ * A nested, Webflow-style insert menu: the root is a short list of categories
+ * (Assets, Collections, Fields, Components…) so it never becomes one long
+ * scroll; each drills into a searchable list. Typing at the root searches
+ * across everything. Assets are picked from the media library with thumbnails.
+ */
 function ReferenceMenu({
   projectId,
   library,
@@ -712,33 +774,60 @@ function ReferenceMenu({
   onInsert: (type: ReferenceType, label: string) => void;
   onClose: () => void;
 }) {
+  const [drill, setDrill] = useState<ReferenceType | null>(null);
   const [q, setQ] = useState("");
+  const [mediaFilter, setMediaFilter] = useState<"all" | MediaAsset["kind"]>("all");
   const models = useModels(projectId);
+  const allMedia = useCMS((s) => s.media);
 
-  const groups = useMemo(() => {
-    const collections = models.filter((m) => m.kind === "collection").map((m) => m.name);
-    const fields = models.flatMap((m) => m.fields.map((f) => `${m.name} / ${f.label}`)).slice(0, 40);
-    const components = COMPONENT_CATALOG.map((c) => c.label);
-    const sections = SECTION_DEFS.map((s) => s.name);
-    const pages = getPages(projectId).map((p) => p.title);
-    const brand = ["Voice / tone", "Preferred words", "Words to avoid", "Protected phrases", "Colors / primary", "Typography / heading font", "Logos / primary"];
-    const skills = library.filter((i) => i.kind === "skill" && i.id !== selfId).map((i) => i.name);
-    const rules = library.filter((i) => i.kind === "rule" && i.id !== selfId).map((i) => i.name);
-    const all: { type: ReferenceType; items: string[] }[] = [
-      { type: "Collection", items: collections },
-      { type: "Field", items: fields },
-      { type: "Component", items: components },
-      { type: "Section", items: sections },
-      { type: "Page", items: pages },
-      { type: "Brand token", items: brand },
-      { type: "Skill", items: skills },
-      { type: "Rule", items: rules },
+  const groups = useMemo<RefGroup[]>(() => {
+    const assets: RefItem[] = allMedia
+      .filter((m) => m.projectId === projectId)
+      .map((m) => ({ label: m.name, thumb: m.thumbUrl || m.url, mediaKind: m.kind }));
+    const str = (labels: string[]): RefItem[] => labels.map((label) => ({ label }));
+    const list: RefGroup[] = [
+      { type: "Asset", items: assets },
+      { type: "Collection", items: str(models.filter((m) => m.kind === "collection").map((m) => m.name)) },
+      { type: "Field", items: str(models.flatMap((m) => m.fields.map((f) => `${m.name} / ${f.label}`))) },
+      { type: "Component", items: str(COMPONENT_CATALOG.map((c) => c.label)) },
+      { type: "Section", items: str(SECTION_DEFS.map((s) => s.name)) },
+      { type: "Page", items: str(getPages(projectId).map((p) => p.title)) },
+      { type: "Brand token", items: str(["Voice / tone", "Preferred words", "Words to avoid", "Protected phrases", "Colors / primary", "Typography / heading font", "Logos / primary"]) },
+      { type: "Skill", items: str(library.filter((i) => i.kind === "skill" && i.id !== selfId).map((i) => i.name)) },
+      { type: "Rule", items: str(library.filter((i) => i.kind === "rule" && i.id !== selfId).map((i) => i.name)) },
     ];
-    const query = q.trim().toLowerCase();
-    return all
-      .map((g) => ({ ...g, items: (query ? g.items.filter((i) => i.toLowerCase().includes(query)) : g.items).slice(0, 6) }))
+    return list.filter((g) => g.items.length > 0);
+  }, [allMedia, projectId, models, library, selfId]);
+
+  const query = q.trim().toLowerCase();
+  const activeGroup = drill ? groups.find((g) => g.type === drill) : null;
+
+  // Root while searching: flat matches across every category.
+  const searchHits = useMemo(() => {
+    if (!query || drill) return [];
+    return groups
+      .map((g) => ({ type: g.type, items: g.items.filter((i) => i.label.toLowerCase().includes(query)).slice(0, 5) }))
       .filter((g) => g.items.length > 0);
-  }, [models, projectId, library, selfId, q]);
+  }, [groups, query, drill]);
+
+  // Drill list: this category's items, filtered by search (and media kind).
+  const drillItems = useMemo(() => {
+    if (!activeGroup) return [];
+    return activeGroup.items.filter(
+      (i) =>
+        (!query || i.label.toLowerCase().includes(query)) &&
+        (activeGroup.type !== "Asset" || mediaFilter === "all" || i.mediaKind === mediaFilter),
+    );
+  }, [activeGroup, query, mediaFilter]);
+
+  function pick(type: ReferenceType, label: string) {
+    onInsert(type, label);
+  }
+  function enter(type: ReferenceType) {
+    setDrill(type);
+    setQ("");
+    setMediaFilter("all");
+  }
 
   return (
     <>
@@ -746,41 +835,140 @@ function ReferenceMenu({
       <div
         role="dialog"
         aria-label="Insert reference"
-        className="absolute left-0 top-[calc(100%+6px)] z-50 w-[300px] overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-[color:var(--card)] shadow-[var(--shadow-3)]"
+        onMouseDown={(e) => {
+          // Keep the editor's caret; let the search input take focus normally.
+          if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
+        }}
+        className="absolute left-0 top-[calc(100%+6px)] z-50 w-[304px] overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-[color:var(--card)] shadow-[var(--shadow-3)]"
       >
-        <div className="relative border-b border-[color:var(--border-hairline)]">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        {/* header: back (in drill) + search */}
+        <div className="flex items-center gap-1 border-b border-[color:var(--border-hairline)] px-1.5">
+          {drill ? (
+            <button
+              type="button"
+              onClick={() => {
+                setDrill(null);
+                setQ("");
+              }}
+              aria-label="Back"
+              className="grid h-8 w-7 shrink-0 place-items-center rounded text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+            </button>
+          ) : (
+            <Search className="ml-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          )}
           <input
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => e.key === "Escape" && onClose()}
-            placeholder="Search collections, components, pages…"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") drill ? setDrill(null) : onClose();
+            }}
+            placeholder={drill ? `Search ${drill.toLowerCase()}s…` : "Search everything…"}
             aria-label="Search references"
-            className="h-9 w-full bg-transparent pl-8 pr-2 text-[12.5px] text-foreground outline-none placeholder:text-muted-foreground"
+            className="h-9 w-full bg-transparent pr-2 text-[12.5px] text-foreground outline-none placeholder:text-muted-foreground"
           />
         </div>
+
+        {/* media kind filter, only in the Asset drill */}
+        {drill === "Asset" && (
+          <div className="flex items-center gap-1 border-b border-[color:var(--border-hairline)] px-2 py-1.5">
+            {(["all", "image", "video", "file"] as const).map((k) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setMediaFilter(k)}
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[11px] font-medium capitalize transition-colors",
+                  mediaFilter === k ? "bg-[color:var(--primary)] text-white" : "text-muted-foreground hover:bg-[color:var(--color-row-hover)]",
+                )}
+              >
+                {k === "all" ? "All" : `${k}s`}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="max-h-[320px] overflow-y-auto p-1.5">
-          {groups.length === 0 && <p className="px-2 py-3 text-center text-[12px] text-muted-foreground">Nothing matches.</p>}
-          {groups.map((g) => (
-            <div key={g.type} className="mb-1.5">
-              <div className="px-1.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{g.type}s</div>
-              {g.items.map((label) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => onInsert(g.type, label)}
-                  className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-[color:var(--color-row-hover)]"
-                >
-                  <span className={cn("shrink-0 rounded border px-1 py-px text-[9.5px] font-semibold", REF_TINT[g.type])}>{g.type}</span>
-                  <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">{label}</span>
-                </button>
+          {/* ROOT — category rows */}
+          {!drill && !query && (
+            <>
+              {groups.map((g) => {
+                const Icon = REF_ICON[g.type] ?? FileText;
+                return (
+                  <button
+                    key={g.type}
+                    type="button"
+                    onClick={() => enter(g.type)}
+                    className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-[color:var(--color-row-hover)]"
+                  >
+                    <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-foreground">
+                      {g.type === "Asset" ? "Assets" : g.type === "Brand token" ? "Brand tokens" : `${g.type}s`}
+                    </span>
+                    <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground/70">{g.items.length}</span>
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+                  </button>
+                );
+              })}
+            </>
+          )}
+
+          {/* ROOT — global search results */}
+          {!drill && query && (
+            <>
+              {searchHits.length === 0 && <p className="px-2 py-3 text-center text-[12px] text-muted-foreground">Nothing matches.</p>}
+              {searchHits.map((g) => (
+                <div key={g.type} className="mb-1.5">
+                  <div className="px-1.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{g.type}s</div>
+                  {g.items.map((it) => (
+                    <RefRow key={it.label} type={g.type} item={it} onPick={() => pick(g.type, it.label)} />
+                  ))}
+                </div>
               ))}
-            </div>
-          ))}
+            </>
+          )}
+
+          {/* DRILL — one category */}
+          {drill && (
+            <>
+              {drillItems.length === 0 && <p className="px-2 py-3 text-center text-[12px] text-muted-foreground">Nothing here.</p>}
+              {drillItems.map((it) => (
+                <RefRow key={it.label} type={drill} item={it} onPick={() => pick(drill, it.label)} />
+              ))}
+            </>
+          )}
         </div>
       </div>
     </>
+  );
+}
+
+/** One selectable reference row — a media thumbnail for assets, a type badge
+ *  for everything else. */
+function RefRow({ type, item, onPick }: { type: ReferenceType; item: RefItem; onPick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-[color:var(--color-row-hover)]"
+    >
+      {type === "Asset" ? (
+        <span className="grid h-6 w-6 shrink-0 place-items-center overflow-hidden rounded bg-[color:var(--s2)] text-muted-foreground">
+          {item.mediaKind === "image" && item.thumb ? (
+            <img src={item.thumb} alt="" className="h-full w-full object-cover" />
+          ) : item.mediaKind === "video" ? (
+            <Film className="h-3 w-3" />
+          ) : (
+            <FileText className="h-3 w-3" />
+          )}
+        </span>
+      ) : (
+        <span className={cn("shrink-0 rounded border px-1 py-px text-[9.5px] font-semibold", REF_TINT[type])}>{type}</span>
+      )}
+      <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">{item.label}</span>
+    </button>
   );
 }
 
@@ -933,6 +1121,12 @@ function htmlToMd(root: HTMLElement): string {
         blocks.push(`- ${inlineDomToMd(el).trim()}`);
         break;
       default: {
+        // A chip (or other inline) that landed at the editor root — keep its
+        // reference rather than unwrapping to bare text.
+        if (el.classList.contains("ins-chip")) {
+          blocks.push(`@[${el.dataset.refType ?? ""}: ${el.dataset.refLabel ?? el.textContent ?? ""}]`);
+          break;
+        }
         const md = inlineDomToMd(el).trim();
         if (md) blocks.push(md);
       }

@@ -37,8 +37,10 @@ export interface Instruction {
 
 /* ------------------------------------------------------------- references */
 
-/** Entity types an instruction can reference inline. */
+/** Entity types an instruction can reference inline. Media/assets come first —
+ *  images, video, or any document from the library, referenced and reused. */
 export const REFERENCE_TYPES = [
+  "Asset",
   "Collection",
   "Field",
   "Component",
