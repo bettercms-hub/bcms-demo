@@ -35,7 +35,8 @@ export type FieldType =
   | "json"
   | "group"
   | "sections"
-  | "faq";
+  | "faq"
+  | "schema";
 
 export interface ModelField {
   id: string;
@@ -58,7 +59,127 @@ export interface ModelField {
   emitFaqSchema?: boolean;
   /** faq: sample/default question-answer pairs (the field is repeatable) */
   faqItems?: FaqItem[];
+  /** schema: the schema.org @type to generate, or "Custom" for pasted JSON-LD */
+  schemaType?: string;
+  /** schema: raw JSON-LD when schemaType is "Custom" */
+  schemaCustom?: string;
+  /** image: fall back to the entry's main image when no custom image is set */
+  ogFallback?: boolean;
+  /** link (canonical): default to the page's own URL unless overridden */
+  useSiteDefault?: boolean;
 }
+
+/** A schema.org type the structured-data field can generate, with the model
+ *  fields it maps each property from (shown so authors see it is automatic). */
+export interface SchemaTypeDef {
+  type: string;
+  label: string;
+  props: { name: string; from: string }[];
+}
+
+/** The structured-data types offered in the schema-markup picker. The `from`
+ *  labels are the typical field each property is populated from per entry. */
+export const SCHEMA_TYPES: SchemaTypeDef[] = [
+  {
+    type: "BlogPosting",
+    label: "Blog posting",
+    props: [
+      { name: "headline", from: "Title" },
+      { name: "image", from: "Cover" },
+      { name: "author", from: "Author" },
+      { name: "datePublished", from: "Published at" },
+      { name: "description", from: "Excerpt" },
+    ],
+  },
+  {
+    type: "Article",
+    label: "Article",
+    props: [
+      { name: "headline", from: "Title" },
+      { name: "image", from: "Cover" },
+      { name: "author", from: "Author" },
+      { name: "datePublished", from: "Published at" },
+    ],
+  },
+  {
+    type: "NewsArticle",
+    label: "News article",
+    props: [
+      { name: "headline", from: "Title" },
+      { name: "image", from: "Cover" },
+      { name: "datePublished", from: "Published at" },
+    ],
+  },
+  {
+    type: "Product",
+    label: "Product",
+    props: [
+      { name: "name", from: "Name" },
+      { name: "image", from: "Featured image" },
+      { name: "description", from: "Description" },
+      { name: "offers.price", from: "Price" },
+      { name: "sku", from: "SKU" },
+    ],
+  },
+  {
+    type: "Recipe",
+    label: "Recipe",
+    props: [
+      { name: "name", from: "Title" },
+      { name: "image", from: "Photo" },
+      { name: "recipeIngredient", from: "Ingredients" },
+      { name: "recipeInstructions", from: "Instructions" },
+      { name: "totalTime", from: "Cook time" },
+    ],
+  },
+  {
+    type: "Event",
+    label: "Event",
+    props: [
+      { name: "name", from: "Name" },
+      { name: "startDate", from: "Starts at" },
+      { name: "endDate", from: "Ends at" },
+      { name: "location", from: "Location" },
+    ],
+  },
+  {
+    type: "Course",
+    label: "Course",
+    props: [
+      { name: "name", from: "Title" },
+      { name: "description", from: "Description" },
+      { name: "provider", from: "Instructor" },
+    ],
+  },
+  {
+    type: "VideoObject",
+    label: "Video",
+    props: [
+      { name: "name", from: "Title" },
+      { name: "thumbnailUrl", from: "Thumbnail" },
+      { name: "contentUrl", from: "Video URL" },
+      { name: "uploadDate", from: "Published at" },
+    ],
+  },
+  {
+    type: "Organization",
+    label: "Organization",
+    props: [
+      { name: "name", from: "Name" },
+      { name: "logo", from: "Logo" },
+      { name: "url", from: "Website" },
+    ],
+  },
+  {
+    type: "Person",
+    label: "Person",
+    props: [
+      { name: "name", from: "Name" },
+      { name: "image", from: "Avatar" },
+      { name: "jobTitle", from: "Role" },
+    ],
+  },
+];
 
 /** A single question-and-answer pair inside a `faq` field. */
 export interface FaqItem {
@@ -105,13 +226,13 @@ export const SAMPLE_FAQ: FaqItem[] = [
  * the media library, and a JSON-LD escape hatch. Shared by templates + seeds so
  * every model gets the same solid SEO surface.
  */
-export function seoFields(opts: { index?: boolean } = {}): ModelField[] {
+export function seoFields(opts: { index?: boolean; schemaType?: string } = {}): ModelField[] {
   const out = [
     f("Meta title", "text", { help: "Around 60 characters" }),
     f("Meta description", "longtext", { help: "Around 155 characters" }),
-    f("Canonical URL", "link", { help: "Point duplicates at the original" }),
-    f("OG image", "image", { help: "Social share image, 1200x630, from the media library" }),
-    f("Schema markup", "json", { help: "Extra JSON-LD injected into the page head" }),
+    f("Canonical URL", "link", { useSiteDefault: true, help: "Defaults to this page's own URL" }),
+    f("OG image", "image", { ogFallback: true, help: "The social share image" }),
+    f("Schema markup", "schema", { schemaType: opts.schemaType, help: "Structured data for rich results" }),
   ];
   if (opts.index) out.push(f("No index", "toggle", { help: "Hide this page from search engines" }));
   return out;
@@ -723,7 +844,7 @@ function seed(): SchemaModel[] {
       f("Categories", "multireference", { refModelId: category.id, help: "Editors can link more than one category." }),
       f("Published", "toggle"),
       f("FAQ", "faq", { help: "Post FAQs, auto-emitted as FAQ schema", emitFaqSchema: true, faqItems: SAMPLE_FAQ }),
-      f("SEO", "group", { fields: seoFields() }),
+      f("SEO", "group", { fields: seoFields({ schemaType: "BlogPosting" }) }),
     ],
   };
   const page: SchemaModel = {

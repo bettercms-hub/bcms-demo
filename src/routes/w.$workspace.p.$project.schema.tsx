@@ -35,6 +35,7 @@ import {
   FileJson,
   Folder,
   FolderPlus,
+  Globe,
   GripVertical,
   Hash,
   Image as ImageIcon,
@@ -68,10 +69,10 @@ import { SECTION_DEFS } from "@/components/cms/editor/sections/SectionSystem";
 import {
   SAMPLE_FAQ,
   SCHEMA_TEMPLATES,
+  SCHEMA_TYPES,
   cloneFieldDeep,
   countFields,
   extractFieldById,
-  faqPageJsonLd,
   insertField,
   insertRelativeTo,
   isDescendant,
@@ -124,6 +125,7 @@ const FIELD_TYPES: { type: FieldType; label: string; blurb: string; icon: Lucide
   { type: "group", label: "Group", blurb: "Nest related fields together", icon: Folder, tint: "bg-orange-50 text-orange-600" },
   { type: "sections", label: "Section zone", blurb: "Which sections marketers can compose with", icon: LayoutTemplate, tint: "bg-fuchsia-50 text-fuchsia-600" },
   { type: "faq", label: "FAQ", blurb: "Q&A accordion that auto-emits FAQ schema", icon: MessagesSquare, tint: "bg-indigo-50 text-indigo-600" },
+  { type: "schema", label: "Schema markup", blurb: "Structured data, auto-mapped from your fields", icon: Braces, tint: "bg-violet-50 text-violet-600" },
 ];
 const typeMeta = (t: FieldType) => FIELD_TYPES.find((x) => x.type === t)!;
 
@@ -934,7 +936,6 @@ function RowBtn({ children, label, onClick, disabled, danger }: { children: Reac
 
 function FieldSettings({
   field,
-  depth,
   onPatch,
 }: {
   field: ModelField;
@@ -942,22 +943,40 @@ function FieldSettings({
   onPatch: (id: string, fn: (f: ModelField) => ModelField) => void;
 }) {
   const set = (patch: Partial<ModelField>) => onPatch(field.id, (f) => ({ ...f, ...patch }));
+  const inputCls =
+    "h-8 w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 text-[12.5px] text-foreground outline-none transition-colors focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:color-mix(in_oklab,var(--primary)_18%,transparent)]";
+
+  const schemaDef = SCHEMA_TYPES.find((s) => s.type === field.schemaType);
+  const isOgImage = field.type === "image" && (field.ogFallback !== undefined || /og.?image/i.test(field.apiId));
+  const isCanonical = field.type === "link" && (field.useSiteDefault !== undefined || /canonical/i.test(field.apiId));
+  const hasTypeSettings =
+    field.type === "select" ||
+    field.type === "reference" ||
+    field.type === "multireference" ||
+    field.type === "sections" ||
+    field.type === "faq" ||
+    field.type === "schema" ||
+    isOgImage ||
+    isCanonical;
+  const showFlags = field.type !== "group" && field.type !== "sections" && field.type !== "schema";
+  const canSearch = ["text", "longtext", "richtext", "slug", "email", "faq"].includes(field.type);
 
   return (
-    <div className="border-t border-[color:var(--border-hairline)] bg-[color:var(--s2)]/60 px-4 py-3.5" style={{ paddingLeft: 16 + depth * 28 }}>
+    <div className="space-y-4 border-t border-[color:var(--border-hairline)] bg-[color:var(--s2)]/50 px-4 py-4 sm:px-5">
+      {/* Basics */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <SettingsField label="Label">
           <input
             value={field.label}
             onChange={(e) => set({ label: e.target.value, apiId: toApiId(e.target.value) || field.apiId })}
-            className="h-8 w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)] px-2 text-[12.5px] outline-none focus:border-[color:var(--primary)]"
+            className={inputCls}
           />
         </SettingsField>
         <SettingsField label="API ID" hint="Key in the API response.">
           <input
             value={field.apiId}
             onChange={(e) => set({ apiId: e.target.value.replace(/[^a-zA-Z0-9_]/g, "") })}
-            className="h-8 w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)] px-2 font-mono text-[12px] outline-none focus:border-[color:var(--primary)]"
+            className={cn(inputCls, "font-mono text-[12px]")}
           />
         </SettingsField>
         <SettingsField
@@ -969,120 +988,188 @@ function FieldSettings({
             value={field.help ?? ""}
             onChange={(e) => set({ help: e.target.value || undefined })}
             placeholder="Optional"
-            className="h-8 w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)] px-2 text-[12.5px] outline-none focus:border-[color:var(--primary)]"
+            className={inputCls}
           />
         </SettingsField>
-
-        {field.type === "select" && (
-          <SettingsField label="Options" hint="Comma separated." className="sm:col-span-2">
-            <input
-              value={(field.options ?? []).join(", ")}
-              onChange={(e) => set({ options: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-              className="h-8 w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)] px-2 text-[12.5px] outline-none focus:border-[color:var(--primary)]"
-            />
-          </SettingsField>
-        )}
-
-        {(field.type === "reference" || field.type === "multireference") && (
-          <RefTargetField field={field} set={set} />
-        )}
-
-        {field.type === "sections" && (
-          <SettingsField label="Allowed sections" hint="Marketers can only add these to the page." className="sm:col-span-2">
-            <div className="flex flex-wrap gap-1.5">
-              {SECTION_DEFS.map((s) => {
-                const on = (field.allowedSections ?? []).includes(s.type);
-                return (
-                  <button
-                    key={s.type}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() =>
-                      set({
-                        allowedSections: on
-                          ? (field.allowedSections ?? []).filter((t) => t !== s.type)
-                          : [...(field.allowedSections ?? []), s.type],
-                      })
-                    }
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11.5px] font-medium transition-colors",
-                      on
-                        ? "border-[color:color-mix(in_oklab,var(--primary)_40%,transparent)] bg-[color:color-mix(in_oklab,var(--primary)_8%,transparent)] text-primary"
-                        : "border-[color:var(--color-border)] text-muted-foreground hover:bg-[color:var(--color-row-hover)]",
-                    )}
-                  >
-                    {on && <Check className="h-3 w-3" />}
-                    {s.name}
-                  </button>
-                );
-              })}
-            </div>
-          </SettingsField>
-        )}
-
-        {field.type === "faq" && (
-          <SettingsField
-            label="FAQ schema"
-            hint="Turn the questions into FAQPage structured data automatically."
-            className="sm:col-span-2"
-          >
-            <label className="flex items-center gap-2 text-[12.5px] text-foreground">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={field.emitFaqSchema !== false}
-                onClick={() => set({ emitFaqSchema: field.emitFaqSchema === false })}
-                className={cn("relative h-5 w-9 rounded-full transition-colors", field.emitFaqSchema !== false ? "bg-primary" : "bg-[color:var(--s3)]")}
-              >
-                <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all", field.emitFaqSchema !== false ? "left-[18px]" : "left-0.5")} />
-              </button>
-              Auto-emit FAQPage JSON-LD
-            </label>
-            {field.emitFaqSchema !== false && (
-              <div className="mt-2 overflow-hidden rounded-md border border-[color:var(--color-border)] bg-[color:var(--s3)]/40">
-                <div className="flex items-center gap-1.5 border-b border-[color:var(--border-hairline)] px-2 py-1 text-[10px] font-semibold text-muted-foreground">
-                  <Code2 className="h-3 w-3" /> Generated from the questions
-                </div>
-                <pre className="max-h-44 overflow-auto px-2.5 py-2 font-mono text-[10.5px] leading-relaxed text-foreground/80">
-{faqPageJsonLd(field.faqItems?.length ? field.faqItems : SAMPLE_FAQ)}
-                </pre>
-              </div>
-            )}
-          </SettingsField>
-        )}
-
-        {field.type !== "group" && field.type !== "sections" && (
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <label className="flex items-center gap-2 text-[12.5px] text-foreground">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={!!field.required}
-                onClick={() => set({ required: !field.required })}
-                className={cn("relative h-5 w-9 rounded-full transition-colors", field.required ? "bg-primary" : "bg-[color:var(--s3)]")}
-              >
-                <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all", field.required ? "left-[18px]" : "left-0.5")} />
-              </button>
-              Required
-            </label>
-            <label
-              className="flex items-center gap-2 text-[12.5px] text-foreground"
-              title="Include this field in site search. Searchable fields are indexed and exposed through the search endpoint."
-            >
-              <button
-                type="button"
-                role="switch"
-                aria-checked={!!field.searchable}
-                onClick={() => set({ searchable: !field.searchable })}
-                className={cn("relative h-5 w-9 rounded-full transition-colors", field.searchable ? "bg-primary" : "bg-[color:var(--s3)]")}
-              >
-                <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all", field.searchable ? "left-[18px]" : "left-0.5")} />
-              </button>
-              Searchable
-            </label>
-          </div>
-        )}
       </div>
+
+      {/* Type-specific settings */}
+      {hasTypeSettings && (
+        <div className="space-y-3 border-t border-[color:var(--border-hairline)] pt-3.5">
+          {field.type === "select" && (
+            <SettingsField label="Options" hint="Comma separated.">
+              <input
+                value={(field.options ?? []).join(", ")}
+                onChange={(e) => set({ options: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                className={inputCls}
+              />
+            </SettingsField>
+          )}
+
+          {(field.type === "reference" || field.type === "multireference") && <RefTargetField field={field} set={set} />}
+
+          {field.type === "sections" && (
+            <SettingsField label="Allowed sections" hint="Marketers can only add these to the page.">
+              <div className="flex flex-wrap gap-1.5">
+                {SECTION_DEFS.map((s) => {
+                  const on = (field.allowedSections ?? []).includes(s.type);
+                  return (
+                    <button
+                      key={s.type}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() =>
+                        set({
+                          allowedSections: on
+                            ? (field.allowedSections ?? []).filter((t) => t !== s.type)
+                            : [...(field.allowedSections ?? []), s.type],
+                        })
+                      }
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11.5px] font-medium transition-colors",
+                        on
+                          ? "border-[color:color-mix(in_oklab,var(--primary)_40%,transparent)] bg-[color:color-mix(in_oklab,var(--primary)_8%,transparent)] text-primary"
+                          : "border-[color:var(--color-border)] text-muted-foreground hover:bg-[color:var(--color-row-hover)]",
+                      )}
+                    >
+                      {on && <Check className="h-3 w-3" />}
+                      {s.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </SettingsField>
+          )}
+
+          {/* OG image — dynamic source */}
+          {isOgImage && (
+            <div className="overflow-hidden rounded-lg border border-[color:var(--color-border)]">
+              <ToggleRow
+                label="Use the cover image by default"
+                hint="When no custom image is set, the entry's cover or thumbnail becomes the social share image."
+                on={field.ogFallback !== false}
+                onToggle={() => set({ ogFallback: field.ogFallback === false })}
+              />
+            </div>
+          )}
+
+          {/* Canonical URL — default to page URL */}
+          {isCanonical && (
+            <div className="overflow-hidden rounded-lg border border-[color:var(--color-border)]">
+              <ToggleRow
+                label="Default to this page's URL"
+                hint="Editors only set a canonical when they need to point at another page."
+                on={field.useSiteDefault !== false}
+                onToggle={() => set({ useSiteDefault: field.useSiteDefault === false })}
+              />
+            </div>
+          )}
+
+          {/* FAQ — one clean toggle, no code dump */}
+          {field.type === "faq" && (
+            <div className="overflow-hidden rounded-lg border border-[color:var(--color-border)]">
+              <ToggleRow
+                label="Auto-emit FAQ schema"
+                hint="Turns the questions into valid FAQPage JSON-LD for rich results. No markup to write."
+                on={field.emitFaqSchema !== false}
+                onToggle={() => set({ emitFaqSchema: field.emitFaqSchema === false })}
+              />
+            </div>
+          )}
+
+          {/* Schema markup — pick a type, we map the fields */}
+          {field.type === "schema" && (
+            <>
+              <SettingsField label="Schema type" hint="We map your fields to this type and emit the JSON-LD for every entry.">
+                <div className="relative">
+                  <select
+                    value={field.schemaType ?? ""}
+                    onChange={(e) => set({ schemaType: e.target.value || undefined })}
+                    className={cn(inputCls, "cursor-pointer appearance-none pr-8")}
+                  >
+                    <option value="">None</option>
+                    {SCHEMA_TYPES.map((s) => (
+                      <option key={s.type} value={s.type}>
+                        {s.label}
+                      </option>
+                    ))}
+                    <option value="Custom">Custom (paste JSON-LD)</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                </div>
+              </SettingsField>
+
+              {field.schemaType === "Custom" ? (
+                <SettingsField label="Custom JSON-LD" hint="Pasted verbatim into the page head.">
+                  <textarea
+                    value={field.schemaCustom ?? ""}
+                    onChange={(e) => set({ schemaCustom: e.target.value })}
+                    rows={5}
+                    placeholder={'{\n  "@context": "https://schema.org",\n  "@type": "…"\n}'}
+                    className="w-full resize-y rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 py-2 font-mono text-[11.5px] leading-relaxed text-foreground outline-none transition-colors focus:border-[color:var(--primary)]"
+                  />
+                </SettingsField>
+              ) : schemaDef ? (
+                <div className="overflow-hidden rounded-lg border border-[color:var(--color-border)]">
+                  <div className="flex items-center gap-1.5 border-b border-[color:var(--border-hairline)] bg-[color:var(--s2)]/50 px-2.5 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <Sparkles className="h-3 w-3 text-violet-500" /> Auto-mapped from your fields
+                  </div>
+                  <div className="divide-y divide-[color:var(--border-hairline)]">
+                    {schemaDef.props.map((p) => (
+                      <div key={p.name} className="flex items-center justify-between gap-2 px-2.5 py-1.5">
+                        <span className="font-mono text-[11.5px] text-foreground">{p.name}</span>
+                        <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <ArrowLeft className="h-3 w-3" /> {p.from}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Flags */}
+      {showFlags && (
+        <div className="overflow-hidden rounded-lg border border-[color:var(--color-border)]">
+          <ToggleRow label="Required" hint="Editors must fill this in before publishing." on={!!field.required} onToggle={() => set({ required: !field.required })} />
+          {canSearch && (
+            <div className="border-t border-[color:var(--border-hairline)]">
+              <ToggleRow
+                label="Searchable"
+                hint="Index this field so it is returned by site search."
+                on={!!field.searchable}
+                onToggle={() => set({ searchable: !field.searchable })}
+              />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A labeled settings row with a switch on the right — the consistent pattern
+ *  for every boolean option in the field editor. */
+function ToggleRow({ label, hint, on, onToggle }: { label: string; hint?: string; on: boolean; onToggle: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3 bg-[color:var(--card)] px-3 py-2.5">
+      <div className="min-w-0">
+        <div className="text-[12.5px] font-medium text-foreground">{label}</div>
+        {hint && <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{hint}</div>}
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={label}
+        onClick={onToggle}
+        className={cn("relative h-5 w-9 shrink-0 rounded-full transition-colors", on ? "bg-primary" : "bg-[color:var(--s3)]")}
+      >
+        <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all", on ? "left-[18px]" : "left-0.5")} />
+      </button>
     </div>
   );
 }
@@ -1269,7 +1356,10 @@ function PreviewField({ field, models }: { field: ModelField; models: SchemaMode
       case "image":
         return (
           <div className="grid h-16 place-items-center rounded-md border border-dashed border-[color:var(--color-border)] bg-[color:var(--card)] text-muted-foreground">
-            <span className="flex items-center gap-1.5 text-[11px]"><ImageIcon className="h-3.5 w-3.5" /> Choose from media library</span>
+            <span className="flex items-center gap-1.5 text-[11px]">
+              <ImageIcon className="h-3.5 w-3.5" />
+              {field.ogFallback ? "Falls back to the cover image" : "Choose from media library"}
+            </span>
           </div>
         );
       case "file":
@@ -1279,7 +1369,11 @@ function PreviewField({ field, models }: { field: ModelField; models: SchemaMode
           </div>
         );
       case "link":
-        return (
+        return field.useSiteDefault ? (
+          <div className={cn(previewInput, "flex items-center gap-1.5 text-muted-foreground")}>
+            <Globe className="h-3 w-3 text-muted-foreground/60" /> Auto: this page's URL
+          </div>
+        ) : (
           <div className={cn(previewInput, "flex items-center gap-1.5")}>
             <Link2 className="h-3 w-3 text-muted-foreground/60" /> Paste a URL or pick a page
           </div>
@@ -1380,6 +1474,26 @@ function PreviewField({ field, models }: { field: ModelField; models: SchemaMode
           </div>
         );
       }
+      case "schema": {
+        const def = SCHEMA_TYPES.find((s) => s.type === field.schemaType);
+        if (!field.schemaType) {
+          return (
+            <div className="rounded-md border border-dashed border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 py-2 text-[11px] text-muted-foreground">
+              No structured data. Pick a schema type in the field settings.
+            </div>
+          );
+        }
+        return (
+          <div className="rounded-md border border-violet-100 bg-violet-50/50 px-2.5 py-2 dark:border-violet-500/20 dark:bg-violet-500/10">
+            <span className="flex items-center gap-1.5 text-[11px] font-semibold text-violet-700 dark:text-violet-300">
+              <Braces className="h-3 w-3" /> {def?.label ?? field.schemaType} schema
+            </span>
+            <span className="mt-0.5 block text-[10px] text-violet-700/80 dark:text-violet-300/80">
+              {field.schemaType === "Custom" ? "Custom JSON-LD ships in the page head." : "Filled in and emitted automatically for every entry."}
+            </span>
+          </div>
+        );
+      }
     }
   };
 
@@ -1413,6 +1527,7 @@ function JsonPanel({ model, models, onClose }: { model: SchemaModel; models: Sch
         ...(f.refModelId ? { ref: refApiId(f.refModelId), many: f.type === "multireference" } : {}),
         ...(f.allowedSections ? { sections: f.allowedSections } : {}),
         ...(f.type === "faq" ? { schema: f.emitFaqSchema === false ? null : "FAQPage" } : {}),
+        ...(f.type === "schema" ? { schema: f.schemaType || null } : {}),
         ...(f.fields ? { fields: clean(f.fields) } : {}),
       }));
     return JSON.stringify({ id: model.apiId, name: model.name, kind: model.kind, fields: clean(model.fields) }, null, 2);
