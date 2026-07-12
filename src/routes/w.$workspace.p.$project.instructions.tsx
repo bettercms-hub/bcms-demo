@@ -11,28 +11,27 @@
  * live CMS entities (collections, fields, components, pages, brand tokens)
  * into the text as chips. See INSTRUCTIONS_PLAN.md for the decisions.
  */
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
   AtSign,
   BookOpen,
   Bold,
+  Code,
   CopyPlus,
   Download,
-  Eye,
   FileText,
   FileUp,
   Heading2,
   Italic,
   List,
-  MessagesSquare,
-  Pencil,
   Plus,
   Search,
   Shield,
   Sparkles,
   Trash2,
+  Type,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -352,14 +351,35 @@ function InstructionEditor({
   onDeleted: () => void;
 }) {
   const meta = KIND_META[ins.kind];
-  const [view, setView] = useState<"write" | "preview">(canAuthor ? "write" : "preview");
+  // The rich "Text" view is a Notion-style editable render (first); "Markdown"
+  // is the raw source (second). Both edit the same body — see the blog editor.
+  const [view, setView] = useState<"text" | "markdown">("text");
   const [refOpen, setRefOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const richRef = useRef<HTMLDivElement>(null);
   const set = (patch: Partial<Instruction>) => instructionActions.update(wsId, ins.id, patch);
   const offHere = ins.disabledFor.includes(projectId);
 
-  /** Insert text at the caret in the body textarea, keeping focus. */
+  // Seed the contentEditable from markdown when entering the rich view or when
+  // the instruction changes — never on every keystroke, so the caret is kept.
+  useEffect(() => {
+    if (view === "text" && richRef.current) richRef.current.innerHTML = mdToHtml(ins.body) || "<p><br></p>";
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, ins.id]);
+
+  /** Serialize the rich editor's DOM back to markdown. */
+  function serializeRich() {
+    if (richRef.current) set({ body: htmlToMd(richRef.current) });
+  }
+  /** Run an execCommand on the focused rich editor, then persist. */
+  function richCmd(command: string, value?: string) {
+    richRef.current?.focus();
+    document.execCommand(command, false, value);
+    serializeRich();
+  }
+
+  /** Insert text at the caret in the markdown textarea, keeping focus. */
   function insertAtCursor(text: string) {
     const el = bodyRef.current;
     if (!el) {
@@ -390,6 +410,21 @@ function InstructionEditor({
       el.focus();
       el.setSelectionRange(start + marker.length, start + marker.length + picked.length);
     });
+  }
+
+  /** Toolbar actions dispatch to whichever editor is active. */
+  const doHeading = () => (view === "markdown" ? insertAtCursor("\n## ") : richCmd("formatBlock", "H2"));
+  const doBold = () => (view === "markdown" ? wrapSelection("**", "bold text") : richCmd("bold"));
+  const doItalic = () => (view === "markdown" ? wrapSelection("*", "italic text") : richCmd("italic"));
+  const doList = () => (view === "markdown" ? insertAtCursor("\n- ") : richCmd("insertUnorderedList"));
+  function insertReference(type: ReferenceType, label: string) {
+    if (view === "markdown") insertAtCursor(refToken(type, label));
+    else {
+      richRef.current?.focus();
+      document.execCommand("insertHTML", false, `${chipHtml(type, label)}&nbsp;`);
+      serializeRich();
+    }
+    setRefOpen(false);
   }
 
   function exportMd() {
@@ -506,18 +541,18 @@ function InstructionEditor({
             <meta.icon className="h-3 w-3" /> {meta.label}
           </span>
 
-          {canAuthor && view === "write" && (
+          {canAuthor && (
             <div className="ml-2 flex items-center gap-0.5">
-              <EditorBtn label="Heading" onClick={() => insertAtCursor("\n## ")}>
+              <EditorBtn label="Heading" onClick={doHeading}>
                 <Heading2 className="h-3.5 w-3.5" />
               </EditorBtn>
-              <EditorBtn label="Bold" onClick={() => wrapSelection("**", "bold text")}>
+              <EditorBtn label="Bold" onClick={doBold}>
                 <Bold className="h-3.5 w-3.5" />
               </EditorBtn>
-              <EditorBtn label="Italic" onClick={() => wrapSelection("*", "italic text")}>
+              <EditorBtn label="Italic" onClick={doItalic}>
                 <Italic className="h-3.5 w-3.5" />
               </EditorBtn>
-              <EditorBtn label="List item" onClick={() => insertAtCursor("\n- ")}>
+              <EditorBtn label="List item" onClick={doList}>
                 <List className="h-3.5 w-3.5" />
               </EditorBtn>
               <div className="relative">
@@ -540,21 +575,19 @@ function InstructionEditor({
                     library={library}
                     selfId={ins.id}
                     onClose={() => setRefOpen(false)}
-                    onInsert={(t) => {
-                      insertAtCursor(t);
-                      setRefOpen(false);
-                    }}
+                    onInsert={insertReference}
                   />
                 )}
               </div>
             </div>
           )}
 
+          {/* Text (Notion-style, editable) comes first; Markdown second. */}
           <div className="ml-auto flex items-center rounded-md border border-[color:var(--color-border)] p-0.5">
             {(
               [
-                { id: "write" as const, icon: Pencil, label: "Write" },
-                { id: "preview" as const, icon: Eye, label: "Preview" },
+                { id: "text" as const, icon: Type, label: "Text" },
+                { id: "markdown" as const, icon: Code, label: "Markdown" },
               ]
             ).map((v) => (
               <button
@@ -573,20 +606,35 @@ function InstructionEditor({
           </div>
         </div>
 
-        {view === "write" ? (
+        {view === "text" ? (
+          <div
+            ref={richRef}
+            contentEditable={canAuthor}
+            suppressContentEditableWarning
+            onInput={serializeRich}
+            role="textbox"
+            aria-multiline="true"
+            aria-label={`${ins.name} body`}
+            className={cn(
+              "prose-ins min-h-0 flex-1 overflow-y-auto px-6 py-5 text-[13px] leading-relaxed text-foreground/90 outline-none",
+              "[&_h1]:mb-2 [&_h1]:text-[21px] [&_h1]:font-bold [&_h1]:tracking-[-0.01em] [&_h1]:text-foreground",
+              "[&_h2]:mb-2 [&_h2]:mt-5 [&_h2]:text-[16px] [&_h2]:font-semibold [&_h2]:text-foreground",
+              "[&_h3]:mb-1.5 [&_h3]:mt-4 [&_h3]:text-[14px] [&_h3]:font-semibold [&_h3]:text-foreground",
+              "[&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5",
+              "[&_p]:my-1.5 [&_strong]:font-semibold",
+              "[&_code]:rounded [&_code]:bg-[color:var(--s2)] [&_code]:px-1 [&_code]:py-px [&_code]:font-mono [&_code]:text-[0.9em]",
+            )}
+          />
+        ) : (
           <textarea
             ref={bodyRef}
             value={ins.body}
             disabled={!canAuthor}
             onChange={(e) => set({ body: e.target.value })}
             spellCheck={false}
-            aria-label={`${ins.name} body`}
+            aria-label={`${ins.name} Markdown`}
             className="min-h-0 flex-1 resize-none bg-transparent px-6 py-5 font-mono text-[12.5px] leading-[1.7] text-foreground outline-none disabled:opacity-70"
           />
-        ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-            <MarkdownPreview body={ins.body} />
-          </div>
         )}
       </div>
     </div>
@@ -661,7 +709,7 @@ function ReferenceMenu({
   projectId: string;
   library: Instruction[];
   selfId: string;
-  onInsert: (token: string) => void;
+  onInsert: (type: ReferenceType, label: string) => void;
   onClose: () => void;
 }) {
   const [q, setQ] = useState("");
@@ -721,7 +769,7 @@ function ReferenceMenu({
                 <button
                   key={label}
                   type="button"
-                  onClick={() => onInsert(refToken(g.type, label))}
+                  onClick={() => onInsert(g.type, label)}
                   className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-[color:var(--color-row-hover)]"
                 >
                   <span className={cn("shrink-0 rounded border px-1 py-px text-[9.5px] font-semibold", REF_TINT[g.type])}>{g.type}</span>
@@ -736,73 +784,159 @@ function ReferenceMenu({
   );
 }
 
-/* ------------------------------------------------------- markdown preview */
+/* -------------------------------------------------- markdown <-> rich HTML */
 
-/** Inline renderer: reference chips + **bold** + `code`. */
-function InlineMd({ text }: { text: string }) {
-  const parts = splitRefTokens(text);
-  return (
-    <>
-      {parts.map((p, i) => {
-        if (p.kind === "ref") {
-          return (
-            <span
-              key={i}
-              className={cn("mx-0.5 inline-flex items-center gap-1 rounded-md border px-1.5 py-px align-baseline text-[11px] font-medium", REF_TINT[p.refType ?? ""] ?? "border-border bg-muted/40 text-foreground/80")}
-            >
-              <MessagesSquare className="h-2.5 w-2.5 opacity-70" aria-hidden />
-              {p.label}
-            </span>
-          );
-        }
-        // bold + code inside plain segments
-        const segs = p.value.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).filter(Boolean);
-        return segs.map((s, j) => {
-          if (s.startsWith("**") && s.endsWith("**")) return <strong key={`${i}-${j}`}>{s.slice(2, -2)}</strong>;
-          if (s.startsWith("`") && s.endsWith("`"))
-            return (
-              <code key={`${i}-${j}`} className="rounded bg-[color:var(--s2)] px-1 py-px font-mono text-[0.9em]">
-                {s.slice(1, -1)}
-              </code>
-            );
-          return <span key={`${i}-${j}`}>{s}</span>;
-        });
-      })}
-    </>
-  );
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function escapeAttr(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
 }
 
-function MarkdownPreview({ body }: { body: string }) {
-  const lines = body.split("\n");
-  return (
-    <div className="mx-auto max-w-[640px]">
-      {lines.map((line, i) => {
-        const t = line.trim();
-        if (!t) return <div key={i} className="h-3" />;
-        if (t.startsWith("### ")) return <h3 key={i} className="mb-1.5 mt-4 text-[14px] font-semibold text-foreground"><InlineMd text={t.slice(4)} /></h3>;
-        if (t.startsWith("## ")) return <h2 key={i} className="mb-2 mt-5 text-[16px] font-semibold text-foreground"><InlineMd text={t.slice(3)} /></h2>;
-        if (t.startsWith("# ")) return <h1 key={i} className="mb-2 text-[21px] font-bold tracking-[-0.01em] text-foreground"><InlineMd text={t.slice(2)} /></h1>;
-        const num = t.match(/^(\d+)\.\s+(.*)$/);
-        if (num)
-          return (
-            <div key={i} className="mb-1 flex gap-2 text-[13px] leading-relaxed text-foreground/90">
-              <span className="w-4 shrink-0 text-right tabular-nums text-muted-foreground">{num[1]}.</span>
-              <span className="min-w-0"><InlineMd text={num[2]} /></span>
-            </div>
-          );
-        if (t.startsWith("- "))
-          return (
-            <div key={i} className="mb-1 flex gap-2 text-[13px] leading-relaxed text-foreground/90">
-              <span className="mt-[8px] h-1 w-1 shrink-0 rounded-full bg-muted-foreground" />
-              <span className="min-w-0"><InlineMd text={t.slice(2)} /></span>
-            </div>
-          );
-        return (
-          <p key={i} className="mb-1.5 text-[13px] leading-relaxed text-foreground/90">
-            <InlineMd text={t} />
-          </p>
-        );
-      })}
-    </div>
-  );
+/** Base classes for a reference chip in the rich editor (kept in-source so
+ *  Tailwind generates them). Tint is appended per type. */
+const CHIP_BASE =
+  "ins-chip mx-0.5 inline-flex items-center gap-1 rounded-md border px-1.5 py-px align-baseline text-[11px] font-medium";
+
+/** A reference chip as an atomic, non-editable inline node. */
+function chipHtml(type: string, label: string): string {
+  const tint = REF_TINT[type] ?? "border-border bg-muted/40 text-foreground/80";
+  return `<span class="${CHIP_BASE} ${tint}" contenteditable="false" data-ref-type="${escapeAttr(type)}" data-ref-label="${escapeAttr(label)}">${escapeHtml(label)}</span>`;
+}
+
+/** Inline markdown (chips + **bold** + `code`) to HTML. */
+function inlineMdToHtml(text: string): string {
+  return splitRefTokens(text)
+    .map((p) => {
+      if (p.kind === "ref") return chipHtml(p.refType ?? "", p.label ?? "");
+      return escapeHtml(p.value)
+        .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+        .replace(/`([^`]+)`/g, "<code>$1</code>");
+    })
+    .join("");
+}
+
+/** Markdown to the HTML the contentEditable renders. */
+function mdToHtml(md: string): string {
+  const out: string[] = [];
+  let list: "ul" | "ol" | null = null;
+  const closeList = () => {
+    if (list) {
+      out.push(`</${list}>`);
+      list = null;
+    }
+  };
+  for (const raw of md.split("\n")) {
+    const t = raw.trim();
+    if (!t) {
+      closeList();
+      continue;
+    }
+    if (t.startsWith("### ")) {
+      closeList();
+      out.push(`<h3>${inlineMdToHtml(t.slice(4))}</h3>`);
+      continue;
+    }
+    if (t.startsWith("## ")) {
+      closeList();
+      out.push(`<h2>${inlineMdToHtml(t.slice(3))}</h2>`);
+      continue;
+    }
+    if (t.startsWith("# ")) {
+      closeList();
+      out.push(`<h1>${inlineMdToHtml(t.slice(2))}</h1>`);
+      continue;
+    }
+    const num = t.match(/^\d+\.\s+(.*)$/);
+    if (num) {
+      if (list !== "ol") {
+        closeList();
+        out.push("<ol>");
+        list = "ol";
+      }
+      out.push(`<li>${inlineMdToHtml(num[1])}</li>`);
+      continue;
+    }
+    if (t.startsWith("- ")) {
+      if (list !== "ul") {
+        closeList();
+        out.push("<ul>");
+        list = "ul";
+      }
+      out.push(`<li>${inlineMdToHtml(t.slice(2))}</li>`);
+      continue;
+    }
+    closeList();
+    out.push(`<p>${inlineMdToHtml(t)}</p>`);
+  }
+  closeList();
+  return out.join("");
+}
+
+/** Inline DOM to markdown (chips -> tokens, strong -> **, code -> `). */
+function inlineDomToMd(node: Node): string {
+  let out = "";
+  node.childNodes.forEach((n) => {
+    if (n.nodeType === Node.TEXT_NODE) {
+      out += n.textContent ?? "";
+      return;
+    }
+    if (n.nodeType !== Node.ELEMENT_NODE) return;
+    const el = n as HTMLElement;
+    if (el.classList.contains("ins-chip")) {
+      out += `@[${el.dataset.refType ?? ""}: ${el.dataset.refLabel ?? el.textContent ?? ""}]`;
+      return;
+    }
+    const tag = el.tagName;
+    if (tag === "STRONG" || tag === "B") out += `**${inlineDomToMd(el)}**`;
+    else if (tag === "EM" || tag === "I") out += `*${inlineDomToMd(el)}*`;
+    else if (tag === "CODE") out += "`" + inlineDomToMd(el) + "`";
+    else if (tag === "BR") out += "\n";
+    else out += inlineDomToMd(el);
+  });
+  return out;
+}
+
+/** The rich editor's DOM back to markdown. */
+function htmlToMd(root: HTMLElement): string {
+  const blocks: string[] = [];
+  root.childNodes.forEach((node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const t = (node.textContent ?? "").trim();
+      if (t) blocks.push(t);
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const el = node as HTMLElement;
+    switch (el.tagName) {
+      case "H1":
+        blocks.push(`# ${inlineDomToMd(el)}`.trim());
+        break;
+      case "H2":
+        blocks.push(`## ${inlineDomToMd(el)}`.trim());
+        break;
+      case "H3":
+      case "H4":
+      case "H5":
+      case "H6":
+        blocks.push(`### ${inlineDomToMd(el)}`.trim());
+        break;
+      case "UL":
+        el.querySelectorAll(":scope > li").forEach((li) => blocks.push(`- ${inlineDomToMd(li).trim()}`));
+        break;
+      case "OL": {
+        let i = 1;
+        el.querySelectorAll(":scope > li").forEach((li) => blocks.push(`${i++}. ${inlineDomToMd(li).trim()}`));
+        break;
+      }
+      case "LI":
+        blocks.push(`- ${inlineDomToMd(el).trim()}`);
+        break;
+      default: {
+        const md = inlineDomToMd(el).trim();
+        if (md) blocks.push(md);
+      }
+    }
+  });
+  return blocks.join("\n\n").replace(/\n{3,}/g, "\n\n").trim();
 }
