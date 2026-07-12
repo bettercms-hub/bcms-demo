@@ -16,6 +16,7 @@ import { getPages, pagesActions } from "@/lib/cms/pages-store";
 import { hasBrandVoice } from "@/lib/brand/brand-store";
 import { canEditContent, effectiveRoleFor } from "@/lib/workspace/my-role";
 import { clampToCeiling, generatorAllowed, getGovernance, skillAllowed } from "./governance-store";
+import { enabledInstructions } from "./instructions-store";
 import { buildAbmPages, buildSeoPages, type AbmGenerateConfig, type SeoGenerateConfig } from "./generate";
 import { READ_ONLY_SKILLS, agentSkill, skillFromPrompt, type AgentSkill } from "./skills";
 import {
@@ -157,6 +158,8 @@ export const agentRunActions = {
     if (!skillAllowed(wsId, skill.id)) return "";
     if (model && !getGovernance(wsId).byokAllowed) return "";
     const id = newRunId();
+    // Workspace instructions the agent follows on this run, for the audit trail.
+    const followed = enabledInstructions(wsId, projectId).map((i) => i.name);
     const run: AgentRun = {
       id,
       projectId,
@@ -167,6 +170,7 @@ export const agentRunActions = {
       model,
       agentId,
       agentName,
+      instructions: followed.length ? followed : undefined,
       context,
       status: "planning",
       steps: [],
@@ -183,6 +187,15 @@ export const agentRunActions = {
     const cols = projectCollections(projectId).length;
 
     schedule(id, 250, () => pushStep(id, "Reading project structure"));
+    if (followed.length) {
+      schedule(id, 600, () =>
+        pushStep(
+          id,
+          `Following ${followed.length} workspace ${followed.length === 1 ? "instruction" : "instructions"}`,
+          followed.join(", "),
+        ),
+      );
+    }
     schedule(id, 950, () => pushStep(id, "Checking pages and collections", `${pages} pages, ${cols} collections`));
     schedule(id, 1750, () => pushStep(id, "Preparing a plan"));
     schedule(id, 2500, () => {

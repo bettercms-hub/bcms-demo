@@ -1,0 +1,808 @@
+/**
+ * Instructions — the workspace library of agent skills and rules.
+ *
+ * Skills teach agents how to do specific tasks; rules are boundaries agents
+ * always respect. The library is shared across the workspace (author once,
+ * every project follows it) with a per-project opt-out on each instruction.
+ *
+ * Layout: left rail (skills + rules, per-kind create menus) and a main pane
+ * that is either the template gallery (nothing selected) or the editor —
+ * settings column plus a markdown editor whose "Insert reference" menu drops
+ * live CMS entities (collections, fields, components, pages, brand tokens)
+ * into the text as chips. See INSTRUCTIONS_PLAN.md for the decisions.
+ */
+import { useMemo, useRef, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  ArrowLeft,
+  AtSign,
+  BookOpen,
+  Bold,
+  CopyPlus,
+  Download,
+  Eye,
+  FileText,
+  FileUp,
+  Heading2,
+  Italic,
+  List,
+  MessagesSquare,
+  Pencil,
+  Plus,
+  Search,
+  Shield,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { getProjectBySlug } from "@/lib/cms/use-cms";
+import { canCompose, useEffectiveRole } from "@/lib/workspace/my-role";
+import { getPages } from "@/lib/cms/pages-store";
+import { useModels } from "@/lib/cms/schema-store";
+import { COMPONENT_CATALOG } from "@/lib/cms/blocks/rich-blocks";
+import { SECTION_DEFS } from "@/components/cms/editor/sections/SectionSystem";
+import {
+  INSTRUCTION_TEMPLATES,
+  instructionActions,
+  refToken,
+  splitRefTokens,
+  useInstructions,
+  type Instruction,
+  type InstructionKind,
+  type ReferenceType,
+} from "@/lib/agent/instructions-store";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+export const Route = createFileRoute("/w/$workspace/p/$project/instructions")({
+  component: InstructionsPage,
+});
+
+const KIND_META: Record<InstructionKind, { label: string; plural: string; blurb: string; icon: typeof BookOpen }> = {
+  skill: { label: "Skill", plural: "Skills", blurb: "Skills teach the agent how to do specific tasks.", icon: BookOpen },
+  rule: { label: "Rule", plural: "Rules", blurb: "Rules are boundaries the agent always respects.", icon: Shield },
+};
+
+/** Chip tint per reference type, shared by the preview and the insert menu. */
+const REF_TINT: Record<string, string> = {
+  Collection: "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/20",
+  Field: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20",
+  Component: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20",
+  Section: "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200 dark:bg-fuchsia-500/10 dark:text-fuchsia-300 dark:border-fuchsia-500/20",
+  Page: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20",
+  "Brand token": "bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-500/10 dark:text-pink-300 dark:border-pink-500/20",
+  Skill: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/20",
+  Rule: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/20",
+};
+
+function InstructionsPage() {
+  const { workspace, project } = Route.useParams();
+  const pr = getProjectBySlug(workspace, project);
+  const { effective } = useEffectiveRole(workspace);
+  const canAuthor = canCompose(effective);
+  const wsId = pr?.workspaceId ?? "";
+  const instructions = useInstructions(wsId);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const importRef = useRef<HTMLInputElement>(null);
+  const importKindRef = useRef<InstructionKind>("skill");
+
+  if (!pr) {
+    return (
+      <div className="grid min-h-0 flex-1 place-items-center p-8 text-[13px] text-muted-foreground">
+        Project not found. Pick a project from the dashboard.
+      </div>
+    );
+  }
+
+  const selected = instructions.find((i) => i.id === selectedId) ?? null;
+  const skills = instructions.filter((i) => i.kind === "skill");
+  const rules = instructions.filter((i) => i.kind === "rule");
+
+  function createBlank(kind: InstructionKind) {
+    const ins = instructionActions.create(wsId, { kind, name: `Untitled ${kind}` });
+    setSelectedId(ins.id);
+  }
+  function createFromTemplate(templateId: string) {
+    const ins = instructionActions.createFromTemplate(wsId, templateId);
+    if (ins) {
+      setSelectedId(ins.id);
+      toast.success(`"${ins.name}" added to the library`);
+    }
+  }
+  function startImport(kind: InstructionKind) {
+    importKindRef.current = kind;
+    importRef.current?.click();
+  }
+  function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const body = String(reader.result ?? "");
+      const name = file.name.replace(/\.(md|markdown|txt)$/i, "").replace(/[-_]+/g, " ").trim() || "Imported instruction";
+      const ins = instructionActions.create(wsId, {
+        kind: importKindRef.current,
+        name: name[0].toUpperCase() + name.slice(1),
+        body,
+        source: "import",
+      });
+      setSelectedId(ins.id);
+      toast.success(`Imported "${ins.name}"`);
+    };
+    reader.readAsText(file);
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1">
+      <input ref={importRef} type="file" accept=".md,.markdown,.txt" className="hidden" onChange={onImportFile} aria-hidden />
+
+      {/* ---------------------------------------------------------- rail */}
+      <aside className="flex w-[248px] shrink-0 flex-col border-r border-border bg-background">
+        <div className="border-b border-[color:var(--border-hairline)] px-3 py-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[13px] font-semibold text-foreground">Instructions</span>
+            <Link
+              to="/w/$workspace/p/$project/agent"
+              params={{ workspace, project }}
+              className="text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Agent
+            </Link>
+          </div>
+          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+            Shared across the workspace. Every project and teammate works from the same playbook.
+          </p>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto p-2">
+          {(["skill", "rule"] as const).map((kind) => {
+            const meta = KIND_META[kind];
+            const list = kind === "skill" ? skills : rules;
+            return (
+              <div key={kind} className="mb-3">
+                <div className="flex items-center justify-between px-1.5 py-1">
+                  <span className="text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {meta.plural} · {list.length}
+                  </span>
+                  {canAuthor && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label={`New ${kind}`}
+                          className="grid h-5 w-5 place-items-center rounded text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-[190px]">
+                        <DropdownMenuItem className="text-[12.5px]" onSelect={() => setSelectedId(null)}>
+                          <Sparkles className="mr-2 h-3.5 w-3.5" /> Create from template
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-[12.5px]" onSelect={() => createBlank(kind)}>
+                          <FileText className="mr-2 h-3.5 w-3.5" /> Create manually
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-[12.5px]" onSelect={() => startImport(kind)}>
+                          <FileUp className="mr-2 h-3.5 w-3.5" /> Import .md
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+
+                {list.length === 0 ? (
+                  <div className="mx-0.5 rounded-lg bg-[color:var(--s2)]/60 px-3 py-3.5 text-center">
+                    <p className="text-[11.5px] font-medium text-foreground">No {meta.plural.toLowerCase()} yet</p>
+                    <p className="mt-0.5 text-[10.5px] leading-snug text-muted-foreground">{meta.blurb}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-0.5">
+                    {list.map((ins) => {
+                      const offHere = ins.disabledFor.includes(pr.id);
+                      const active = selectedId === ins.id;
+                      return (
+                        <button
+                          key={ins.id}
+                          type="button"
+                          onClick={() => setSelectedId(ins.id)}
+                          aria-current={active}
+                          className={cn(
+                            "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors",
+                            active ? "bg-[color:color-mix(in_oklab,var(--primary)_9%,transparent)]" : "hover:bg-[color:var(--color-row-hover)]",
+                          )}
+                        >
+                          <meta.icon className={cn("h-3.5 w-3.5 shrink-0", active ? "text-primary" : "text-muted-foreground")} />
+                          <span className={cn("min-w-0 flex-1 truncate text-[12.5px]", active ? "font-medium text-foreground" : "text-foreground/90")}>
+                            {ins.name}
+                          </span>
+                          <span
+                            title={!ins.enabled ? "Off everywhere" : offHere ? "Off for this project" : "On"}
+                            className={cn(
+                              "h-1.5 w-1.5 shrink-0 rounded-full",
+                              !ins.enabled ? "bg-[color:var(--s3)]" : offHere ? "bg-amber-400" : "bg-emerald-500",
+                            )}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </aside>
+
+      {/* ---------------------------------------------------------- main */}
+      {selected ? (
+        <InstructionEditor
+          key={selected.id}
+          ins={selected}
+          wsId={wsId}
+          projectId={pr.id}
+          canAuthor={canAuthor}
+          library={instructions}
+          onClose={() => setSelectedId(null)}
+          onDeleted={() => setSelectedId(null)}
+        />
+      ) : (
+        <TemplateGallery canAuthor={canAuthor} onPick={createFromTemplate} onBlank={createBlank} onImport={startImport} />
+      )}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------- template gallery */
+
+function TemplateGallery({
+  canAuthor,
+  onPick,
+  onBlank,
+  onImport,
+}: {
+  canAuthor: boolean;
+  onPick: (templateId: string) => void;
+  onBlank: (kind: InstructionKind) => void;
+  onImport: (kind: InstructionKind) => void;
+}) {
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="mx-auto w-full max-w-[820px] px-8 py-10">
+        <h1 className="text-[24px] font-semibold tracking-[-0.01em] text-foreground">Create a skill or rule</h1>
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          Teach agents how your team works. Instructions are shared across the workspace, so author them once and every
+          project follows them.
+        </p>
+
+        {(["skill", "rule"] as const).map((kind) => {
+          const meta = KIND_META[kind];
+          const templates = INSTRUCTION_TEMPLATES.filter((t) => t.kind === kind);
+          return (
+            <div key={kind} className="mt-8">
+              <h2 className="text-[14px] font-semibold text-foreground">{meta.plural}</h2>
+              <p className="mt-0.5 text-[12px] text-muted-foreground">{meta.blurb}</p>
+              <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                <button
+                  type="button"
+                  disabled={!canAuthor}
+                  onClick={() => onBlank(kind)}
+                  className="flex flex-col items-start rounded-xl border border-dashed border-[color:var(--color-border)] px-3.5 py-3 text-left transition-colors hover:border-[color:var(--primary)] hover:bg-[color:var(--color-row-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                    <Plus className="h-3.5 w-3.5 text-muted-foreground" /> Blank {kind}
+                  </span>
+                  <span className="mt-1 text-[11.5px] leading-snug text-muted-foreground">Start from scratch.</span>
+                </button>
+                {templates.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    disabled={!canAuthor}
+                    onClick={() => onPick(t.id)}
+                    className="flex flex-col items-start rounded-xl border border-[color:var(--color-border)] bg-[color:var(--card)] px-3.5 py-3 text-left shadow-[var(--shadow-card)] transition-colors hover:border-[color:var(--primary)] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <span className="text-[13px] font-medium text-foreground">{t.name}</span>
+                    <span className="mt-1 line-clamp-2 text-[11.5px] leading-snug text-muted-foreground">{t.blurb}</span>
+                  </button>
+                ))}
+              </div>
+              {canAuthor && (
+                <button
+                  type="button"
+                  onClick={() => onImport(kind)}
+                  className="mt-2.5 inline-flex items-center gap-1.5 text-[12px] font-medium text-primary transition-opacity hover:opacity-80"
+                >
+                  <FileUp className="h-3.5 w-3.5" /> Import a {kind} from a .md file
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ editor */
+
+function InstructionEditor({
+  ins,
+  wsId,
+  projectId,
+  canAuthor,
+  library,
+  onClose,
+  onDeleted,
+}: {
+  ins: Instruction;
+  wsId: string;
+  projectId: string;
+  canAuthor: boolean;
+  library: Instruction[];
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const meta = KIND_META[ins.kind];
+  const [view, setView] = useState<"write" | "preview">(canAuthor ? "write" : "preview");
+  const [refOpen, setRefOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const set = (patch: Partial<Instruction>) => instructionActions.update(wsId, ins.id, patch);
+  const offHere = ins.disabledFor.includes(projectId);
+
+  /** Insert text at the caret in the body textarea, keeping focus. */
+  function insertAtCursor(text: string) {
+    const el = bodyRef.current;
+    if (!el) {
+      set({ body: `${ins.body}${text}` });
+      return;
+    }
+    const start = el.selectionStart ?? ins.body.length;
+    const end = el.selectionEnd ?? start;
+    const next = ins.body.slice(0, start) + text + ins.body.slice(end);
+    set({ body: next });
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + text.length;
+      el.setSelectionRange(pos, pos);
+    });
+  }
+
+  /** Wrap the selection (or insert a placeholder) with markdown markers. */
+  function wrapSelection(marker: string, placeholder: string) {
+    const el = bodyRef.current;
+    if (!el) return;
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? 0;
+    const picked = ins.body.slice(start, end) || placeholder;
+    const next = ins.body.slice(0, start) + marker + picked + marker + ins.body.slice(end);
+    set({ body: next });
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start + marker.length, start + marker.length + picked.length);
+    });
+  }
+
+  function exportMd() {
+    const blob = new Blob([ins.body], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${ins.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "instruction"}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Exported as Markdown");
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1">
+      {/* settings column */}
+      <div className="flex w-[264px] shrink-0 flex-col overflow-y-auto border-r border-[color:var(--border-hairline)] bg-[color:var(--s2)]/40 px-4 py-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="mb-3 inline-flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> All instructions
+        </button>
+
+        <label className="block">
+          <span className="mb-1 block text-[11.5px] font-medium text-foreground">Name</span>
+          <input
+            value={ins.name}
+            disabled={!canAuthor}
+            onChange={(e) => set({ name: e.target.value })}
+            className="h-8 w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 text-[12.5px] text-foreground outline-none transition-colors focus:border-[color:var(--primary)] disabled:opacity-60"
+          />
+        </label>
+
+        <label className="mt-3 block">
+          <span className="mb-1 block text-[11.5px] font-medium text-foreground">Description</span>
+          <textarea
+            value={ins.description}
+            disabled={!canAuthor}
+            onChange={(e) => set({ description: e.target.value })}
+            rows={3}
+            placeholder="What this instruction is for"
+            className="w-full resize-none rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 py-2 text-[12px] leading-snug text-foreground outline-none transition-colors focus:border-[color:var(--primary)] disabled:opacity-60"
+          />
+        </label>
+
+        <div className="mt-4 overflow-hidden rounded-lg border border-[color:var(--color-border)]">
+          <SettingToggle
+            label={ins.enabled ? "On" : "Off"}
+            hint="Agents follow this instruction on every run."
+            on={ins.enabled}
+            disabled={!canAuthor}
+            onToggle={() => set({ enabled: !ins.enabled })}
+          />
+          <div className="border-t border-[color:var(--border-hairline)]">
+            <SettingToggle
+              label="Applies to this project"
+              hint="Turn off to exclude just this project."
+              on={!offHere}
+              disabled={!canAuthor || !ins.enabled}
+              onToggle={() => instructionActions.toggleProject(wsId, ins.id, projectId)}
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 text-[11px] text-muted-foreground">
+          <p className="font-medium text-foreground/80">Created</p>
+          <p className="mt-0.5">{new Date(ins.createdAt).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}</p>
+        </div>
+
+        <div className="mt-auto space-y-1 pt-6">
+          <SettingsAction icon={Download} label="Export as .md" onClick={exportMd} />
+          {canAuthor && (
+            <>
+              <SettingsAction
+                icon={CopyPlus}
+                label="Duplicate"
+                onClick={() => {
+                  const copy = instructionActions.duplicate(wsId, ins.id);
+                  if (copy) toast.success(`"${copy.name}" created`);
+                }}
+              />
+              {confirmDelete ? (
+                <div className="flex items-center gap-1.5 rounded-md bg-rose-500/10 px-2 py-1.5">
+                  <span className="flex-1 text-[11.5px] font-medium text-rose-600 dark:text-rose-400">Delete this {ins.kind}?</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      instructionActions.remove(wsId, ins.id);
+                      onDeleted();
+                      toast.success(`"${ins.name}" deleted`);
+                    }}
+                    className="rounded bg-rose-600 px-1.5 py-0.5 text-[11px] font-semibold text-white hover:bg-rose-700"
+                  >
+                    Delete
+                  </button>
+                  <button type="button" aria-label="Cancel" onClick={() => setConfirmDelete(false)} className="grid h-5 w-5 place-items-center rounded text-rose-600 hover:bg-rose-500/10">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <SettingsAction icon={Trash2} label={`Delete ${ins.kind}`} danger onClick={() => setConfirmDelete(true)} />
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* editor column */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex items-center gap-2 border-b border-[color:var(--border-hairline)] px-4 py-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[color:color-mix(in_oklab,var(--primary)_8%,transparent)] px-2 py-0.5 text-[11px] font-medium text-primary">
+            <meta.icon className="h-3 w-3" /> {meta.label}
+          </span>
+
+          {canAuthor && view === "write" && (
+            <div className="ml-2 flex items-center gap-0.5">
+              <EditorBtn label="Heading" onClick={() => insertAtCursor("\n## ")}>
+                <Heading2 className="h-3.5 w-3.5" />
+              </EditorBtn>
+              <EditorBtn label="Bold" onClick={() => wrapSelection("**", "bold text")}>
+                <Bold className="h-3.5 w-3.5" />
+              </EditorBtn>
+              <EditorBtn label="Italic" onClick={() => wrapSelection("*", "italic text")}>
+                <Italic className="h-3.5 w-3.5" />
+              </EditorBtn>
+              <EditorBtn label="List item" onClick={() => insertAtCursor("\n- ")}>
+                <List className="h-3.5 w-3.5" />
+              </EditorBtn>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setRefOpen((v) => !v)}
+                  aria-expanded={refOpen}
+                  className={cn(
+                    "ml-1 inline-flex h-6 items-center gap-1 rounded-md border px-1.5 text-[11.5px] font-medium transition-colors",
+                    refOpen
+                      ? "border-[color:var(--primary)] bg-[color:color-mix(in_oklab,var(--primary)_8%,transparent)] text-primary"
+                      : "border-[color:var(--color-border)] text-foreground/85 hover:bg-[color:var(--color-row-hover)]",
+                  )}
+                >
+                  <AtSign className="h-3 w-3" /> Insert reference
+                </button>
+                {refOpen && (
+                  <ReferenceMenu
+                    projectId={projectId}
+                    library={library}
+                    selfId={ins.id}
+                    onClose={() => setRefOpen(false)}
+                    onInsert={(t) => {
+                      insertAtCursor(t);
+                      setRefOpen(false);
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="ml-auto flex items-center rounded-md border border-[color:var(--color-border)] p-0.5">
+            {(
+              [
+                { id: "write" as const, icon: Pencil, label: "Write" },
+                { id: "preview" as const, icon: Eye, label: "Preview" },
+              ]
+            ).map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                aria-pressed={view === v.id}
+                onClick={() => setView(v.id)}
+                className={cn(
+                  "inline-flex h-6 items-center gap-1 rounded px-2 text-[11.5px] font-medium transition-colors",
+                  view === v.id ? "bg-[color:var(--s2)] text-foreground" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <v.icon className="h-3 w-3" /> {v.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {view === "write" ? (
+          <textarea
+            ref={bodyRef}
+            value={ins.body}
+            disabled={!canAuthor}
+            onChange={(e) => set({ body: e.target.value })}
+            spellCheck={false}
+            aria-label={`${ins.name} body`}
+            className="min-h-0 flex-1 resize-none bg-transparent px-6 py-5 font-mono text-[12.5px] leading-[1.7] text-foreground outline-none disabled:opacity-70"
+          />
+        ) : (
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            <MarkdownPreview body={ins.body} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------- small pieces */
+
+function SettingToggle({ label, hint, on, disabled, onToggle }: { label: string; hint: string; on: boolean; disabled?: boolean; onToggle: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3 bg-[color:var(--card)] px-3 py-2.5">
+      <div className="min-w-0">
+        <div className="text-[12.5px] font-medium text-foreground">{label}</div>
+        <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{hint}</div>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={label}
+        disabled={disabled}
+        onClick={onToggle}
+        className={cn(
+          "relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+          on ? "bg-primary" : "bg-[color:var(--s3)]",
+        )}
+      >
+        <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all", on ? "left-[18px]" : "left-0.5")} />
+      </button>
+    </div>
+  );
+}
+
+function SettingsAction({ icon: Icon, label, danger, onClick }: { icon: typeof Download; label: string; danger?: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-medium transition-colors",
+        danger ? "text-rose-600 hover:bg-rose-500/10 dark:text-rose-400" : "text-foreground/85 hover:bg-[color:var(--color-row-hover)]",
+      )}
+    >
+      <Icon className="h-3.5 w-3.5" /> {label}
+    </button>
+  );
+}
+
+function EditorBtn({ children, label, onClick }: { children: React.ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      onClick={onClick}
+      className="grid h-6 w-6 place-items-center rounded text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
+    >
+      {children}
+    </button>
+  );
+}
+
+/* --------------------------------------------------------- reference menu */
+
+function ReferenceMenu({
+  projectId,
+  library,
+  selfId,
+  onInsert,
+  onClose,
+}: {
+  projectId: string;
+  library: Instruction[];
+  selfId: string;
+  onInsert: (token: string) => void;
+  onClose: () => void;
+}) {
+  const [q, setQ] = useState("");
+  const models = useModels(projectId);
+
+  const groups = useMemo(() => {
+    const collections = models.filter((m) => m.kind === "collection").map((m) => m.name);
+    const fields = models.flatMap((m) => m.fields.map((f) => `${m.name} / ${f.label}`)).slice(0, 40);
+    const components = COMPONENT_CATALOG.map((c) => c.label);
+    const sections = SECTION_DEFS.map((s) => s.name);
+    const pages = getPages(projectId).map((p) => p.title);
+    const brand = ["Voice / tone", "Preferred words", "Words to avoid", "Protected phrases", "Colors / primary", "Typography / heading font", "Logos / primary"];
+    const skills = library.filter((i) => i.kind === "skill" && i.id !== selfId).map((i) => i.name);
+    const rules = library.filter((i) => i.kind === "rule" && i.id !== selfId).map((i) => i.name);
+    const all: { type: ReferenceType; items: string[] }[] = [
+      { type: "Collection", items: collections },
+      { type: "Field", items: fields },
+      { type: "Component", items: components },
+      { type: "Section", items: sections },
+      { type: "Page", items: pages },
+      { type: "Brand token", items: brand },
+      { type: "Skill", items: skills },
+      { type: "Rule", items: rules },
+    ];
+    const query = q.trim().toLowerCase();
+    return all
+      .map((g) => ({ ...g, items: (query ? g.items.filter((i) => i.toLowerCase().includes(query)) : g.items).slice(0, 6) }))
+      .filter((g) => g.items.length > 0);
+  }, [models, projectId, library, selfId, q]);
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onMouseDown={onClose} aria-hidden />
+      <div
+        role="dialog"
+        aria-label="Insert reference"
+        className="absolute left-0 top-[calc(100%+6px)] z-50 w-[300px] overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-[color:var(--card)] shadow-[var(--shadow-3)]"
+      >
+        <div className="relative border-b border-[color:var(--border-hairline)]">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input
+            autoFocus
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => e.key === "Escape" && onClose()}
+            placeholder="Search collections, components, pages…"
+            aria-label="Search references"
+            className="h-9 w-full bg-transparent pl-8 pr-2 text-[12.5px] text-foreground outline-none placeholder:text-muted-foreground"
+          />
+        </div>
+        <div className="max-h-[320px] overflow-y-auto p-1.5">
+          {groups.length === 0 && <p className="px-2 py-3 text-center text-[12px] text-muted-foreground">Nothing matches.</p>}
+          {groups.map((g) => (
+            <div key={g.type} className="mb-1.5">
+              <div className="px-1.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{g.type}s</div>
+              {g.items.map((label) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => onInsert(refToken(g.type, label))}
+                  className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-[color:var(--color-row-hover)]"
+                >
+                  <span className={cn("shrink-0 rounded border px-1 py-px text-[9.5px] font-semibold", REF_TINT[g.type])}>{g.type}</span>
+                  <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">{label}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ------------------------------------------------------- markdown preview */
+
+/** Inline renderer: reference chips + **bold** + `code`. */
+function InlineMd({ text }: { text: string }) {
+  const parts = splitRefTokens(text);
+  return (
+    <>
+      {parts.map((p, i) => {
+        if (p.kind === "ref") {
+          return (
+            <span
+              key={i}
+              className={cn("mx-0.5 inline-flex items-center gap-1 rounded-md border px-1.5 py-px align-baseline text-[11px] font-medium", REF_TINT[p.refType ?? ""] ?? "border-border bg-muted/40 text-foreground/80")}
+            >
+              <MessagesSquare className="h-2.5 w-2.5 opacity-70" aria-hidden />
+              {p.label}
+            </span>
+          );
+        }
+        // bold + code inside plain segments
+        const segs = p.value.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).filter(Boolean);
+        return segs.map((s, j) => {
+          if (s.startsWith("**") && s.endsWith("**")) return <strong key={`${i}-${j}`}>{s.slice(2, -2)}</strong>;
+          if (s.startsWith("`") && s.endsWith("`"))
+            return (
+              <code key={`${i}-${j}`} className="rounded bg-[color:var(--s2)] px-1 py-px font-mono text-[0.9em]">
+                {s.slice(1, -1)}
+              </code>
+            );
+          return <span key={`${i}-${j}`}>{s}</span>;
+        });
+      })}
+    </>
+  );
+}
+
+function MarkdownPreview({ body }: { body: string }) {
+  const lines = body.split("\n");
+  return (
+    <div className="mx-auto max-w-[640px]">
+      {lines.map((line, i) => {
+        const t = line.trim();
+        if (!t) return <div key={i} className="h-3" />;
+        if (t.startsWith("### ")) return <h3 key={i} className="mb-1.5 mt-4 text-[14px] font-semibold text-foreground"><InlineMd text={t.slice(4)} /></h3>;
+        if (t.startsWith("## ")) return <h2 key={i} className="mb-2 mt-5 text-[16px] font-semibold text-foreground"><InlineMd text={t.slice(3)} /></h2>;
+        if (t.startsWith("# ")) return <h1 key={i} className="mb-2 text-[21px] font-bold tracking-[-0.01em] text-foreground"><InlineMd text={t.slice(2)} /></h1>;
+        const num = t.match(/^(\d+)\.\s+(.*)$/);
+        if (num)
+          return (
+            <div key={i} className="mb-1 flex gap-2 text-[13px] leading-relaxed text-foreground/90">
+              <span className="w-4 shrink-0 text-right tabular-nums text-muted-foreground">{num[1]}.</span>
+              <span className="min-w-0"><InlineMd text={num[2]} /></span>
+            </div>
+          );
+        if (t.startsWith("- "))
+          return (
+            <div key={i} className="mb-1 flex gap-2 text-[13px] leading-relaxed text-foreground/90">
+              <span className="mt-[8px] h-1 w-1 shrink-0 rounded-full bg-muted-foreground" />
+              <span className="min-w-0"><InlineMd text={t.slice(2)} /></span>
+            </div>
+          );
+        return (
+          <p key={i} className="mb-1.5 text-[13px] leading-relaxed text-foreground/90">
+            <InlineMd text={t} />
+          </p>
+        );
+      })}
+    </div>
+  );
+}

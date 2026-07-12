@@ -54,6 +54,7 @@ import { Route as WWorkspacePProjectSeoRouteImport } from './routes/w.$workspace
 import { Route as WWorkspacePProjectSearchRouteImport } from './routes/w.$workspace.p.$project.search'
 import { Route as WWorkspacePProjectSchemaRouteImport } from './routes/w.$workspace.p.$project.schema'
 import { Route as WWorkspacePProjectMediaRouteImport } from './routes/w.$workspace.p.$project.media'
+import { Route as WWorkspacePProjectInstructionsRouteImport } from './routes/w.$workspace.p.$project.instructions'
 import { Route as WWorkspacePProjectHostingRouteImport } from './routes/w.$workspace.p.$project.hosting'
 import { Route as WWorkspacePProjectEditorRouteImport } from './routes/w.$workspace.p.$project.editor'
 import { Route as WWorkspacePProjectContentRouteImport } from './routes/w.$workspace.p.$project.content'
@@ -336,6 +337,12 @@ const WWorkspacePProjectMediaRoute = WWorkspacePProjectMediaRouteImport.update({
   path: '/media',
   getParentRoute: () => WWorkspacePProjectRoute,
 } as any)
+const WWorkspacePProjectInstructionsRoute =
+  WWorkspacePProjectInstructionsRouteImport.update({
+    id: '/instructions',
+    path: '/instructions',
+    getParentRoute: () => WWorkspacePProjectRoute,
+  } as any)
 const WWorkspacePProjectHostingRoute =
   WWorkspacePProjectHostingRouteImport.update({
     id: '/hosting',
@@ -610,6 +617,7 @@ export interface FileRoutesByFullPath {
   '/w/$workspace/p/$project/content': typeof WWorkspacePProjectContentRoute
   '/w/$workspace/p/$project/editor': typeof WWorkspacePProjectEditorRoute
   '/w/$workspace/p/$project/hosting': typeof WWorkspacePProjectHostingRoute
+  '/w/$workspace/p/$project/instructions': typeof WWorkspacePProjectInstructionsRoute
   '/w/$workspace/p/$project/media': typeof WWorkspacePProjectMediaRoute
   '/w/$workspace/p/$project/schema': typeof WWorkspacePProjectSchemaRoute
   '/w/$workspace/p/$project/search': typeof WWorkspacePProjectSearchRoute
@@ -692,6 +700,7 @@ export interface FileRoutesByTo {
   '/w/$workspace/p/$project/content': typeof WWorkspacePProjectContentRoute
   '/w/$workspace/p/$project/editor': typeof WWorkspacePProjectEditorRoute
   '/w/$workspace/p/$project/hosting': typeof WWorkspacePProjectHostingRoute
+  '/w/$workspace/p/$project/instructions': typeof WWorkspacePProjectInstructionsRoute
   '/w/$workspace/p/$project/media': typeof WWorkspacePProjectMediaRoute
   '/w/$workspace/p/$project/schema': typeof WWorkspacePProjectSchemaRoute
   '/w/$workspace/p/$project/search': typeof WWorkspacePProjectSearchRoute
@@ -779,6 +788,7 @@ export interface FileRoutesById {
   '/w/$workspace/p/$project/content': typeof WWorkspacePProjectContentRoute
   '/w/$workspace/p/$project/editor': typeof WWorkspacePProjectEditorRoute
   '/w/$workspace/p/$project/hosting': typeof WWorkspacePProjectHostingRoute
+  '/w/$workspace/p/$project/instructions': typeof WWorkspacePProjectInstructionsRoute
   '/w/$workspace/p/$project/media': typeof WWorkspacePProjectMediaRoute
   '/w/$workspace/p/$project/schema': typeof WWorkspacePProjectSchemaRoute
   '/w/$workspace/p/$project/search': typeof WWorkspacePProjectSearchRoute
@@ -867,6 +877,7 @@ export interface FileRouteTypes {
     | '/w/$workspace/p/$project/content'
     | '/w/$workspace/p/$project/editor'
     | '/w/$workspace/p/$project/hosting'
+    | '/w/$workspace/p/$project/instructions'
     | '/w/$workspace/p/$project/media'
     | '/w/$workspace/p/$project/schema'
     | '/w/$workspace/p/$project/search'
@@ -949,6 +960,7 @@ export interface FileRouteTypes {
     | '/w/$workspace/p/$project/content'
     | '/w/$workspace/p/$project/editor'
     | '/w/$workspace/p/$project/hosting'
+    | '/w/$workspace/p/$project/instructions'
     | '/w/$workspace/p/$project/media'
     | '/w/$workspace/p/$project/schema'
     | '/w/$workspace/p/$project/search'
@@ -1035,6 +1047,7 @@ export interface FileRouteTypes {
     | '/w/$workspace/p/$project/content'
     | '/w/$workspace/p/$project/editor'
     | '/w/$workspace/p/$project/hosting'
+    | '/w/$workspace/p/$project/instructions'
     | '/w/$workspace/p/$project/media'
     | '/w/$workspace/p/$project/schema'
     | '/w/$workspace/p/$project/search'
@@ -1409,6 +1422,13 @@ declare module '@tanstack/react-router' {
       path: '/media'
       fullPath: '/w/$workspace/p/$project/media'
       preLoaderRoute: typeof WWorkspacePProjectMediaRouteImport
+      parentRoute: typeof WWorkspacePProjectRoute
+    }
+    '/w/$workspace/p/$project/instructions': {
+      id: '/w/$workspace/p/$project/instructions'
+      path: '/instructions'
+      fullPath: '/w/$workspace/p/$project/instructions'
+      preLoaderRoute: typeof WWorkspacePProjectInstructionsRouteImport
       parentRoute: typeof WWorkspacePProjectRoute
     }
     '/w/$workspace/p/$project/hosting': {
@@ -1862,6 +1882,7 @@ interface WWorkspacePProjectRouteChildren {
   WWorkspacePProjectContentRoute: typeof WWorkspacePProjectContentRoute
   WWorkspacePProjectEditorRoute: typeof WWorkspacePProjectEditorRoute
   WWorkspacePProjectHostingRoute: typeof WWorkspacePProjectHostingRoute
+  WWorkspacePProjectInstructionsRoute: typeof WWorkspacePProjectInstructionsRoute
   WWorkspacePProjectMediaRoute: typeof WWorkspacePProjectMediaRoute
   WWorkspacePProjectSchemaRoute: typeof WWorkspacePProjectSchemaRoute
   WWorkspacePProjectSearchRoute: typeof WWorkspacePProjectSearchRoute
@@ -1882,6 +1903,7 @@ const WWorkspacePProjectRouteChildren: WWorkspacePProjectRouteChildren = {
   WWorkspacePProjectContentRoute: WWorkspacePProjectContentRoute,
   WWorkspacePProjectEditorRoute: WWorkspacePProjectEditorRoute,
   WWorkspacePProjectHostingRoute: WWorkspacePProjectHostingRoute,
+  WWorkspacePProjectInstructionsRoute: WWorkspacePProjectInstructionsRoute,
   WWorkspacePProjectMediaRoute: WWorkspacePProjectMediaRoute,
   WWorkspacePProjectSchemaRoute: WWorkspacePProjectSchemaRoute,
   WWorkspacePProjectSearchRoute: WWorkspacePProjectSearchRoute,

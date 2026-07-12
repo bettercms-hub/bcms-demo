@@ -7,8 +7,8 @@
  * the same engine in sidebar form; this page is where big jobs live.
  */
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, ChevronRight, ScanSearch, Sparkles, Users } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowLeft, BookOpen, ChevronRight, ScanSearch, Sparkles, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getProjectBySlug } from "@/lib/cms/use-cms";
 import { canCompose, canEditContent, canSeeDeveloper, useEffectiveRole } from "@/lib/workspace/my-role";
@@ -16,6 +16,7 @@ import { SeoPagesDialog } from "@/components/cms/generate/SeoPagesDialog";
 import { AbmPageDialog } from "@/components/cms/generate/AbmPageDialog";
 import { AGENT_SKILLS } from "@/lib/agent/skills";
 import { useGovernance } from "@/lib/agent/governance-store";
+import { useInstructions } from "@/lib/agent/instructions-store";
 import { agentRunActions, useAgentRuns } from "@/lib/agent/runs-store";
 import { aiAction, tierAllowed } from "@/lib/billing/pricing";
 import { AgentComposer } from "@/components/agent/AgentComposer";
@@ -44,6 +45,7 @@ function AgentPage() {
   const [seed, setSeed] = useState<{ text: string; n: number } | null>(null);
   const [generator, setGenerator] = useState<"seo" | "abm" | null>(null);
   const gov = useGovernance(pr?.workspaceId ?? "");
+  const instructions = useInstructions(pr?.workspaceId ?? "");
 
   const active = runs.find((r) => r.id === activeRunId) ?? null;
 
@@ -128,6 +130,31 @@ function AgentPage() {
             onSubmit={(input) => start(input)}
           />
         </div>
+
+        {/* workspace instructions: the shared playbook agents follow */}
+        <Link
+          to="/w/$workspace/p/$project/instructions"
+          params={{ workspace, project }}
+          className="mt-6 flex items-center gap-3 rounded-xl border border-[color:var(--color-border)] bg-[color:var(--card)] px-4 py-3 transition-colors hover:bg-[color:var(--color-row-hover)]"
+        >
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:color-mix(in_oklab,var(--primary)_8%,transparent)] text-primary">
+            <BookOpen className="h-4 w-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px] font-medium text-foreground">Instructions</span>
+            <span className="block truncate text-[11.5px] text-muted-foreground">
+              {(() => {
+                const active = instructions.filter((i) => i.enabled && !i.disabledFor.includes(pr.id));
+                const s = active.filter((i) => i.kind === "skill").length;
+                const r = active.filter((i) => i.kind === "rule").length;
+                return active.length
+                  ? `Following ${s} ${s === 1 ? "skill" : "skills"} and ${r} ${r === 1 ? "rule" : "rules"} on every run`
+                  : "Teach the agent how your team works";
+              })()}
+            </span>
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+        </Link>
 
         {/* skills */}
         <div className="mt-8">

@@ -120,6 +120,8 @@ export interface AgentRun {
   /** Set when a named agent from the roster ran this task. */
   agentId?: string;
   agentName?: string;
+  /** Names of the workspace instructions (skills and rules) this run follows. */
+  instructions?: string[];
   context: ContextRef[];
   status: RunStatus;
   steps: RunStep[];
