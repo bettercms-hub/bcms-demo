@@ -42,9 +42,18 @@ function subscribe(l: () => void) {
 let seq = 0;
 const newFolderId = () => `fld_${Date.now().toString(36)}${(seq++).toString(36)}`;
 
-/** Every project starts with one example folder so the feature reads. */
+/** Deterministic id for a seeded folder, so other seeds (e.g. a collection
+ *  placed in a folder) can reference it without ordering coupling. */
+export const seedFolderId = (projectId: string, key: string) => `fld_seed_${projectId}_${key}`;
+
+/** Every project starts with two example folders so the feature reads: a
+ *  "Solutions" URL folder for marketing pages, and a "Resources" URL folder
+ *  that a collection is seeded into to demo nested collection URLs. */
 function seed(projectId: string): Folder[] {
-  return [{ id: newFolderId(), projectId, name: "Solutions", slug: "solutions", parentId: null }];
+  return [
+    { id: seedFolderId(projectId, "solutions"), projectId, name: "Solutions", slug: "solutions", parentId: null },
+    { id: seedFolderId(projectId, "resources"), projectId, name: "Resources", slug: "resources", parentId: null },
+  ];
 }
 
 function ensure(projectId: string): Folder[] {
@@ -106,6 +115,14 @@ export function folderUrlPrefix(folders: Folder[], id: string | null): string {
     cur = f.parentId;
   }
   return segs.length ? `/${segs.join("/")}` : "";
+}
+
+/** The dynamic route a collection serves at: the URL-folder prefix of its
+ *  folder + its own slug segment. The rendered page pattern appends `/:slug`.
+ *  A collection in an organizer folder (or none) keeps its short `/slug`. */
+export function collectionUrlBase(folders: Folder[], folderId: string | null | undefined, collectionSlug: string): string {
+  const prefix = folderUrlPrefix(folders, folderId ?? null);
+  return `${prefix}/${collectionSlug}`;
 }
 
 /** Human breadcrumb of folder names, e.g. "Solutions / Enterprise". */

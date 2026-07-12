@@ -513,6 +513,9 @@ export interface Collection {
   slug: string;
   schemaId: ID;
   entryIds: ID[];
+  /** Organizes the collection's dynamic page in the Pages tree and composes
+   *  its route: URL-folder prefix + slug + /:slug. null/undefined = top level. */
+  folderId?: ID | null;
 }
 
 export interface Entry {

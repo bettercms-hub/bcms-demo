@@ -547,7 +547,9 @@ export const entries: Entry[] = [
     });
     collections.push(cTags);
 
-    const cPosts: Collection = { id: `c_${suf}_posts`, projectId: pr.id, name: "Blog posts", slug: "posts", schemaId: `sch_${suf}_posts`, entryIds: [] };
+    // Seeded inside the "Resources" folder to demo a nested collection URL:
+    // /resources/posts/:slug (folder id matches folders-store's deterministic seed).
+    const cPosts: Collection = { id: `c_${suf}_posts`, projectId: pr.id, name: "Blog posts", slug: "posts", schemaId: `sch_${suf}_posts`, entryIds: [], folderId: `fld_seed_${pr.id}_resources` };
     schemas.push({
       id: cPosts.schemaId,
       ownerType: "collection",

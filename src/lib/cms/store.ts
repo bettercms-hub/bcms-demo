@@ -1266,6 +1266,28 @@ export const collectionActions = {
     recordAudit(workspaceForProject(projectId), "collection.created", "collection", input.name, colId);
     return colId;
   },
+  /** Move a collection's dynamic page into a folder (null = top level). */
+  setFolder: (projectId: string, collectionId: string, folderId: string | null) => {
+    set((s) => ({
+      ...s,
+      collections: s.collections.map((c) => (c.id === collectionId ? { ...c, folderId } : c)),
+    }));
+  },
+  /** Edit a collection's URL slug segment. */
+  setSlug: (projectId: string, collectionId: string, slug: string) => {
+    set((s) => ({
+      ...s,
+      collections: s.collections.map((c) => (c.id === collectionId ? { ...c, slug } : c)),
+    }));
+  },
+  /** Drop folder references when those folders are deleted (fall back to root). */
+  clearFolders: (projectId: string, folderIds: string[]) => {
+    const gone = new Set(folderIds);
+    set((s) => ({
+      ...s,
+      collections: s.collections.map((c) => (c.folderId && gone.has(c.folderId) ? { ...c, folderId: null } : c)),
+    }));
+  },
 };
 
 export const componentMasterActions = {

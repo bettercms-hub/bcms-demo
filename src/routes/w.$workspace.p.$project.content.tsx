@@ -12,12 +12,14 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { collections, entries, schemas } from "@/lib/cms/mock-data";
+import { entries, schemas } from "@/lib/cms/mock-data";
+import { collectionActions, useCMS } from "@/lib/cms/store";
+import type { Collection } from "@/lib/cms/types";
 import { getProjectBySlug } from "@/lib/cms/use-cms";
 import { useProjectPresence } from "@/lib/workspace/presence-store";
 import { PresenceStack } from "@/components/cms/presence/Presence";
 import { newPageId, pagesActions, usePages, type PageDoc, type PageState } from "@/lib/cms/pages-store";
-import { descendantIds, eligibleParents, folderActions, folderTrail, folderUrlPrefix, useFolders } from "@/lib/cms/folders-store";
+import { collectionUrlBase, descendantIds, eligibleParents, folderActions, folderTrail, folderUrlPrefix, useFolders } from "@/lib/cms/folders-store";
 import { NewPageDialog } from "@/components/cms/pages/NewPageDialog";
 import { FolderDialog } from "@/components/cms/pages/FolderDialog";
 import { Draggable, Droppable, mergeRefs } from "@/components/cms/pages/tree-dnd";
@@ -75,12 +77,14 @@ function ContentPage() {
   const pages = batchRun ? allPages.filter((p) => p.batchId === batchRun.id) : allPages;
   const [pageQuery, setPageQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | PageState>("all");
-  const [typeFilter, setTypeFilter] = useState<"all" | "static" | "generated">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "static" | "generated" | "collection">("all");
   const [sort, setSort] = useState<"recent" | "name" | "path">("recent");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState<PageSize>(50);
   const folders = useFolders(pr.id);
+  const allCollections = useCMS((s) => s.collections);
+  const cols = allCollections.filter((c) => c.projectId === pr.id);
   const pq = pageQuery.trim().toLowerCase();
   const hasGenerated = allPages.some((p) => p.batchId);
   const filtersActive = pq !== "" || statusFilter !== "all" || typeFilter !== "all";
@@ -111,8 +115,16 @@ function ContentPage() {
 
   type RowItem =
     | { kind: "page"; pg: PageDoc; depth: number }
+    | { kind: "collection"; col: Collection; depth: number }
     | { kind: "folder"; key: string; name: string; slug: string; count: number; depth: number; folderId?: string };
   const rowItems: RowItem[] = [];
+
+  // Collection pages join the same tree as static pages. They show unless the
+  // status filter (a page state) is set, or the type filter excludes them.
+  const showCols = !batchRun && statusFilter === "all" && (typeFilter === "all" || typeFilter === "collection");
+  const treeCols = showCols
+    ? cols.filter((c) => pq === "" || c.name.toLowerCase().includes(pq) || c.slug.toLowerCase().includes(pq))
+    : [];
 
   if (batchRun) {
     for (const pg of pagedPages) rowItems.push({ kind: "page", pg, depth: 0 });
@@ -123,10 +135,17 @@ function ContentPage() {
       if (p.folderId) pagesByFolder.set(p.folderId, [...(pagesByFolder.get(p.folderId) ?? []), p]);
       else loose.push(p);
     }
+    const colsByFolder = new Map<string, Collection[]>();
+    const rootCols: Collection[] = [];
+    for (const c of treeCols) {
+      if (c.folderId) colsByFolder.set(c.folderId, [...(colsByFolder.get(c.folderId) ?? []), c]);
+      else rootCols.push(c);
+    }
     const childFolders = (parentId: string | null) =>
       folders.filter((f) => f.parentId === parentId).sort((a, b) => a.name.localeCompare(b.name));
+    // A folder's total counts both static pages and collection pages under it.
     const totalUnder = (fid: string): number => {
-      let n = pagesByFolder.get(fid)?.length ?? 0;
+      let n = (pagesByFolder.get(fid)?.length ?? 0) + (colsByFolder.get(fid)?.length ?? 0);
       for (const c of childFolders(fid)) n += totalUnder(c.id);
       return n;
     };
@@ -139,6 +158,7 @@ function ContentPage() {
         if (!collapsed.has(f.id)) {
           walk(f.id, depth + 1);
           for (const pg of pagesByFolder.get(f.id) ?? []) rowItems.push({ kind: "page", pg, depth: depth + 1 });
+          for (const c of colsByFolder.get(f.id) ?? []) rowItems.push({ kind: "collection", col: c, depth: depth + 1 });
         }
       }
     };
@@ -151,6 +171,7 @@ function ContentPage() {
       else rootPages.push(p);
     }
     for (const pg of rootPages) rowItems.push({ kind: "page", pg, depth: 0 });
+    for (const c of rootCols) rowItems.push({ kind: "collection", col: c, depth: 0 });
     for (const [name, list] of [...virtual.entries()].sort(([a], [b]) => a.localeCompare(b))) {
       rowItems.push({ kind: "folder", key: name, name, slug: name.replace(/^\//, ""), count: list.length, depth: 0 });
       if (!collapsed.has(name)) for (const pg of list) rowItems.push({ kind: "page", pg, depth: 1 });
@@ -164,7 +185,6 @@ function ContentPage() {
       else next.add(key);
       return next;
     });
-  const cols = collections.filter((c) => c.projectId === pr.id);
   const { effective } = useEffectiveRole(workspace);
   const canBuild = canCompose(effective);
   const showPublish = canPublish(effective);
@@ -184,6 +204,7 @@ function ContentPage() {
   function deleteFolder(folderId: string) {
     const removed = folderActions.remove(pr.id, folderId);
     pagesActions.clearFolders(pr.id, removed);
+    collectionActions.clearFolders(pr.id, removed);
     toast.success("Folder removed. Pages inside moved to the top level.");
   }
 
@@ -392,14 +413,15 @@ function ContentPage() {
                 { id: "scheduled", label: "Scheduled", count: pages.filter((p) => p.state === "scheduled").length },
               ]}
             />
-            {hasGenerated && (
-              <SegmentedFilter<"all" | "static" | "generated">
+            {(hasGenerated || cols.length > 0) && (
+              <SegmentedFilter<"all" | "static" | "generated" | "collection">
                 value={typeFilter}
                 onChange={setTypeFilter}
                 options={[
                   { id: "all", label: "All types" },
                   { id: "static", label: "Static" },
-                  { id: "generated", label: "Generated" },
+                  ...(hasGenerated ? [{ id: "generated" as const, label: "Generated" }] : []),
+                  ...(cols.length > 0 ? [{ id: "collection" as const, label: "Collections" }] : []),
                 ]}
               />
             )}
@@ -527,6 +549,90 @@ function ContentPage() {
                       </Draggable>
                     )}
                   </Droppable>
+                );
+              }
+              if (item.kind === "collection") {
+                const c = item.col;
+                const count = entries.filter((e) => e.collectionId === c.id).length;
+                const base = collectionUrlBase(folders, c.folderId ?? null, c.slug);
+                return (
+                  <li
+                    key={c.id}
+                    className="group relative grid grid-cols-[1fr_92px_64px] items-center gap-3 py-2.5 pr-4 transition-colors hover:bg-[var(--s4)] sm:grid-cols-[1fr_150px_130px_76px]"
+                    style={{ paddingLeft: 16 + item.depth * 22 }}
+                  >
+                    <Link
+                      to="/w/$workspace/p/$project/editor"
+                      params={{ workspace, project }}
+                      search={{ scope: "collections" as const, node: `collection:${c.id}`, section: undefined }}
+                      className="flex min-w-0 items-center gap-2.5"
+                    >
+                      <Database className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <div className="min-w-0">
+                        <div className="truncate text-[13px] font-medium text-foreground">{c.name}</div>
+                        <div className="truncate font-mono text-[11px] text-muted-foreground">{base}/:slug</div>
+                      </div>
+                    </Link>
+                    <span className="hidden items-center gap-1.5 text-[12px] sm:inline-flex">
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--primary)]/70" />
+                      <span className="text-muted-foreground">Dynamic</span>
+                    </span>
+                    <span className="hidden text-[11.5px] tabular-nums text-muted-foreground sm:block">{count} {count === 1 ? "entry" : "entries"}</span>
+                    <span className="flex items-center justify-end gap-0.5">
+                      {canBuild && (
+                        <>
+                          <Link
+                            to="/w/$workspace/p/$project/schema"
+                            params={{ workspace, project }}
+                            aria-label={`Settings for ${c.name}`}
+                            title="Collection settings"
+                            className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100 max-md:opacity-100"
+                          >
+                            <Settings2 className="h-4 w-4" />
+                          </Link>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button type="button" aria-label={`Actions for ${c.name}`} className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100 max-md:opacity-100 data-[state=open]:opacity-100">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-[190px]">
+                              <DropdownMenuItem className="text-[13px]" onSelect={() => navigate({ to: "/w/$workspace/p/$project/editor", params: { workspace, project }, search: { scope: "collections", node: `collection:${c.id}`, section: undefined } })}>
+                                <ArrowUpRight className="mr-2 h-3.5 w-3.5" /> Open entries
+                              </DropdownMenuItem>
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger className="text-[13px]">
+                                  <FolderInput className="mr-2 h-3.5 w-3.5" /> Move to folder
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent className="max-h-[280px] w-[220px] overflow-y-auto">
+                                  <DropdownMenuItem className="text-[13px]" disabled={!c.folderId} onSelect={() => collectionActions.setFolder(pr.id, c.id, null)}>
+                                    Top level
+                                    {!c.folderId && <span className="ml-auto text-primary">•</span>}
+                                  </DropdownMenuItem>
+                                  {folders.length > 0 && <DropdownMenuSeparator />}
+                                  {folders.map((f) => (
+                                    <DropdownMenuItem
+                                      key={f.id}
+                                      className="text-[13px]"
+                                      disabled={c.folderId === f.id}
+                                      onSelect={() => {
+                                        collectionActions.setFolder(pr.id, c.id, f.id);
+                                        const prefix = folderUrlPrefix(folders, f.id);
+                                        toast.success(prefix ? `Moved to ${folderTrail(folders, f.id)} · ${prefix}/${c.slug}/:slug` : `Moved to ${folderTrail(folders, f.id)}`);
+                                      }}
+                                    >
+                                      <span className="truncate">{folderTrail(folders, f.id)}</span>
+                                      {c.folderId === f.id && <span className="ml-auto text-primary">•</span>}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuSubContent>
+                              </DropdownMenuSub>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </>
+                      )}
+                    </span>
+                  </li>
                 );
               }
               const pg = item.pg;
@@ -699,61 +805,6 @@ function ContentPage() {
           )}
         </DragOverlay>
         </DndContext>
-        {!batchRun && cols.length > 0 && (() => {
-          const q = pageQuery.trim().toLowerCase();
-          const shown = cols.filter((c) => q === "" || c.name.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q));
-          if (shown.length === 0) return null;
-          return (
-            <div className="mt-4 overflow-hidden rounded-xl border border-[color:var(--border-hairline)] bg-card">
-              <div className="flex items-center gap-2 border-b border-[color:var(--border-hairline)] bg-[color:var(--s2)] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                <Database className="h-3.5 w-3.5" /> Collection pages
-                <span className="rounded bg-card px-1.5 py-px text-[10px] font-medium normal-case tracking-normal text-muted-foreground/80">One page per entry, rendered from a collection</span>
-              </div>
-              <ul className="divide-y divide-[color:var(--border-hairline)]">
-                {shown.map((c) => {
-                  const count = entries.filter((e) => e.collectionId === c.id).length;
-                  return (
-                    <li key={c.id} className="group grid grid-cols-[1fr_84px_64px] items-center gap-3 py-2.5 pl-4 pr-4 transition-colors hover:bg-[var(--s4)] sm:grid-cols-[1fr_150px_130px_76px]">
-                      <Link
-                        to="/w/$workspace/p/$project/editor"
-                        params={{ workspace, project }}
-                        search={{ scope: "collections" as const, node: `collection:${c.id}`, section: undefined }}
-                        className="flex min-w-0 items-center gap-2.5"
-                      >
-                        <Database className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        <div className="min-w-0">
-                          <div className="truncate text-[13px] font-medium text-foreground">{c.name}</div>
-                          <div className="truncate text-[11px] text-muted-foreground">
-                            <span className="font-mono">/{c.slug}/:slug</span>
-                          </div>
-                        </div>
-                      </Link>
-                      <span className="hidden items-center gap-1.5 text-[12px] sm:inline-flex">
-                        <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--primary)]/70" />
-                        <span className="text-muted-foreground">Dynamic</span>
-                      </span>
-                      <span className="text-[11.5px] tabular-nums text-muted-foreground">{count} {count === 1 ? "entry" : "entries"}</span>
-                      <span className="flex items-center justify-end gap-0.5">
-                        {canBuild && (
-                          <Link
-                            to="/w/$workspace/p/$project/schema"
-                            params={{ workspace, project }}
-                            aria-label={`Settings for ${c.name}`}
-                            title="Collection settings"
-                            className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-[color:var(--color-row-hover)] hover:text-foreground group-hover:opacity-100 max-md:opacity-100"
-                          >
-                            <Settings2 className="h-4 w-4" />
-                          </Link>
-                        )}
-                        <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 max-md:opacity-100" />
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          );
-        })()}
         </>
         )}
         </>
