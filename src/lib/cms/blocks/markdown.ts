@@ -99,6 +99,9 @@ export function blocksToMarkdown(doc: DocValue): string {
       case "callout":
         out.push(`> [!${TONE_TAG[b.tone ?? "info"]}] ${inlineToMd(b.text ?? "")}`);
         break;
+      case "html":
+        out.push("```html\n" + (b.text ?? "") + "\n```");
+        break;
       case "code":
         out.push("```" + (b.language ?? "") + "\n" + (b.text ?? "") + "\n```");
         break;
@@ -249,7 +252,9 @@ export function markdownToBlocks(md: string): DocBlock[] {
     // Bare URL on its own line → embed (YouTube, Figma, Loom…) or bookmark.
     if (URL_LINE.test(trimmed)) {
       const info: EmbedInfo = detectEmbed(trimmed);
-      if (info.provider !== "generic") {
+      if (info.provider === "video") {
+        push({ type: "video", url: trimmed, provider: "video", title: "Video" });
+      } else if (info.provider !== "generic") {
         push({ type: "embed", url: trimmed, provider: info.provider, title: info.label });
       } else {
         const meta = fakeBookmarkMeta(trimmed);

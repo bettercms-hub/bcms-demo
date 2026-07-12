@@ -27,6 +27,7 @@ export type DocBlockType =
   | "video"
   | "button"
   | "table"
+  | "html"
   | "toggle"
   | "component";
 
@@ -242,6 +243,7 @@ export function docToPlainText(doc: DocValue): string {
 }
 
 export const BLOCK_PLACEHOLDER: Record<DocBlockType, string> = {
+  html: "",
   paragraph: "Type '/' for commands",
   h1: "Heading 1",
   h2: "Heading 2",

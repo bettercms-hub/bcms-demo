@@ -564,7 +564,7 @@ export interface ProjectWorkflow {
 
 /** Why someone was pulled into an entry. Review = read and flag issues,
  * approval = sign off so it can ship, feedback = opinions, no gate. */
-export type WorkflowRequestKind = "review" | "approval" | "feedback";
+export type WorkflowRequestKind = "review" | "approval" | "feedback" | "task";
 
 /** A typed ask on an entry: who was asked, for what, by whom, and why. */
 export interface WorkflowRequest {

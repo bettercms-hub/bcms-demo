@@ -42,6 +42,11 @@ export function detectEmbed(raw: string): EmbedInfo {
     const u = new URL(url);
     const host = u.hostname.replace(/^www\./, "");
 
+    // Direct video files (Notion exports, R2/S3 links, any CDN mp4) → player.
+    if (/\.(mp4|webm|ogg|mov|m4v)$/i.test(u.pathname)) {
+      return { provider: "video", label: "Video", embedUrl: url, aspect: "16/9" };
+    }
+
     if (host === "youtube.com" || host === "m.youtube.com") {
       const id = u.searchParams.get("v");
       if (id) return { provider: "youtube", label: "YouTube", embedUrl: `https://www.youtube.com/embed/${id}`, aspect: "16/9" };
@@ -104,7 +109,7 @@ export type ComponentGroup = "Marketing" | "Commerce" | "Social" | "Content";
 export type ComponentField = {
   key: string;
   label: string;
-  kind: "text" | "multiline" | "list";
+  kind: "text" | "multiline" | "list" | "link" | "image";
   /** title/desc live on the block itself; everything else in componentProps. */
   slot?: "title" | "desc";
 };
@@ -136,7 +141,7 @@ export const COMPONENT_CATALOG: ComponentDef[] = [
       { key: "title", label: "Headline", kind: "text", slot: "title" },
       { key: "desc", label: "Subtext", kind: "text", slot: "desc" },
       { key: "button", label: "Button label", kind: "text" },
-      { key: "href", label: "Button link", kind: "text" },
+      { key: "href", label: "Button link", kind: "link" },
     ],
   },
   {
@@ -187,6 +192,7 @@ export const COMPONENT_CATALOG: ComponentDef[] = [
     icon: "UserRound", accent: "from-pink-500 to-rose-500", group: "Social",
     defaults: () => ({ title: "Arnab Dhar", desc: "Writes about content operations and headless CMS.", props: { role: "Staff Writer" } }),
     fields: [
+      { key: "avatar", label: "Photo", kind: "image" },
       { key: "title", label: "Name", kind: "text", slot: "title" },
       { key: "desc", label: "Bio", kind: "multiline", slot: "desc" },
       { key: "role", label: "Role", kind: "text" },

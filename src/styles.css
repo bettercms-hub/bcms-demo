@@ -592,3 +592,11 @@ aside ::-webkit-scrollbar-thumb {
 .bcms-grab-field[data-selected="true"] {
   background: color-mix(in oklab, var(--primary) 14%, transparent);
 }
+
+/* Inline links inside the block editor: make pasted/committed anchors LOOK
+   like links (they were rendering unstyled, indistinguishable from text). */
+.bcms-doc-editor [contenteditable] a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

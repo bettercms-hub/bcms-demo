@@ -14,7 +14,7 @@
  */
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, Eye, GitCompareArrows, MessageSquare, MessageSquareWarning, Rocket, ThumbsUp, UserPlus, X } from "lucide-react";
+import { Check, ChevronDown, Eye, GitCompareArrows, ListTodo, MessageSquare, MessageSquareWarning, Rocket, ThumbsUp, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { entryActions, getWorkflow, stageOfEntry, useCMS, workflowActions } from "@/lib/cms/store";
@@ -263,6 +263,13 @@ const REQUEST_KINDS: {
     icon: MessageSquare,
     suggests: () => false,
   },
+  {
+    id: "task",
+    label: "Task",
+    hint: "A to-do with a clear owner",
+    icon: ListTodo,
+    suggests: () => false,
+  },
 ];
 
 function seatLabel(m: Member): string {
@@ -271,7 +278,7 @@ function seatLabel(m: Member): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-const KIND_ICON: Record<WorkflowRequestKind, typeof Eye> = { review: Eye, approval: ThumbsUp, feedback: MessageSquare };
+const KIND_ICON: Record<WorkflowRequestKind, typeof Eye> = { review: Eye, approval: ThumbsUp, feedback: MessageSquare, task: ListTodo };
 
 /**
  * The "why + who" of pulling teammates into an entry. One popover: pick what
@@ -341,7 +348,7 @@ function RequestButton({ entry, teammates }: { entry: Entry; teammates: Member[]
       <PopoverTrigger asChild>
         <button
           type="button"
-          title={openRequests.length ? `${openRequests.length} open ${openRequests.length === 1 ? "request" : "requests"}` : "Request review, approval or feedback"}
+          title={openRequests.length ? `${openRequests.length} open ${openRequests.length === 1 ? "request" : "requests"}` : "Request review or approval, or assign a task"}
           className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 text-[12px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
         >
           <UserPlus className="h-3.5 w-3.5 text-muted-foreground" />
@@ -364,7 +371,7 @@ function RequestButton({ entry, teammates }: { entry: Entry; teammates: Member[]
                     <span className="block truncate text-[12px] text-foreground">{m.name}</span>
                     <span className="flex items-center gap-1 text-[10.5px] text-muted-foreground">
                       <Icon className="h-2.5 w-2.5" />
-                      {r.kind === "approval" ? "Approval" : r.kind === "review" ? "Review" : "Feedback"} · {relativeTime(r.requestedAt)}
+                      {REQUEST_KINDS.find((k) => k.id === r.kind)?.label ?? "Request"} · {relativeTime(r.requestedAt)}
                       {r.due ? ` · due ${new Date(r.due).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}
                     </span>
                   </span>
@@ -392,7 +399,7 @@ function RequestButton({ entry, teammates }: { entry: Entry; teammates: Member[]
 
         {/* What are you asking for? */}
         <div className="px-2 pt-2">
-          <div className="grid grid-cols-3 gap-1">
+          <div className="grid grid-cols-4 gap-1">
             {REQUEST_KINDS.map((k) => (
               <button
                 key={k.id}
@@ -416,6 +423,28 @@ function RequestButton({ entry, teammates }: { entry: Entry; teammates: Member[]
 
         {/* Who */}
         <div className="max-h-[190px] overflow-y-auto px-2 pb-1">
+          {(() => {
+            const me = teammates.find((m) => m.role === "owner");
+            if (!me) return null;
+            const on = picked.has(me.id);
+            return (
+              <button
+                type="button"
+                onClick={() => setPicked(new Set([me.id]))}
+                className={cn(
+                  "mb-1 flex w-full items-center gap-2 rounded-md border px-1.5 py-1.5 text-left text-[12px] font-medium transition-colors",
+                  on
+                    ? "border-[color:color-mix(in_oklab,var(--primary)_45%,transparent)] bg-[color:color-mix(in_oklab,var(--primary)_8%,transparent)] text-foreground"
+                    : "border-[color:var(--color-border)] text-muted-foreground hover:bg-[color:var(--color-row-hover)] hover:text-foreground",
+                )}
+              >
+                <MemberAvatar member={me} size={20} />
+                Assign to me
+                <span className="ml-auto text-[10.5px] text-muted-foreground">{me.name.split(" ")[0]}</span>
+                {on && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
+              </button>
+            );
+          })()}
           {suggested.length > 0 && (
             <>
               <div className="px-1 pb-0.5 pt-1 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">Suggested</div>

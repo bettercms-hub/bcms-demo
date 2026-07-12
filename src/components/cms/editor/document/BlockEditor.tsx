@@ -18,6 +18,7 @@ import {
   useState,
 } from "react";
 import { cn } from "@/lib/utils";
+import { getPages } from "@/lib/cms/pages-store";
 import {
   Award,
   Bookmark,
@@ -32,6 +33,7 @@ import {
   Crop as CropIcon,
   Figma,
   FileCode,
+  FileText,
   Globe,
   GripVertical,
   Heading1,
@@ -198,13 +200,14 @@ const LIST_ITEMS: SlashItem[] = [
 
 const MEDIA_ITEMS: SlashItem[] = [
   { id: "image", label: "Image", description: "Insert an image by URL", icon: ImageIcon, category: "Media", action: { kind: "widget", type: "image" } },
-  { id: "video", label: "Video", description: "Embed a video by URL", icon: Video, category: "Media", keywords: ["mp4", "player"], action: { kind: "widget", type: "video" } },
+  { id: "video", label: "Video", description: "Upload a video or embed by URL", icon: Video, category: "Media", keywords: ["mp4", "player", "upload"], action: { kind: "widget", type: "video" } },
 ];
 
 const EMBED_ITEMS: SlashItem[] = [
   { id: "embed", label: "Embed", description: "YouTube, Loom, Figma, CodePen, and more", icon: Youtube, category: "Embeds", keywords: ["youtube", "loom", "figma", "iframe", "codepen", "vimeo"], action: { kind: "widget", type: "embed" } },
   { id: "bookmark", label: "Bookmark", description: "A rich link preview card", icon: Bookmark, category: "Embeds", keywords: ["link", "url", "preview"], action: { kind: "widget", type: "bookmark" } },
   { id: "figma", label: "Figma", description: "Embed a Figma file or prototype", icon: Figma, category: "Embeds", keywords: ["design", "prototype"], action: { kind: "widget", type: "embed" } },
+  { id: "html", label: "Code embed", description: "HTML, CSS and JS with a live preview", icon: FileCode, category: "Embeds", keywords: ["html", "css", "js", "script", "custom", "iframe"], action: { kind: "widget", type: "html" } },
 ];
 
 const ADVANCED_ITEMS: SlashItem[] = [
@@ -254,6 +257,8 @@ function widgetDefaults(type: DocBlockType): Partial<DocBlock> {
       return { type, label: "Get started", href: "#", variant: "primary" };
     case "table":
       return { type, rows: [["Column 1", "Column 2"], ["", ""]], hasHeader: true };
+    case "html":
+      return { type, text: "" };
     default:
       return { type };
   }
@@ -1308,6 +1313,14 @@ function BlockRow({
   const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
     if (block.type === "code") return; // code blocks take paste verbatim
     const text = e.clipboardData.getData("text/plain");
+    const loneUrl = (text ?? "").trim();
+    if (/^https?:\/\/\S+$/.test(loneUrl)) {
+      // A bare URL pastes as a player/embed/bookmark, not as text.
+      e.preventDefault();
+      onCommitText();
+      onPasteMarkdown(loneUrl);
+      return;
+    }
     if (text && looksLikeMarkdown(text)) {
       e.preventDefault();
       onCommitText();
@@ -1472,6 +1485,7 @@ function BlockBody({
   if (block.type === "button") return <ButtonBlock block={block} onPatch={onPatch} />;
   if (block.type === "table") return <TableBlock block={block} onPatch={onPatch} />;
   if (block.type === "component") return <ComponentBlock block={block} onPatch={onPatch} onDuplicate={onDuplicate} />;
+  if (block.type === "html") return <HtmlEmbedBlock block={block} onPatch={onPatch} />;
   if (block.type === "divider") {
     return (
       <div className="w-full py-3">
@@ -1984,23 +1998,164 @@ function WidgetChrome({ label, onChange, children }: { label: string; onChange: 
   );
 }
 
+/** Custom code embed — paste HTML, CSS and JS; preview runs in a sandboxed
+ *  iframe right in the editor (and on the published page). */
+function HtmlEmbedBlock({ block, onPatch }: WidgetProps) {
+  const [tab, setTab] = useState<"code" | "preview">(block.text ? "preview" : "code");
+  const [draft, setDraft] = useState(block.text ?? "");
+  useEffect(() => { setDraft(block.text ?? ""); }, [block.text]);
+  const commit = () => { if (draft !== (block.text ?? "")) onPatch({ text: draft }); };
+  return (
+    <div className="my-1.5 w-full overflow-hidden rounded-xl border border-border bg-card" contentEditable={false}>
+      <div className="flex h-8 items-center gap-1.5 border-b border-border bg-muted/40 px-2.5 text-[11px] font-medium text-muted-foreground">
+        <FileCode className="h-3.5 w-3.5" /> Code embed
+        <span className="ml-auto flex items-center gap-0.5">
+          {(["preview", "code"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => { commit(); setTab(t); }}
+              aria-pressed={tab === t}
+              className={cn("h-6 rounded px-2 text-[11px] font-medium capitalize transition-colors", tab === t ? "bg-background text-foreground shadow-sm" : "hover:text-foreground")}
+            >
+              {t}
+            </button>
+          ))}
+        </span>
+      </div>
+      {tab === "code" ? (
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          spellCheck={false}
+          placeholder={"<style>.card { padding: 16px; }</style>\n<div class=\"card\">Any HTML, CSS and JS…</div>\n<script>console.log(\"runs in a sandbox\")</script>"}
+          className="block h-44 w-full resize-y bg-[color:var(--s2)] p-3 font-mono text-[12px] leading-relaxed text-foreground outline-none"
+        />
+      ) : (
+        <iframe
+          title="Code embed preview"
+          sandbox="allow-scripts"
+          srcDoc={block.text || "<p style=\"font:13px system-ui;color:#888;padding:14px\">Nothing to preview yet. Switch to Code and paste HTML, CSS or JS.</p>"}
+          className="block h-64 w-full border-0 bg-white"
+        />
+      )}
+    </div>
+  );
+}
+
+const miniBtn =
+  "inline-flex h-7 items-center rounded-md border border-border px-2 text-[11.5px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--row-hover)] hover:text-foreground";
+
+/** Link prop: type a URL, or pick one of the project's existing pages. */
+function LinkPropEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { projectId } = useContext(BlockEditorContext);
+  const pages = projectId ? getPages(projectId) : [];
+  return (
+    <div className="flex items-center gap-1">
+      <input
+        value={value}
+        placeholder="https://… or /path"
+        onChange={(e) => onChange(e.target.value)}
+        className="h-7 w-full rounded-md border border-border bg-background px-2 text-[12px] text-foreground outline-none transition-colors focus:border-primary"
+      />
+      {pages.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" title="Link to an existing page" className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border text-muted-foreground transition-colors hover:text-foreground">
+              <FileText className="h-3.5 w-3.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="max-h-64 w-60 overflow-y-auto">
+            {pages.map((p) => (
+              <DropdownMenuItem key={p.id} className="justify-between gap-3 text-[12.5px]" onSelect={() => onChange(p.path)}>
+                <span className="truncate">{p.title}</span>
+                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{p.path}</span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
+  );
+}
+
+/** Image prop: media library, upload from disk, or paste a URL. */
+function ImagePropEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { projectId } = useContext(BlockEditorContext);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [urlMode, setUrlMode] = useState(false);
+  return (
+    <div className="flex items-start gap-2">
+      <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-md border border-border bg-muted">
+        {value ? <img src={value} alt="" className="h-full w-full object-cover" /> : <ImageIcon className="h-4 w-4 text-muted-foreground" />}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+        {projectId && (
+          <button type="button" onClick={() => setPickerOpen(true)} className={miniBtn}>Library</button>
+        )}
+        <label className={cn(miniBtn, "cursor-pointer")}>
+          Upload
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) onChange(URL.createObjectURL(f)); }}
+          />
+        </label>
+        <button type="button" onClick={() => setUrlMode((v) => !v)} className={miniBtn}>URL</button>
+        {value && <button type="button" onClick={() => onChange("")} className={miniBtn}>Remove</button>}
+        {urlMode && (
+          <input
+            autoFocus
+            defaultValue={value}
+            placeholder="https://…"
+            onKeyDown={(e) => { if (e.key === "Enter") { onChange((e.target as HTMLInputElement).value.trim()); setUrlMode(false); } }}
+            onBlur={(e) => { onChange(e.target.value.trim()); setUrlMode(false); }}
+            className="h-7 w-full rounded-md border border-border bg-background px-2 text-[12px] text-foreground outline-none transition-colors focus:border-primary"
+          />
+        )}
+      </div>
+      {projectId && (
+        <MediaPickerDialog open={pickerOpen} onOpenChange={setPickerOpen} projectId={projectId} onSelect={(url) => onChange(url)} />
+      )}
+    </div>
+  );
+}
+
 function EmbedBlock({ block, onPatch }: WidgetProps) {
   const isVideo = block.type === "video";
   if (!block.url) {
     return (
-      <UrlInput
-        icon={isVideo ? Video : Youtube}
-        label={isVideo ? "Video" : "Embed"}
-        placeholder={isVideo ? "Paste a video URL (mp4, YouTube, Loom…)" : "Paste a YouTube, Loom, Figma, or CodePen link"}
-        onSubmit={(url) => {
-          const info = detectEmbed(url);
-          onPatch({ url, provider: info.provider, title: info.label });
-        }}
-      />
+      <div className="w-full">
+        <UrlInput
+          icon={isVideo ? Video : Youtube}
+          label={isVideo ? "Video" : "Embed"}
+          placeholder={isVideo ? "Paste a video URL (mp4, YouTube, Loom…)" : "Paste a YouTube, Loom, Figma, or CodePen link"}
+          onSubmit={(url) => {
+            const info = detectEmbed(url);
+            onPatch({ url, provider: info.provider, title: info.label });
+          }}
+        />
+        {isVideo && (
+          <label className="mt-1.5 inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 text-[11.5px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--row-hover)] hover:text-foreground">
+            <Upload className="h-3 w-3" /> Upload a video file
+            <input
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) onPatch({ url: URL.createObjectURL(f), provider: "video", title: f.name });
+              }}
+            />
+          </label>
+        )}
+      </div>
     );
   }
   const info = detectEmbed(block.url);
-  const fileVideo = isVideo && /\.(mp4|webm|ogg)(\?|$)/i.test(block.url);
+  const fileVideo = /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(block.url.split("?")[0] + "?");
   const aspect = info.aspect === "auto" ? "16/9" : info.aspect;
   return (
     <WidgetChrome label="Change" onChange={() => onPatch({ url: "", provider: undefined })}>
@@ -2297,7 +2452,7 @@ function ComponentBlock({ block, onPatch, onDuplicate }: WidgetProps) {
 
       {/* The preview IS the editor: click any text and type. */}
       <div className="p-4">
-        <ComponentPreview keyName={block.component} get={get} set={set} />
+        <ComponentPreview keyName={block.component} get={get} set={set} onOpenForm={() => setFormOpen(true)} />
       </div>
 
       {/* Full props form — the complete editable surface, with per-prop reset. */}
@@ -2341,7 +2496,7 @@ function PropField({
   const inputCls =
     "w-full rounded-md border border-border bg-background px-2 text-[12px] text-foreground outline-none transition-colors focus:border-primary";
   return (
-    <div className={field.kind !== "text" ? "sm:col-span-2" : undefined}>
+    <div className={field.kind === "multiline" || field.kind === "list" || field.kind === "image" ? "sm:col-span-2" : undefined}>
       <div className="mb-1 flex h-4 items-center gap-1.5">
         <label className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground">{field.label}</label>
         {overridden && (
@@ -2358,7 +2513,11 @@ function PropField({
           </>
         )}
       </div>
-      {field.kind === "list" ? (
+      {field.kind === "link" ? (
+        <LinkPropEditor value={value} onChange={onChange} />
+      ) : field.kind === "image" ? (
+        <ImagePropEditor value={value} onChange={onChange} />
+      ) : field.kind === "list" ? (
         <ListPropEditor value={value} onChange={onChange} />
       ) : field.kind === "multiline" ? (
         <textarea value={value} rows={2} onChange={(e) => onChange(e.target.value)} className={cn(inputCls, "resize-none py-1.5")} />
@@ -2405,7 +2564,7 @@ function ListPropEditor({ value, onChange }: { value: string; onChange: (v: stri
 
 /** The live preview of an instance — every visible text is click-to-edit and
  *  commits as an override on this instance. */
-function ComponentPreview({ keyName, get, set }: { keyName?: string; get: (key: string) => string; set: (key: string) => (v: string) => void }) {
+function ComponentPreview({ keyName, get, set, onOpenForm }: { keyName?: string; get: (key: string) => string; set: (key: string) => (v: string) => void; onOpenForm?: () => void }) {
   const title = get("title");
   const desc = get("desc");
   switch (keyName) {
@@ -2477,7 +2636,15 @@ function ComponentPreview({ keyName, get, set }: { keyName?: string; get: (key: 
     case "profile":
       return (
         <div className="flex items-center gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-pink-500 to-rose-500 text-[15px] font-semibold text-white">{(title || "A").charAt(0)}</span>
+          <button
+            type="button"
+            title="Change photo"
+            onClick={onOpenForm}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-pink-500 to-rose-500 text-[15px] font-semibold text-white"
+          >
+            {get("avatar") ? <img src={get("avatar")} alt="" className="h-full w-full object-cover" /> : (title || "A").charAt(0)}
+          </button>
           <div className="min-w-0">
             <div className="text-[13.5px] font-semibold text-foreground"><InlineProp value={title} onCommit={set("title")} className="focus:ring-primary/40" /> <span className="ml-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"><InlineProp value={get("role")} onCommit={set("role")} className="focus:ring-primary/40" /></span></div>
             <div className="text-[12px] text-muted-foreground"><InlineProp value={desc} onCommit={set("desc")} multiline className="focus:ring-primary/40" /></div>

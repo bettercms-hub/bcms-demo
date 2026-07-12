@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Bold, Copy, Heading1, Heading2, Heading3, Italic, Link2, MessageSquarePlus, Wand2 } from "lucide-react";
+import { Bold, Copy, Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, Italic, Link2, MessageSquarePlus, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { commentsUi } from "@/lib/cms/comments-store";
 import type { AnchorKind, AnchorRef, CommentSurface } from "@/lib/comments/types";
@@ -129,7 +129,7 @@ export function SelectionToolbar({ surface, pageId, resolveAnchor }: Props) {
     window.dispatchEvent(new CustomEvent("bcms:doc-format", { detail: { blockId: editable.blockId } }));
   }
 
-  function turnInto(type: "h1" | "h2" | "h3") {
+  function turnInto(type: "h1" | "h2" | "h3" | "h4" | "h5" | "h6") {
     if (!editable) return;
     const next = editable.blockType === type ? "paragraph" : type;
     window.dispatchEvent(new CustomEvent("bcms:doc-turn", { detail: { blockId: editable.blockId, type: next } }));
@@ -162,6 +162,15 @@ export function SelectionToolbar({ surface, pageId, resolveAnchor }: Props) {
           </IconButton>
           <IconButton title="Heading 3" active={editable.blockType === "h3"} onClick={() => turnInto("h3")}>
             <Heading3 className="h-3.5 w-3.5" />
+          </IconButton>
+          <IconButton title="Heading 4" active={editable.blockType === "h4"} onClick={() => turnInto("h4")}>
+            <Heading4 className="h-3.5 w-3.5" />
+          </IconButton>
+          <IconButton title="Heading 5" active={editable.blockType === "h5"} onClick={() => turnInto("h5")}>
+            <Heading5 className="h-3.5 w-3.5" />
+          </IconButton>
+          <IconButton title="Heading 6" active={editable.blockType === "h6"} onClick={() => turnInto("h6")}>
+            <Heading6 className="h-3.5 w-3.5" />
           </IconButton>
           <span className="mx-0.5 h-3.5 w-px bg-border/70" />
         </>
@@ -237,7 +246,7 @@ function ToolButton({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-6 items-center gap-1 rounded px-1.5 font-medium text-foreground/85 hover:bg-[color:var(--color-row-hover)]"
+      className="inline-flex h-6 items-center gap-1 whitespace-nowrap rounded px-1.5 font-medium text-foreground/85 hover:bg-[color:var(--color-row-hover)]"
     >
       {icon}
       {children}
