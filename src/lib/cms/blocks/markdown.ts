@@ -145,6 +145,53 @@ export function blocksToMarkdown(doc: DocValue): string {
 
 const URL_LINE = /^https?:\/\/\S+$/;
 
+/** Pasted HTML (Notion, docs, web) → Markdown, so links + formatting survive
+ *  the trip into blocks. Block-level tags become lines; inline uses inlineToMd. */
+export function htmlToMarkdown(html: string): string {
+  if (typeof document === "undefined") return html.replace(/<[^>]+>/g, "");
+  const tpl = document.createElement("template");
+  tpl.innerHTML = html;
+  const lines: string[] = [];
+  const inline = (el: Element) => inlineToMd(el.innerHTML).trim();
+  const walk = (node: Node) => {
+    node.childNodes.forEach((child) => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        const t = (child.textContent ?? "").replace(/\s+/g, " ").trim();
+        if (t) lines.push(t);
+        return;
+      }
+      if (child.nodeType !== 1) return;
+      const el = child as HTMLElement;
+      switch (el.tagName.toLowerCase()) {
+        case "h1": lines.push("# " + inline(el)); break;
+        case "h2": lines.push("## " + inline(el)); break;
+        case "h3": lines.push("### " + inline(el)); break;
+        case "h4": lines.push("#### " + inline(el)); break;
+        case "h5": lines.push("##### " + inline(el)); break;
+        case "h6": lines.push("###### " + inline(el)); break;
+        case "blockquote": lines.push("> " + (inline(el) || (el.textContent ?? "").trim())); break;
+        case "pre": lines.push("```\n" + (el.textContent ?? "") + "\n```"); break;
+        case "hr": lines.push("---"); break;
+        case "ul":
+          el.querySelectorAll(":scope > li").forEach((li) => lines.push("- " + inlineToMd((li as HTMLElement).innerHTML).trim()));
+          break;
+        case "ol":
+          el.querySelectorAll(":scope > li").forEach((li, i) => lines.push(`${i + 1}. ` + inlineToMd((li as HTMLElement).innerHTML).trim()));
+          break;
+        case "li": lines.push("- " + inline(el)); break;
+        case "img": lines.push(`![${el.getAttribute("alt") ?? ""}](${el.getAttribute("src") ?? ""})`); break;
+        case "figure": case "div": case "section": case "article": case "main": case "body":
+          walk(el); break;
+        case "p": { const md = inline(el); if (md) lines.push(md); break; }
+        case "br": break;
+        default: { const md = inlineToMd(el.outerHTML).trim(); if (md) lines.push(md); }
+      }
+    });
+  };
+  walk(tpl.content);
+  return lines.filter((l) => l !== "").join("\n\n");
+}
+
 export function markdownToBlocks(md: string): DocBlock[] {
   const blocks: DocBlock[] = [];
   const push = (b: Omit<DocBlock, "id">) => blocks.push({ id: blockId(), ...b });

@@ -94,7 +94,7 @@ import {
   type DocBlockType,
   type DocValue,
 } from "@/lib/cms/blocks/doc";
-import { blocksToMarkdown, looksLikeMarkdown, markdownToBlocks } from "@/lib/cms/blocks/markdown";
+import { blocksToMarkdown, htmlToMarkdown, looksLikeMarkdown, markdownToBlocks } from "@/lib/cms/blocks/markdown";
 import { toast } from "sonner";
 import {
   AI_COMMANDS,
@@ -1044,6 +1044,7 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
     <BlockEditorContext.Provider value={{ projectId }}>
     <div
       ref={rootRef}
+      data-project-id={projectId}
       onMouseDown={onRootMouseDown}
       className="bcms-doc-editor relative"
     >
@@ -1311,8 +1312,9 @@ function BlockRow({
 
   // Multi-line Markdown (e.g. copied from Notion) becomes real blocks.
   const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
-    if (block.type === "code") return; // code blocks take paste verbatim
+    if (block.type === "code" || block.type === "html") return; // take paste verbatim
     const text = e.clipboardData.getData("text/plain");
+    const html = e.clipboardData.getData("text/html");
     const loneUrl = (text ?? "").trim();
     if (/^https?:\/\/\S+$/.test(loneUrl)) {
       // A bare URL pastes as a player/embed/bookmark, not as text.
@@ -1320,6 +1322,18 @@ function BlockRow({
       onCommitText();
       onPasteMarkdown(loneUrl);
       return;
+    }
+    // Rich HTML (Notion, Google Docs, web): convert to Markdown so links,
+    // headings, lists and emphasis all survive — otherwise the plain-text
+    // fallback drops every hyperlink.
+    if (html && /<(a\s|h[1-6]|ul\b|ol\b|blockquote|strong|b>|em|i>|img|pre|table)/i.test(html)) {
+      const md = htmlToMarkdown(html);
+      if (md.trim()) {
+        e.preventDefault();
+        onCommitText();
+        onPasteMarkdown(md);
+        return;
+      }
     }
     if (text && looksLikeMarkdown(text)) {
       e.preventDefault();
@@ -1361,8 +1375,12 @@ function BlockRow({
           ))}
         </div>
       )}
-      {/* Hover handles */}
-      <div className="absolute left-[-44px] top-1 hidden items-center gap-0.5 text-muted-foreground group-hover/block:flex">
+      {/* Hover handles — kept visible while the block menu is open so Radix
+          keeps a real anchor to position against (otherwise it flies to 0,0). */}
+      <div className={cn(
+        "absolute left-[-44px] top-1 items-center gap-0.5 text-muted-foreground",
+        menuOpen ? "flex" : "hidden group-hover/block:flex",
+      )}>
         <button
           type="button"
           title="Insert below (Enter)"
