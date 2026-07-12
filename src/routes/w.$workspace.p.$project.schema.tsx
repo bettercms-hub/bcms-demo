@@ -27,6 +27,7 @@ import {
   ChevronDown,
   ChevronRight,
   Code2,
+  CodeXml,
   Copy,
   CopyPlus,
   Database,
@@ -72,8 +73,11 @@ import {
   SCHEMA_TYPES,
   cloneFieldDeep,
   countFields,
+  defaultSearchable,
   extractFieldById,
+  fieldSearchable,
   insertField,
+  isSearchableEligible,
   insertRelativeTo,
   isDescendant,
   mapField,
@@ -126,6 +130,7 @@ const FIELD_TYPES: { type: FieldType; label: string; blurb: string; icon: Lucide
   { type: "sections", label: "Section zone", blurb: "Which sections marketers can compose with", icon: LayoutTemplate, tint: "bg-fuchsia-50 text-fuchsia-600" },
   { type: "faq", label: "FAQ", blurb: "Q&A accordion that auto-emits FAQ schema", icon: MessagesSquare, tint: "bg-indigo-50 text-indigo-600" },
   { type: "schema", label: "Schema markup", blurb: "Structured data, auto-mapped from your fields", icon: Braces, tint: "bg-violet-50 text-violet-600" },
+  { type: "embed", label: "Embed", blurb: "Custom HTML, CSS or JS that renders live", icon: CodeXml, tint: "bg-slate-100 text-slate-600" },
 ];
 const typeMeta = (t: FieldType) => FIELD_TYPES.find((x) => x.type === t)!;
 
@@ -958,8 +963,10 @@ function FieldSettings({
     field.type === "schema" ||
     isOgImage ||
     isCanonical;
-  const showFlags = field.type !== "group" && field.type !== "sections" && field.type !== "schema";
-  const canSearch = ["text", "longtext", "richtext", "slug", "email", "faq"].includes(field.type);
+  // Required applies to real input fields; not to containers or derived data.
+  const showRequired = field.type !== "group" && field.type !== "sections" && field.type !== "schema";
+  const canSearch = isSearchableEligible(field.type);
+  const showFlags = showRequired || canSearch;
 
   return (
     <div className="space-y-4 border-t border-[color:var(--border-hairline)] bg-[color:var(--s2)]/50 px-4 py-4 sm:px-5">
@@ -1134,14 +1141,20 @@ function FieldSettings({
       {/* Flags */}
       {showFlags && (
         <div className="overflow-hidden rounded-lg border border-[color:var(--color-border)]">
-          <ToggleRow label="Required" hint="Editors must fill this in before publishing." on={!!field.required} onToggle={() => set({ required: !field.required })} />
+          {showRequired && (
+            <ToggleRow label="Required" hint="Editors must fill this in before publishing." on={!!field.required} onToggle={() => set({ required: !field.required })} />
+          )}
           {canSearch && (
-            <div className="border-t border-[color:var(--border-hairline)]">
+            <div className={cn(showRequired && "border-t border-[color:var(--border-hairline)]")}>
               <ToggleRow
                 label="Searchable"
-                hint="Index this field so it is returned by site search."
-                on={!!field.searchable}
-                onToggle={() => set({ searchable: !field.searchable })}
+                hint={
+                  defaultSearchable(field.type)
+                    ? "Indexed for site search. Turn off to exclude this field."
+                    : "Off by default for code. Turn on to index it for site search."
+                }
+                on={fieldSearchable(field)}
+                onToggle={() => set({ searchable: !fieldSearchable(field) })}
               />
             </div>
           )}
@@ -1494,6 +1507,21 @@ function PreviewField({ field, models }: { field: ModelField; models: SchemaMode
           </div>
         );
       }
+      case "embed":
+        return (
+          <div className="overflow-hidden rounded-md border border-[color:var(--color-border)] bg-[color:var(--card)]">
+            <div className="flex items-center gap-1.5 border-b border-[color:var(--border-hairline)] px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground">
+              <CodeXml className="h-3 w-3" /> Paste HTML, CSS or JS
+            </div>
+            <div className="space-y-1 px-2.5 py-2 font-mono text-[10px] text-muted-foreground/70">
+              <div>&lt;script src="…"&gt;&lt;/script&gt;</div>
+              <div>&lt;div class="newsletter"&gt;…&lt;/div&gt;</div>
+            </div>
+            <div className="border-t border-[color:var(--border-hairline)] px-2.5 py-1 text-[10px] text-muted-foreground">
+              Renders live in a sandbox on the page.
+            </div>
+          </div>
+        );
     }
   };
 
@@ -1528,6 +1556,7 @@ function JsonPanel({ model, models, onClose }: { model: SchemaModel; models: Sch
         ...(f.allowedSections ? { sections: f.allowedSections } : {}),
         ...(f.type === "faq" ? { schema: f.emitFaqSchema === false ? null : "FAQPage" } : {}),
         ...(f.type === "schema" ? { schema: f.schemaType || null } : {}),
+        ...(isSearchableEligible(f.type) && fieldSearchable(f) ? { searchable: true } : {}),
         ...(f.fields ? { fields: clean(f.fields) } : {}),
       }));
     return JSON.stringify({ id: model.apiId, name: model.name, kind: model.kind, fields: clean(model.fields) }, null, 2);

@@ -36,7 +36,8 @@ export type FieldType =
   | "group"
   | "sections"
   | "faq"
-  | "schema";
+  | "schema"
+  | "embed";
 
 export interface ModelField {
   id: string;
@@ -236,6 +237,32 @@ export function seoFields(opts: { index?: boolean; schemaType?: string } = {}): 
   ];
   if (opts.index) out.push(f("No index", "toggle", { help: "Hide this page from search engines" }));
   return out;
+}
+
+/* --------------------------------------------------------- searchability */
+
+/** Field types whose content can be indexed for site search (so the toggle is
+ *  worth showing). Binary/structural types carry no searchable text. */
+const SEARCHABLE_TYPES = new Set<FieldType>([
+  "text", "longtext", "richtext", "slug", "email", "phone", "number", "date",
+  "select", "link", "reference", "multireference", "faq", "json", "schema", "embed",
+]);
+/** Code/structured types default to NOT searchable — indexing raw JSON or an
+ *  embed snippet is noise. Everything else defaults to searchable ON. */
+const NON_SEARCHABLE_BY_DEFAULT = new Set<FieldType>(["json", "schema", "embed"]);
+
+/** Whether the Searchable toggle should be offered for this field type. */
+export function isSearchableEligible(type: FieldType): boolean {
+  return SEARCHABLE_TYPES.has(type);
+}
+/** The default Searchable state for a field type when the author hasn't set one:
+ *  ON for real content, OFF for code (JSON / schema / embed). */
+export function defaultSearchable(type: FieldType): boolean {
+  return SEARCHABLE_TYPES.has(type) && !NON_SEARCHABLE_BY_DEFAULT.has(type);
+}
+/** Effective searchable value: the author's explicit choice, else the default. */
+export function fieldSearchable(field: ModelField): boolean {
+  return field.searchable ?? defaultSearchable(field.type);
 }
 
 export interface SchemaModel {
