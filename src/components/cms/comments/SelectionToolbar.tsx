@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bold, Check, Copy, FileText, Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, Italic, Link2, MessageSquarePlus, Search, Unlink, Wand2 } from "lucide-react";
+import { Bold, Check, Copy, ExternalLink, FileText, Heading1, Heading2, Heading3, Heading4, Heading5, Heading6, Italic, Link2, MessageSquarePlus, Search, Unlink, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { commentsUi } from "@/lib/cms/comments-store";
 import { getPages } from "@/lib/cms/pages-store";
@@ -34,18 +34,26 @@ function projectIdFor(range: Range): string | null {
   return null;
 }
 
-/** If the current selection sits inside an existing <a>, return its href so the
- *  editor can prefill (edit-in-place) instead of always creating a new link. */
-function existingHref(range: Range): string {
+/** If the selection sits inside an existing <a>, return that anchor so the
+ *  editor can prefill (edit-in-place: URL, new-tab, rel) instead of always
+ *  creating a fresh link. */
+function anchorFor(range: Range): HTMLAnchorElement | null {
   let node: Node | null = range.commonAncestorContainer;
   while (node && node !== document.body) {
-    if (node.nodeType === 1 && (node as HTMLElement).tagName === "A") {
-      return (node as HTMLAnchorElement).getAttribute("href") ?? "";
-    }
+    if (node.nodeType === 1 && (node as HTMLElement).tagName === "A") return node as HTMLAnchorElement;
     node = node.parentNode;
   }
-  return "";
+  return null;
 }
+
+/** Link relationship options for SEO — the same set the visual editor exposes. */
+const REL_OPTIONS: { token: string; label: string; hint: string }[] = [
+  { token: "", label: "None", hint: "A normal followed link" },
+  { token: "nofollow", label: "nofollow", hint: "Do not pass ranking to this link" },
+  { token: "sponsored", label: "sponsored", hint: "Paid, ad, or sponsored link" },
+  { token: "ugc", label: "ugc", hint: "User-generated content" },
+];
+const REL_RELATIONSHIPS = ["nofollow", "sponsored", "ugc"];
 
 interface Props {
   surface: CommentSurface;
@@ -67,8 +75,11 @@ export function SelectionToolbar({ surface, pageId, resolveAnchor }: Props) {
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [linkQuery, setLinkQuery] = useState("");
+  const [linkNewTab, setLinkNewTab] = useState(false);
+  const [linkRel, setLinkRel] = useState("");
   const [projectId, setProjectId] = useState<string | null>(null);
   const [hadLink, setHadLink] = useState(false);
+  const editAnchorRef = useRef<HTMLAnchorElement | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const rangeRef = useRef<Range | null>(null);
   const textRef = useRef("");
@@ -206,41 +217,64 @@ export function SelectionToolbar({ surface, pageId, resolveAnchor }: Props) {
 
   function openLinkEditor() {
     const saved = rangeRef.current ?? range;
-    setLinkUrl(saved ? existingHref(saved) : "");
-    setHadLink(saved ? !!existingHref(saved) : false);
+    const anchor = saved ? anchorFor(saved) : null;
+    editAnchorRef.current = anchor;
+    setHadLink(!!anchor);
+    setLinkUrl(anchor?.getAttribute("href") ?? "");
+    setLinkNewTab(anchor?.getAttribute("target") === "_blank");
+    const relTokens = (anchor?.getAttribute("rel") ?? "").split(/\s+/);
+    setLinkRel(REL_RELATIONSHIPS.find((r) => relTokens.includes(r)) ?? "");
     setLinkQuery("");
     setLinkOpen(true);
     // Focus the input on the next tick, once it has mounted.
     setTimeout(() => linkInputRef.current?.focus(), 0);
   }
 
-  function applyLink(rawUrl: string) {
+  function applyLink(rawUrl: string, newTab = linkNewTab, rel = linkRel) {
     const url = rawUrl.trim();
     if (!url) return;
-    // Block dangerous schemes; allow http(s), mailto, tel, and site-relative.
-    const safe = /^(https?:|mailto:|tel:|\/|#)/i.test(url) ? url : `https://${url}`;
     if (/^\s*javascript:/i.test(url)) {
       toast.error("That link scheme is not allowed");
       return;
     }
-    if (!restoreSelection() || !editable) {
+    // Allow http(s), mailto, tel, and site-relative; otherwise assume https.
+    const safe = /^(https?:|mailto:|tel:|\/|#)/i.test(url) ? url : `https://${url}`;
+    // A new-tab link always carries the security rel tokens on top of the SEO one.
+    const relValue = [rel, newTab && "noopener", newTab && "noreferrer"].filter(Boolean).join(" ");
+    if (!editable) {
       setLinkOpen(false);
       return;
     }
-    document.execCommand("createLink", false, safe);
-    // execCommand can't set target/rel — tag the freshly created anchor.
-    const sel = window.getSelection();
-    let node = sel?.anchorNode as Node | null;
-    while (node && node.nodeType === 1 && (node as HTMLElement).tagName !== "A") node = node.parentNode;
-    // Fall back: find the anchor wrapping the selection's container.
-    const anchor =
-      (node && (node as HTMLElement).tagName === "A" ? (node as HTMLAnchorElement) : null) ??
-      (sel && sel.rangeCount ? (sel.getRangeAt(0).commonAncestorContainer.parentElement?.closest("a") as HTMLAnchorElement | null) : null);
-    if (anchor && /^https?:/i.test(safe)) {
-      anchor.setAttribute("target", "_blank");
-      anchor.setAttribute("rel", "noopener noreferrer");
+
+    const existing = editAnchorRef.current;
+    if (existing && existing.isConnected) {
+      // Edit in place — no execCommand, so we never nest anchors.
+      existing.setAttribute("href", safe);
+      if (newTab) existing.setAttribute("target", "_blank");
+      else existing.removeAttribute("target");
+      if (relValue) existing.setAttribute("rel", relValue);
+      else existing.removeAttribute("rel");
+      existing.focus?.();
+    } else {
+      if (!restoreSelection()) {
+        setLinkOpen(false);
+        return;
+      }
+      document.execCommand("createLink", false, safe);
+      // execCommand can't set target/rel — tag the freshly created anchor.
+      const sel = window.getSelection();
+      let node = sel?.anchorNode as Node | null;
+      while (node && !(node.nodeType === 1 && (node as HTMLElement).tagName === "A")) node = node.parentNode;
+      const anchor =
+        (node as HTMLAnchorElement | null) ??
+        (sel && sel.rangeCount ? (sel.getRangeAt(0).commonAncestorContainer.parentElement?.closest("a") as HTMLAnchorElement | null) : null);
+      if (anchor) {
+        if (newTab) anchor.setAttribute("target", "_blank");
+        if (relValue) anchor.setAttribute("rel", relValue);
+      }
     }
     window.dispatchEvent(new CustomEvent("bcms:doc-format", { detail: { blockId: editable.blockId } }));
+    editAnchorRef.current = null;
     setLinkOpen(false);
     setPos(null);
     toast.success(hadLink ? "Link updated" : "Link added");
@@ -253,6 +287,7 @@ export function SelectionToolbar({ surface, pageId, resolveAnchor }: Props) {
     }
     document.execCommand("unlink", false, "");
     window.dispatchEvent(new CustomEvent("bcms:doc-format", { detail: { blockId: editable.blockId } }));
+    editAnchorRef.current = null;
     setLinkOpen(false);
     setPos(null);
     toast.success("Link removed");
@@ -386,15 +421,69 @@ export function SelectionToolbar({ surface, pageId, resolveAnchor }: Props) {
             </>
           )}
 
-          {hadLink && (
+          {/* Open in new tab */}
+          <label className="mt-2 flex cursor-pointer items-center justify-between rounded bg-[color:var(--s1)] px-2 py-1.5">
+            <span className="flex items-center gap-1.5 text-[11.5px] text-foreground/85">
+              <ExternalLink className="h-3 w-3 text-muted-foreground" /> Open in new tab
+            </span>
             <button
               type="button"
-              onClick={removeLink}
-              className="mt-2 flex w-full items-center justify-center gap-1 rounded border border-border/70 py-1 text-[11px] text-foreground/85 hover:bg-[color:var(--color-row-hover)]"
+              role="switch"
+              aria-checked={linkNewTab}
+              aria-label="Open in new tab"
+              onClick={() => setLinkNewTab((v) => !v)}
+              className={`relative h-4 w-7 shrink-0 rounded-full transition-colors ${linkNewTab ? "bg-[color:var(--color-primary)]" : "bg-border"}`}
             >
-              <Unlink className="h-3 w-3" /> Remove link
+              <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white shadow-sm transition-all ${linkNewTab ? "left-[14px]" : "left-0.5"}`} />
             </button>
-          )}
+          </label>
+
+          {/* Link relationship (rel) — SEO control */}
+          <div className="mt-2">
+            <div className="mb-1 px-0.5 text-[9.5px] font-semibold uppercase tracking-wide text-muted-foreground">Link relationship</div>
+            <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Link relationship">
+              {REL_OPTIONS.map((o) => {
+                const on = linkRel === o.token;
+                return (
+                  <button
+                    key={o.token || "none"}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    title={o.hint}
+                    onClick={() => setLinkRel(o.token)}
+                    className={`rounded border px-1.5 py-0.5 text-[10.5px] font-medium transition-colors ${
+                      on
+                        ? "border-[color:var(--color-primary)] bg-[color:var(--color-primary)]/10 text-[color:var(--color-primary)]"
+                        : "border-border/70 text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-2 flex items-center gap-2">
+            {hadLink && (
+              <button
+                type="button"
+                onClick={removeLink}
+                className="flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-rose-500 hover:bg-rose-500/10"
+              >
+                <Unlink className="h-3 w-3" /> Remove
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => applyLink(linkUrl)}
+              disabled={!linkUrl.trim()}
+              className="ml-auto rounded bg-[color:var(--color-primary)] px-2.5 py-1 text-[11.5px] font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {hadLink ? "Save" : "Apply"}
+            </button>
+          </div>
         </div>
       )}
     </div>

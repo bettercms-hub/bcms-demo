@@ -196,8 +196,30 @@ export function sanitizeInlineHtml(html: string): string {
       if (node.nodeType !== 1) continue;
       const el = node as HTMLElement;
       if (INLINE_ALLOWED.has(el.tagName)) {
-        for (const a of Array.from(el.attributes)) {
-          if (!(el.tagName === "A" && a.name === "href")) el.removeAttribute(a.name);
+        if (el.tagName === "A") {
+          // Preserve href + a curated set of link attributes (target, rel) so
+          // "open in new tab" and SEO rel tokens survive a commit. Drop unsafe
+          // href schemes and force security rel on new-tab links.
+          const rawHref = el.getAttribute("href") ?? "";
+          const rawTarget = el.getAttribute("target") ?? "";
+          const rawRel = el.getAttribute("rel") ?? "";
+          for (const a of Array.from(el.attributes)) el.removeAttribute(a.name);
+          const badScheme = /^\s*(javascript:|data:|vbscript:)/i.test(rawHref);
+          if (rawHref && !badScheme) el.setAttribute("href", rawHref);
+          if (rawTarget === "_blank") {
+            el.setAttribute("target", "_blank");
+            const rels = new Set((rawRel ? rawRel.split(/\s+/) : []).filter(Boolean));
+            rels.add("noopener");
+            rels.add("noreferrer");
+            el.setAttribute("rel", Array.from(rels).join(" "));
+          } else if (rawRel) {
+            const safe = rawRel
+              .split(/\s+/)
+              .filter((t) => ["nofollow", "sponsored", "ugc", "noopener", "noreferrer"].includes(t));
+            if (safe.length) el.setAttribute("rel", safe.join(" "));
+          }
+        } else {
+          for (const a of Array.from(el.attributes)) el.removeAttribute(a.name);
         }
         clean(el);
       } else {

@@ -861,6 +861,50 @@ export function BlockEditor({ value, onChange, placeholder, projectId, entryId }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIds, selectedFields, doc]);
 
+  // Select-all (Cmd/Ctrl+A), Notion-style two-step. First press inside a block
+  // lets the browser select that block's own text; a second press (block text
+  // already selected) escalates to selecting EVERY block. Works even when focus
+  // sits outside the editor after a marquee.
+  useEffect(() => {
+    function onSelectAll(e: KeyboardEvent) {
+      if (!((e.metaKey || e.ctrlKey) && (e.key === "a" || e.key === "A"))) return;
+      const root = rootRef.current;
+      if (!root) return;
+      const active = document.activeElement as HTMLElement | null;
+      const focusInside = !!active && root.contains(active);
+      // Only act when the editor is the user's context: focus is inside it, or a
+      // block selection is already live. Otherwise leave native select-all alone.
+      if (!focusInside && selectedIds.size === 0) return;
+      const tag = active?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      const allIds = doc.blocks.map((b) => b.id);
+      if (allIds.length === 0) return;
+
+      // Already selecting everything → swallow the keystroke (stop the browser
+      // from selecting the whole page) and do nothing else.
+      if (selectedIds.size >= allIds.length) { e.preventDefault(); return; }
+
+      const editable = active?.closest?.("[data-doc-block-id]") as HTMLElement | null;
+      const sel = window.getSelection();
+      const hasTextSelection = !!sel && !sel.isCollapsed && sel.rangeCount > 0;
+
+      if (editable && !hasTextSelection) {
+        // First press: let the browser select this block's text natively.
+        return;
+      }
+      // Second press (block text already selected) or focus outside a block:
+      // grab every block as an object selection.
+      e.preventDefault();
+      if (editable) editable.blur();
+      window.getSelection()?.removeAllRanges();
+      setSelectedFields(new Set());
+      setSelectedIds(new Set(allIds));
+    }
+    document.addEventListener("keydown", onSelectAll, true);
+    return () => document.removeEventListener("keydown", onSelectAll, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doc, selectedIds]);
+
   /* --- slash dispatch: the current (now empty) block becomes the target --- */
 
   // Insert a self-contained widget for the block at `id`. If that block still

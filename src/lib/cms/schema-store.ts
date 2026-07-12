@@ -34,7 +34,8 @@ export type FieldType =
   | "color"
   | "json"
   | "group"
-  | "sections";
+  | "sections"
+  | "faq";
 
 export interface ModelField {
   id: string;
@@ -53,6 +54,67 @@ export interface ModelField {
   allowedSections?: string[];
   /** group children */
   fields?: ModelField[];
+  /** faq: auto-emit FAQPage JSON-LD from the questions (on by default) */
+  emitFaqSchema?: boolean;
+  /** faq: sample/default question-answer pairs (the field is repeatable) */
+  faqItems?: FaqItem[];
+}
+
+/** A single question-and-answer pair inside a `faq` field. */
+export interface FaqItem {
+  q: string;
+  a: string;
+}
+
+/**
+ * Build valid FAQPage JSON-LD from a list of question/answer pairs. This is the
+ * automation behind the FAQ field: marketers author the questions, and the CMS
+ * emits Google-ready structured data (rich results) with zero hand-written schema.
+ */
+export function faqPageJsonLd(items: FaqItem[]): string {
+  const clean = items.filter((i) => i.q.trim());
+  return JSON.stringify(
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: clean.map((i) => ({
+        "@type": "Question",
+        name: i.q.trim(),
+        acceptedAnswer: { "@type": "Answer", text: i.a.trim() },
+      })),
+    },
+    null,
+    2,
+  );
+}
+
+/** Demo question/answer pairs so a new FAQ field renders something real. */
+export const SAMPLE_FAQ: FaqItem[] = [
+  {
+    q: "How does BetterCMS handle FAQ schema?",
+    a: "Add a FAQ field and we generate valid FAQPage JSON-LD from your questions automatically, no hand-written markup.",
+  },
+  {
+    q: "Can I write answers with rich text?",
+    a: "Yes. Each answer supports formatting, and the schema uses its plain text so Google always gets clean data.",
+  },
+];
+
+/**
+ * A strong, reusable SEO field group: titles, canonical, an OG image picked from
+ * the media library, and a JSON-LD escape hatch. Shared by templates + seeds so
+ * every model gets the same solid SEO surface.
+ */
+export function seoFields(opts: { index?: boolean } = {}): ModelField[] {
+  const out = [
+    f("Meta title", "text", { help: "Around 60 characters" }),
+    f("Meta description", "longtext", { help: "Around 155 characters" }),
+    f("Canonical URL", "link", { help: "Point duplicates at the original" }),
+    f("OG image", "image", { help: "Social share image, 1200x630, from the media library" }),
+    f("Schema markup", "json", { help: "Extra JSON-LD injected into the page head" }),
+  ];
+  if (opts.index) out.push(f("No index", "toggle", { help: "Hide this page from search engines" }));
+  return out;
 }
 
 export interface SchemaModel {
@@ -251,7 +313,7 @@ export const SCHEMA_TEMPLATES: SchemaTemplate[] = [
       f("Excerpt", "longtext"),
       f("Body", "richtext"),
       f("Published", "toggle"),
-      f("SEO", "group", { fields: [f("Meta title", "text"), f("Meta description", "longtext")] }),
+      f("SEO", "group", { fields: seoFields() }),
     ],
   },
   {
@@ -344,7 +406,7 @@ export const SCHEMA_TEMPLATES: SchemaTemplate[] = [
       f("In stock", "toggle"),
       f("Categories", "text", { help: "Comma separated" }),
       f("Specifications", "json", { help: "Open key and value pairs" }),
-      f("SEO", "group", { fields: [f("Meta title", "text"), f("Meta description", "longtext")] }),
+      f("SEO", "group", { fields: seoFields() }),
     ],
   },
   {
@@ -412,7 +474,8 @@ export const SCHEMA_TEMPLATES: SchemaTemplate[] = [
       f("Related", "multireference", { help: "Link to sibling docs" }),
       f("Metadata", "json", { help: "Open field for anything the page needs" }),
       f("Last reviewed", "date"),
-      f("SEO", "group", { fields: [f("Meta title", "text"), f("Meta description", "longtext")] }),
+      f("FAQ", "faq", { help: "Common questions, auto-emitted as FAQ schema", emitFaqSchema: true, faqItems: SAMPLE_FAQ }),
+      f("SEO", "group", { fields: seoFields() }),
     ],
   },
   {
@@ -599,7 +662,23 @@ export const SCHEMA_TEMPLATES: SchemaTemplate[] = [
       f("Overview", "richtext"),
       f("Criteria", "richtext", { help: "One row per criterion, with how each option does" }),
       f("Verdict", "richtext"),
-      f("SEO", "group", { fields: [f("Meta title", "text"), f("Meta description", "longtext")] }),
+      f("Questions", "faq", { help: "Common comparison questions", emitFaqSchema: true, faqItems: SAMPLE_FAQ }),
+      f("SEO", "group", { fields: seoFields() }),
+    ],
+  },
+  {
+    id: "faq",
+    name: "FAQ",
+    blurb: "Accordion questions that auto-emit FAQ schema",
+    kind: "block",
+    make: () => [
+      f("Heading", "text", { help: "Optional title above the questions" }),
+      f("Questions", "faq", {
+        required: true,
+        emitFaqSchema: true,
+        faqItems: SAMPLE_FAQ,
+        help: "Each question renders in an accordion and feeds the FAQ schema",
+      }),
     ],
   },
 ];
@@ -643,9 +722,8 @@ function seed(): SchemaModel[] {
       f("Author", "reference", { refModelId: author.id, help: "Points at one author." }),
       f("Categories", "multireference", { refModelId: category.id, help: "Editors can link more than one category." }),
       f("Published", "toggle"),
-      f("SEO", "group", {
-        fields: [f("Meta title", "text"), f("Meta description", "longtext")],
-      }),
+      f("FAQ", "faq", { help: "Post FAQs, auto-emitted as FAQ schema", emitFaqSchema: true, faqItems: SAMPLE_FAQ }),
+      f("SEO", "group", { fields: seoFields() }),
     ],
   };
   const page: SchemaModel = {
@@ -662,9 +740,7 @@ function seed(): SchemaModel[] {
         help: "Which sections marketers can add to this page.",
         allowedSections: ["hero", "features", "logos", "testimonial", "cta", "pricing", "faq", "contact"],
       }),
-      f("SEO", "group", {
-        fields: [f("Meta title", "text"), f("Meta description", "longtext"), f("No index", "toggle")],
-      }),
+      f("SEO", "group", { fields: seoFields({ index: true }) }),
     ],
   };
   const cta: SchemaModel = {

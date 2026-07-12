@@ -594,9 +594,22 @@ aside ::-webkit-scrollbar-thumb {
 }
 
 /* Inline links inside the block editor: make pasted/committed anchors LOOK
-   like links (they were rendering unstyled, indistinguishable from text). */
+   like real hyperlinks — classic blue + underline, not the brand pink (readers
+   expect links to be blue). A dedicated token so light/dark both stay legible. */
+.bcms-doc-editor {
+  --bcms-link: #2563eb;
+}
+.dark .bcms-doc-editor,
+:root[data-theme="dark"] .bcms-doc-editor {
+  --bcms-link: #60a5fa;
+}
 .bcms-doc-editor [contenteditable] a {
-  color: var(--color-primary);
+  color: var(--bcms-link);
   text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--bcms-link) 55%, transparent);
   text-underline-offset: 2px;
+  cursor: pointer;
+}
+.bcms-doc-editor [contenteditable] a:hover {
+  text-decoration-color: var(--bcms-link);
 }

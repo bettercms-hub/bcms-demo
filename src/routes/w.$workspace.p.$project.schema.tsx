@@ -43,6 +43,7 @@ import {
   List,
   Lock,
   Mail,
+  MessagesSquare,
   MoreHorizontal,
   Palette,
   Phone,
@@ -65,10 +66,12 @@ import { getProjectBySlug } from "@/lib/cms/use-cms";
 import { canSeeDeveloper, useEffectiveRole } from "@/lib/workspace/my-role";
 import { SECTION_DEFS } from "@/components/cms/editor/sections/SectionSystem";
 import {
+  SAMPLE_FAQ,
   SCHEMA_TEMPLATES,
   cloneFieldDeep,
   countFields,
   extractFieldById,
+  faqPageJsonLd,
   insertField,
   insertRelativeTo,
   isDescendant,
@@ -120,6 +123,7 @@ const FIELD_TYPES: { type: FieldType; label: string; blurb: string; icon: Lucide
   { type: "json", label: "JSON", blurb: "Raw structured data", icon: FileJson, tint: "bg-zinc-100 text-zinc-600" },
   { type: "group", label: "Group", blurb: "Nest related fields together", icon: Folder, tint: "bg-orange-50 text-orange-600" },
   { type: "sections", label: "Section zone", blurb: "Which sections marketers can compose with", icon: LayoutTemplate, tint: "bg-fuchsia-50 text-fuchsia-600" },
+  { type: "faq", label: "FAQ", blurb: "Q&A accordion that auto-emits FAQ schema", icon: MessagesSquare, tint: "bg-indigo-50 text-indigo-600" },
 ];
 const typeMeta = (t: FieldType) => FIELD_TYPES.find((x) => x.type === t)!;
 
@@ -1016,6 +1020,37 @@ function FieldSettings({
           </SettingsField>
         )}
 
+        {field.type === "faq" && (
+          <SettingsField
+            label="FAQ schema"
+            hint="Turn the questions into FAQPage structured data automatically."
+            className="sm:col-span-2"
+          >
+            <label className="flex items-center gap-2 text-[12.5px] text-foreground">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={field.emitFaqSchema !== false}
+                onClick={() => set({ emitFaqSchema: field.emitFaqSchema === false })}
+                className={cn("relative h-5 w-9 rounded-full transition-colors", field.emitFaqSchema !== false ? "bg-primary" : "bg-[color:var(--s3)]")}
+              >
+                <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all", field.emitFaqSchema !== false ? "left-[18px]" : "left-0.5")} />
+              </button>
+              Auto-emit FAQPage JSON-LD
+            </label>
+            {field.emitFaqSchema !== false && (
+              <div className="mt-2 overflow-hidden rounded-md border border-[color:var(--color-border)] bg-[color:var(--s3)]/40">
+                <div className="flex items-center gap-1.5 border-b border-[color:var(--border-hairline)] px-2 py-1 text-[10px] font-semibold text-muted-foreground">
+                  <Code2 className="h-3 w-3" /> Generated from the questions
+                </div>
+                <pre className="max-h-44 overflow-auto px-2.5 py-2 font-mono text-[10.5px] leading-relaxed text-foreground/80">
+{faqPageJsonLd(field.faqItems?.length ? field.faqItems : SAMPLE_FAQ)}
+                </pre>
+              </div>
+            )}
+          </SettingsField>
+        )}
+
         {field.type !== "group" && field.type !== "sections" && (
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
             <label className="flex items-center gap-2 text-[12.5px] text-foreground">
@@ -1316,6 +1351,35 @@ function PreviewField({ field, models }: { field: ModelField; models: SchemaMode
             </div>
           </div>
         );
+      case "faq": {
+        const items = field.faqItems?.length ? field.faqItems : SAMPLE_FAQ;
+        return (
+          <div className="space-y-2">
+            <div className="rounded-lg border border-[color:var(--color-border)] bg-[color:var(--card)] p-1.5">
+              {items.map((it, i) => (
+                <div key={i} className={cn("px-1.5 py-1.5", i > 0 && "border-t border-[color:var(--border-hairline)]")}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-[11.5px] font-medium text-foreground">{it.q}</span>
+                    <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+                  </div>
+                  <p className="mt-0.5 line-clamp-1 text-[10.5px] text-muted-foreground">{it.a}</p>
+                </div>
+              ))}
+              <div className="mt-1 flex items-center justify-center gap-1 rounded-md border border-dashed border-[color:var(--color-border)] py-1 text-[10.5px] font-medium text-muted-foreground">
+                <Plus className="h-3 w-3" /> Add question
+              </div>
+            </div>
+            {field.emitFaqSchema !== false && (
+              <div className="rounded-md border border-indigo-100 bg-indigo-50/60 px-2 py-1.5 text-[10px] text-indigo-700 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-300">
+                <span className="flex items-center gap-1 font-semibold">
+                  <Sparkles className="h-3 w-3" /> FAQ schema is generated automatically
+                </span>
+                <span className="mt-0.5 block opacity-80">Valid FAQPage JSON-LD ships in the page head. No markup to write.</span>
+              </div>
+            )}
+          </div>
+        );
+      }
     }
   };
 
@@ -1348,6 +1412,7 @@ function JsonPanel({ model, models, onClose }: { model: SchemaModel; models: Sch
         ...(f.options ? { options: f.options } : {}),
         ...(f.refModelId ? { ref: refApiId(f.refModelId), many: f.type === "multireference" } : {}),
         ...(f.allowedSections ? { sections: f.allowedSections } : {}),
+        ...(f.type === "faq" ? { schema: f.emitFaqSchema === false ? null : "FAQPage" } : {}),
         ...(f.fields ? { fields: clean(f.fields) } : {}),
       }));
     return JSON.stringify({ id: model.apiId, name: model.name, kind: model.kind, fields: clean(model.fields) }, null, 2);
