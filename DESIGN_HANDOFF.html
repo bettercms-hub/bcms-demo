@@ -508,6 +508,11 @@ html[data-theme="dark"] .doc-footer img { filter: brightness(0) invert(1); }
 .state-label { font-family: "IBM Plex Mono", monospace; font-size: 9px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
 .spec-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
 .spec-row.top { align-items: flex-start; }
+.spec-actions { margin-left: auto; display: inline-flex; gap: 6px; }
+.spec-cta { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--s0); color: var(--fg-soft); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+.spec-cta:hover { background: var(--s2); color: var(--fg); }
+.spec-cta.ok { border-color: color-mix(in oklab, var(--ok) 45%, var(--border)); color: var(--ok); background: var(--ok-soft); }
+.spec-cta .gi { width: 12px; height: 12px; flex: none; }
 
 /* buttons */
 .g-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 14px; border-radius: 8px; border: 1px solid transparent; background: none; font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1; white-space: nowrap; cursor: pointer; user-select: none; transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, opacity 0.15s; }
@@ -1073,6 +1078,7 @@ select.g-input { appearance: none; padding-right: 30px; cursor: pointer; }
 
   <p>Below is the live component gallery. Every specimen on this page is the real component, built from the same tokens the app ships, not a picture of one. Hover, focus and click them in this browser. Each grid also lays out every state at once (rest, hover, focus, pressed, disabled, loading) the way a Figma component sheet does, so you can compare states without chasing them.</p>
   <div class="callout note"><p><strong>Reading the state grids.</strong> The <em>Hover</em>, <em>Focus</em> and <em>Pressed</em> tiles are pinned to that state so you can see it standing still. The tiles in the <em>Try it live</em> rows are genuinely interactive: move your pointer over them, tab to them, click them.</p></div>
+  <div class="callout tip"><p><strong>Getting these into Figma.</strong> Every card below has two buttons in its header. <strong>Copy SVG</strong> puts the components on your clipboard as SVG, paste straight onto a Figma canvas and they arrive as editable layers (rectangles stay rectangles, text stays editable text, colors carry over). <strong>JSON</strong> copies the section's tokens and specimen values for token or variable import tools like Tokens Studio and for developer handoff. One note to set expectations: Figma turns pasted <em>SVG</em> into layers natively, but it has no native way to turn pasted raw <em>JSON</em> into layers, so use SVG for the canvas and JSON for tokens and plugins.</p></div>
 
   <h3 id="design-system-buttons-live">Buttons and actions</h3>
   <p>One button component, four intents, two sizes. Intent is chosen by importance on the screen, never by decoration. A screen has exactly one primary button in view at a time.</p>
@@ -5667,6 +5673,154 @@ select.g-input { appearance: none; padding-right: 30px; cursor: pointer; }
       sg.classList.add("on");
       return;
     }
+  });
+
+  /* ---------------- copy for Figma (SVG) + tokens (JSON) ---------------- */
+  function xesc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function firstFont(fam) { return (fam || "Inter").split(",")[0].replace(/["']/g, "").trim(); }
+  function paintable(c) { return c && c !== "transparent" && c !== "rgba(0, 0, 0, 0)" && c.indexOf("rgba(0, 0, 0, 0)") === -1; }
+
+  function specToSVG(spec) {
+    var body = spec.querySelector(".spec-body");
+    if (!body) return "<svg xmlns='http://www.w3.org/2000/svg'></svg>";
+    var origin = body.getBoundingClientRect();
+    var pad = 16;
+    var rects = [], texts = [];
+    var maxX = 0, maxY = 0;
+    body.querySelectorAll("*").forEach(function (el) {
+      if (el.closest(".spec-actions")) return;
+      var cs = getComputedStyle(el);
+      if (cs.display === "none" || cs.visibility === "hidden") return;
+      var r = el.getBoundingClientRect();
+      var w = r.width, h = r.height;
+      if (w < 1 || h < 1) return;
+      var x = r.left - origin.left, y = r.top - origin.top;
+      var bg = cs.backgroundColor, bw = parseFloat(cs.borderTopWidth) || 0, bc = cs.borderTopColor;
+      var hasBg = paintable(bg), hasBorder = bw > 0 && paintable(bc);
+      if (hasBg || hasBorder) {
+        var rad = parseFloat(cs.borderTopLeftRadius) || 0;
+        var rx = Math.min(rad, Math.min(w, h) / 2);
+        var stroke = hasBorder ? ' stroke="' + bc + '" stroke-width="' + bw.toFixed(1) + '"' : "";
+        rects.push('<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="' + rx.toFixed(1) + '" fill="' + (hasBg ? bg : "none") + '"' + stroke + "/>");
+      }
+      if (x + w > maxX) maxX = x + w;
+      if (y + h > maxY) maxY = y + h;
+    });
+    var walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT, null);
+    var node;
+    while ((node = walker.nextNode())) {
+      var txt = node.nodeValue.replace(/\s+/g, " ").trim();
+      if (!txt) continue;
+      if (node.parentElement && node.parentElement.closest(".spec-actions")) continue;
+      var range = document.createRange();
+      range.selectNodeContents(node);
+      var rr = range.getBoundingClientRect();
+      if (rr.width < 1 || rr.height < 1) continue;
+      var ps = getComputedStyle(node.parentElement);
+      var fs = parseFloat(ps.fontSize) || 13;
+      var lh = parseFloat(ps.lineHeight) || fs * 1.4;
+      var tx = rr.left - origin.left;
+      var baseline = (rr.top - origin.top) + (rr.height - fs) / 2 + fs * 0.8;
+      var ls = ps.letterSpacing && ps.letterSpacing !== "normal" ? ' letter-spacing="' + ps.letterSpacing + '"' : "";
+      texts.push('<text x="' + tx.toFixed(1) + '" y="' + baseline.toFixed(1) + '" font-family="' + xesc(firstFont(ps.fontFamily)) + '" font-size="' + fs.toFixed(1) + '" font-weight="' + ps.fontWeight + '" fill="' + ps.color + '"' + ls + ">" + xesc(txt) + "</text>");
+      if (rr.right - origin.left > maxX) maxX = rr.right - origin.left;
+      if (rr.bottom - origin.top > maxY) maxY = rr.bottom - origin.top;
+    }
+    var W = Math.ceil(maxX + pad), H = Math.ceil(maxY + pad);
+    var bgc = getComputedStyle(spec).backgroundColor;
+    var title = spec.querySelector(".spec-title");
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + " " + H + '" fill="none">'
+      + "<!-- BetterCMS design system" + (title ? " / " + xesc(title.textContent) : "") + ". Paste onto a Figma canvas for editable layers. -->"
+      + '<rect width="' + W + '" height="' + H + '" rx="14" fill="' + bgc + '"/>'
+      + rects.join("") + texts.join("") + "</svg>";
+  }
+
+  function specToJSON(spec) {
+    var titleEl = spec.querySelector(".spec-title");
+    var out = {
+      $schema: "https://design-tokens.github.io/community-group",
+      $note: "Copy SVG pastes editable layers onto a Figma canvas. This JSON is for token/variable import (Tokens Studio, Figma Variables) and dev handoff, not canvas paste.",
+      component: titleEl ? titleEl.textContent : "component",
+      tokens: {},
+      specimens: []
+    };
+    spec.querySelectorAll(".g-cell").forEach(function (c) {
+      var b = c.querySelector("b"), sp = c.querySelector("span");
+      if (b && sp) out.tokens[b.textContent.trim()] = { $type: "color", $value: sp.textContent.trim() };
+    });
+    spec.querySelectorAll(".g-ramp span").forEach(function (sp, i) {
+      var m = sp.textContent.match(/#?[0-9a-fA-F]{6}/);
+      if (m) out.tokens["swatch-" + (i + 1)] = { $type: "color", $value: (m[0][0] === "#" ? m[0] : "#" + m[0]) };
+    });
+    spec.querySelectorAll(".g-type-row").forEach(function (row) {
+      var tag = row.querySelector(".g-type-tag"), samp = row.querySelector(".g-type-sample");
+      if (!samp) return;
+      var st = getComputedStyle(samp);
+      out.specimens.push({
+        role: tag ? tag.textContent.trim() : "",
+        $type: "typography",
+        fontFamily: firstFont(st.fontFamily),
+        fontSize: Math.round(parseFloat(st.fontSize)) + "px",
+        fontWeight: st.fontWeight,
+        letterSpacing: st.letterSpacing,
+        lineHeight: st.lineHeight
+      });
+    });
+    spec.querySelectorAll(".state").forEach(function (state) {
+      var lbl = state.querySelector(".state-label");
+      var comp = state.querySelector("button, input, textarea, .g-switch, .g-chip, .g-status, .g-kind, .g-plan");
+      if (!comp) return;
+      var cs = getComputedStyle(comp);
+      var sub = state.closest(".states");
+      var head = sub && sub.previousElementSibling && sub.previousElementSibling.classList.contains("spec-sub") ? sub.previousElementSibling.textContent.trim() : "";
+      out.specimens.push({
+        group: head, state: lbl ? lbl.textContent.trim() : "",
+        background: cs.backgroundColor, text: cs.color,
+        border: (parseFloat(cs.borderTopWidth) || 0) + "px " + cs.borderTopColor,
+        radius: cs.borderTopLeftRadius, height: cs.height, fontSize: cs.fontSize, fontWeight: cs.fontWeight
+      });
+    });
+    return JSON.stringify(out, null, 2);
+  }
+
+  function copyText(text, btn) {
+    var done = function () {
+      var lbl = btn.querySelector(".lbl"), orig = btn.getAttribute("data-label");
+      btn.classList.add("ok");
+      lbl.textContent = "Copied";
+      setTimeout(function () { btn.classList.remove("ok"); lbl.textContent = orig; }, 1300);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { legacyCopy(text); done(); });
+    } else { legacyCopy(text); done(); }
+  }
+  function legacyCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    ta.remove();
+  }
+  function mkCta(label, icon) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "spec-cta"; b.setAttribute("data-label", label);
+    b.innerHTML = icon + '<span class="lbl">' + label + "</span>";
+    return b;
+  }
+  var svgIcon = '<svg class="gi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>';
+  var jsonIcon = '<svg class="gi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H7a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2 2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h1"/><path d="M16 3h1a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2 2 2 0 0 0-2 2v4a2 2 0 0 1-2 2h-1"/></svg>';
+  document.querySelectorAll(".spec").forEach(function (spec) {
+    var head = spec.querySelector(".spec-head");
+    if (!head) return;
+    var wrap = document.createElement("div");
+    wrap.className = "spec-actions";
+    var s = mkCta("Copy SVG", svgIcon), j = mkCta("JSON", jsonIcon);
+    s.title = "Copy as SVG, then paste onto a Figma canvas for editable layers";
+    j.title = "Copy design tokens as JSON (for Tokens Studio, Figma Variables, dev handoff)";
+    s.addEventListener("click", function () { copyText(specToSVG(spec), s); });
+    j.addEventListener("click", function () { copyText(specToJSON(spec), j); });
+    wrap.appendChild(s); wrap.appendChild(j);
+    head.appendChild(wrap);
   });
 
   /* ---------------- stats ---------------- */
