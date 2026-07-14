@@ -17,6 +17,7 @@ const TABS: Tab[] = [
   { key: "schema", label: "Schema markup", to: "/w/$workspace/p/$project/seo/schema" },
   { key: "sitemap", label: "Sitemap", to: "/w/$workspace/p/$project/seo/sitemap" },
   { key: "rss", label: "RSS feed", to: "/w/$workspace/p/$project/seo/rss" },
+  { key: "delivery", label: "AI delivery", to: "/w/$workspace/p/$project/seo/delivery" },
   { key: "robots", label: "Robots", to: "/w/$workspace/p/$project/seo/robots" },
   { key: "redirects", label: "Redirects", to: "/w/$workspace/p/$project/seo/redirects" },
   { key: "issues", label: "Issues", to: "/w/$workspace/p/$project/seo/issues" },

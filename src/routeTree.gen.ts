@@ -92,6 +92,7 @@ import { Route as WWorkspacePProjectSeoRobotsRouteImport } from './routes/w.$wor
 import { Route as WWorkspacePProjectSeoRedirectsRouteImport } from './routes/w.$workspace.p.$project.seo.redirects'
 import { Route as WWorkspacePProjectSeoPagesRouteImport } from './routes/w.$workspace.p.$project.seo.pages'
 import { Route as WWorkspacePProjectSeoIssuesRouteImport } from './routes/w.$workspace.p.$project.seo.issues'
+import { Route as WWorkspacePProjectSeoDeliveryRouteImport } from './routes/w.$workspace.p.$project.seo.delivery'
 import { Route as WWorkspacePProjectFormsFormIdRouteImport } from './routes/w.$workspace.p.$project.forms.$formId'
 import { Route as WWorkspacePProjectPagesPageIdSeoRouteImport } from './routes/w.$workspace.p.$project.pages.$pageId.seo'
 
@@ -563,6 +564,12 @@ const WWorkspacePProjectSeoIssuesRoute =
     path: '/issues',
     getParentRoute: () => WWorkspacePProjectSeoRoute,
   } as any)
+const WWorkspacePProjectSeoDeliveryRoute =
+  WWorkspacePProjectSeoDeliveryRouteImport.update({
+    id: '/delivery',
+    path: '/delivery',
+    getParentRoute: () => WWorkspacePProjectSeoRoute,
+  } as any)
 const WWorkspacePProjectFormsFormIdRoute =
   WWorkspacePProjectFormsFormIdRouteImport.update({
     id: '/forms/$formId',
@@ -631,6 +638,7 @@ export interface FileRoutesByFullPath {
   '/w/$workspace/p/$project/': typeof WWorkspacePProjectIndexRoute
   '/w/$workspace/settings/billing/': typeof WWorkspaceSettingsBillingIndexRoute
   '/w/$workspace/p/$project/forms/$formId': typeof WWorkspacePProjectFormsFormIdRoute
+  '/w/$workspace/p/$project/seo/delivery': typeof WWorkspacePProjectSeoDeliveryRoute
   '/w/$workspace/p/$project/seo/issues': typeof WWorkspacePProjectSeoIssuesRoute
   '/w/$workspace/p/$project/seo/pages': typeof WWorkspacePProjectSeoPagesRoute
   '/w/$workspace/p/$project/seo/redirects': typeof WWorkspacePProjectSeoRedirectsRoute
@@ -714,6 +722,7 @@ export interface FileRoutesByTo {
   '/w/$workspace/p/$project': typeof WWorkspacePProjectIndexRoute
   '/w/$workspace/settings/billing': typeof WWorkspaceSettingsBillingIndexRoute
   '/w/$workspace/p/$project/forms/$formId': typeof WWorkspacePProjectFormsFormIdRoute
+  '/w/$workspace/p/$project/seo/delivery': typeof WWorkspacePProjectSeoDeliveryRoute
   '/w/$workspace/p/$project/seo/issues': typeof WWorkspacePProjectSeoIssuesRoute
   '/w/$workspace/p/$project/seo/pages': typeof WWorkspacePProjectSeoPagesRoute
   '/w/$workspace/p/$project/seo/redirects': typeof WWorkspacePProjectSeoRedirectsRoute
@@ -802,6 +811,7 @@ export interface FileRoutesById {
   '/w/$workspace/p/$project/': typeof WWorkspacePProjectIndexRoute
   '/w/$workspace/settings/billing/': typeof WWorkspaceSettingsBillingIndexRoute
   '/w/$workspace/p/$project/forms/$formId': typeof WWorkspacePProjectFormsFormIdRoute
+  '/w/$workspace/p/$project/seo/delivery': typeof WWorkspacePProjectSeoDeliveryRoute
   '/w/$workspace/p/$project/seo/issues': typeof WWorkspacePProjectSeoIssuesRoute
   '/w/$workspace/p/$project/seo/pages': typeof WWorkspacePProjectSeoPagesRoute
   '/w/$workspace/p/$project/seo/redirects': typeof WWorkspacePProjectSeoRedirectsRoute
@@ -891,6 +901,7 @@ export interface FileRouteTypes {
     | '/w/$workspace/p/$project/'
     | '/w/$workspace/settings/billing/'
     | '/w/$workspace/p/$project/forms/$formId'
+    | '/w/$workspace/p/$project/seo/delivery'
     | '/w/$workspace/p/$project/seo/issues'
     | '/w/$workspace/p/$project/seo/pages'
     | '/w/$workspace/p/$project/seo/redirects'
@@ -974,6 +985,7 @@ export interface FileRouteTypes {
     | '/w/$workspace/p/$project'
     | '/w/$workspace/settings/billing'
     | '/w/$workspace/p/$project/forms/$formId'
+    | '/w/$workspace/p/$project/seo/delivery'
     | '/w/$workspace/p/$project/seo/issues'
     | '/w/$workspace/p/$project/seo/pages'
     | '/w/$workspace/p/$project/seo/redirects'
@@ -1061,6 +1073,7 @@ export interface FileRouteTypes {
     | '/w/$workspace/p/$project/'
     | '/w/$workspace/settings/billing/'
     | '/w/$workspace/p/$project/forms/$formId'
+    | '/w/$workspace/p/$project/seo/delivery'
     | '/w/$workspace/p/$project/seo/issues'
     | '/w/$workspace/p/$project/seo/pages'
     | '/w/$workspace/p/$project/seo/redirects'
@@ -1690,6 +1703,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WWorkspacePProjectSeoIssuesRouteImport
       parentRoute: typeof WWorkspacePProjectSeoRoute
     }
+    '/w/$workspace/p/$project/seo/delivery': {
+      id: '/w/$workspace/p/$project/seo/delivery'
+      path: '/delivery'
+      fullPath: '/w/$workspace/p/$project/seo/delivery'
+      preLoaderRoute: typeof WWorkspacePProjectSeoDeliveryRouteImport
+      parentRoute: typeof WWorkspacePProjectSeoRoute
+    }
     '/w/$workspace/p/$project/forms/$formId': {
       id: '/w/$workspace/p/$project/forms/$formId'
       path: '/forms/$formId'
@@ -1782,6 +1802,7 @@ const WWorkspaceSettingsRouteWithChildren =
   WWorkspaceSettingsRoute._addFileChildren(WWorkspaceSettingsRouteChildren)
 
 interface WWorkspacePProjectSeoRouteChildren {
+  WWorkspacePProjectSeoDeliveryRoute: typeof WWorkspacePProjectSeoDeliveryRoute
   WWorkspacePProjectSeoIssuesRoute: typeof WWorkspacePProjectSeoIssuesRoute
   WWorkspacePProjectSeoPagesRoute: typeof WWorkspacePProjectSeoPagesRoute
   WWorkspacePProjectSeoRedirectsRoute: typeof WWorkspacePProjectSeoRedirectsRoute
@@ -1793,6 +1814,7 @@ interface WWorkspacePProjectSeoRouteChildren {
 }
 
 const WWorkspacePProjectSeoRouteChildren: WWorkspacePProjectSeoRouteChildren = {
+  WWorkspacePProjectSeoDeliveryRoute: WWorkspacePProjectSeoDeliveryRoute,
   WWorkspacePProjectSeoIssuesRoute: WWorkspacePProjectSeoIssuesRoute,
   WWorkspacePProjectSeoPagesRoute: WWorkspacePProjectSeoPagesRoute,
   WWorkspacePProjectSeoRedirectsRoute: WWorkspacePProjectSeoRedirectsRoute,
