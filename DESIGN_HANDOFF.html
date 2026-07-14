@@ -46,6 +46,15 @@
   --bad-soft: rgba(180, 36, 58, 0.1);
   --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 30px -18px rgba(15, 23, 42, 0.18);
   --sidebar-w: 288px;
+  --primary-hover: #ff1f8f;
+  --primary-pressed: #d6026f;
+  --btn-bad: #b4243a;
+  --sched: #0891b2;
+  --arch: #6b7280;
+  --acc-media: #3b82f6;
+  --acc-layout: #8b5cf6;
+  --acc-interactive: #10b981;
+  --acc-advanced: #f59e0b;
 }
 html[data-theme="dark"] {
   color-scheme: dark;
@@ -70,6 +79,9 @@ html[data-theme="dark"] {
   --bad: #f87171;
   --bad-soft: rgba(248, 113, 113, 0.12);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px -18px rgba(0, 0, 0, 0.6);
+  --primary-hover: #ff5aa1;
+  --primary-pressed: #e11d74;
+  --btn-bad: #e5484d;
 }
 
 /* ---------------------------------------------------------- base */
@@ -480,6 +492,151 @@ html[data-theme="dark"] .doc-footer img { filter: brightness(0) invert(1); }
 @keyframes flash {
   0% { background: var(--primary-soft); box-shadow: 0 0 0 6px var(--primary-soft); }
   100% { background: transparent; box-shadow: 0 0 0 6px transparent; }
+}
+
+/* ============================ component gallery ============================ */
+.spec { border: 1px solid var(--border); border-radius: 14px; background: var(--s0); box-shadow: var(--shadow); margin: 16px 0 24px; overflow: hidden; }
+.spec-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 12px 18px; border-bottom: 1px solid var(--hairline); background: var(--s1); }
+.spec-title { font-size: 13.5px; font-weight: 600; color: var(--fg); }
+.spec-meta { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; color: var(--muted); }
+.spec-body { padding: 18px 20px; }
+.spec-sub { font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 24px 0 12px; }
+.spec-sub:first-child { margin-top: 0; }
+.spec-note { font-size: 12px; color: var(--muted); margin: 16px 0 0; max-width: 72ch; }
+.states { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: flex-start; }
+.state { display: flex; flex-direction: column; gap: 9px; align-items: flex-start; }
+.state-label { font-family: "IBM Plex Mono", monospace; font-size: 9px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.spec-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.spec-row.top { align-items: flex-start; }
+
+/* buttons */
+.g-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 14px; border-radius: 8px; border: 1px solid transparent; background: none; font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1; white-space: nowrap; cursor: pointer; user-select: none; transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, opacity 0.15s; }
+.g-btn .gi { width: 14px; height: 14px; flex: none; }
+.g-btn.sm { height: 28px; padding: 0 11px; font-size: 12px; border-radius: 7px; }
+.g-btn.icon { width: 32px; padding: 0; }
+.g-btn.icon.sm { width: 28px; }
+.g-btn.primary { background: var(--primary); color: #fff; }
+.g-btn.primary.is-hover, .g-btn.primary:hover { background: var(--primary-hover); }
+.g-btn.primary.is-active, .g-btn.primary:active { background: var(--primary-pressed); }
+.g-btn.secondary { background: var(--s0); border-color: var(--border); color: var(--fg); }
+.g-btn.secondary.is-hover, .g-btn.secondary:hover { background: var(--s2); }
+.g-btn.secondary.is-active, .g-btn.secondary:active { background: var(--s3); }
+.g-btn.ghost { background: transparent; color: var(--fg-soft); }
+.g-btn.ghost.is-hover, .g-btn.ghost:hover { background: var(--s2); color: var(--fg); }
+.g-btn.destructive { background: var(--btn-bad); color: #fff; }
+.g-btn.destructive.is-hover, .g-btn.destructive:hover { background: color-mix(in oklab, var(--btn-bad) 87%, #000); }
+.g-btn.dghost { background: transparent; color: var(--bad); }
+.g-btn.dghost.is-hover, .g-btn.dghost:hover { background: var(--bad-soft); }
+.g-btn.is-focus, .g-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--s0), 0 0 0 4px color-mix(in oklab, var(--primary) 42%, transparent); border-color: var(--primary); }
+.g-btn.is-disabled, .g-btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+.g-spin { width: 13px; height: 13px; border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent; animation: gspin 0.7s linear infinite; }
+@keyframes gspin { to { transform: rotate(360deg); } }
+
+/* inputs */
+.g-field { display: flex; flex-direction: column; gap: 6px; }
+.g-lab { font-size: 11.5px; font-weight: 500; color: var(--muted); }
+.g-input { height: 34px; width: 230px; max-width: 100%; border: 1px solid var(--border); border-radius: 8px; background: var(--s0); color: var(--fg); font: inherit; font-size: 13px; padding: 0 11px; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+.g-input::placeholder { color: var(--muted); }
+.g-input.is-focus, .g-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 18%, transparent); }
+.g-input.is-disabled, .g-input:disabled { opacity: 0.6; cursor: not-allowed; background: var(--s2); }
+.g-input.is-error { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad-soft); }
+textarea.g-input { height: auto; min-height: 66px; padding: 8px 11px; resize: vertical; line-height: 1.5; font-size: 13px; }
+select.g-input { appearance: none; padding-right: 30px; cursor: pointer; }
+.g-inwrap { position: relative; display: inline-flex; align-items: center; }
+.g-inwrap .g-in-ic { position: absolute; pointer-events: none; color: var(--muted); display: inline-flex; }
+.g-inwrap .g-in-ic.left { left: 10px; }
+.g-inwrap .g-in-ic.right { right: 10px; }
+.g-inwrap input.g-input { padding-left: 32px; }
+.g-inwrap select.g-input { padding-left: 11px; }
+.g-help { font-size: 11px; color: var(--muted); }
+.g-help.err { color: var(--bad); }
+
+/* switch / check / radio */
+.g-switch { position: relative; width: 36px; height: 20px; border-radius: 999px; background: var(--s3); border: 1px solid var(--border); cursor: pointer; flex: none; padding: 0; transition: background 0.15s, border-color 0.15s; }
+.g-switch::after { content: ""; position: absolute; top: 1.5px; left: 1.5px; width: 15px; height: 15px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.3); transition: transform 0.15s; }
+.g-switch.on { background: var(--primary); border-color: transparent; }
+.g-switch.on::after { transform: translateX(16px); }
+.g-switch.is-disabled { opacity: 0.5; cursor: not-allowed; }
+.g-switch:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 30%, transparent); }
+.g-check { width: 17px; height: 17px; border-radius: 5px; border: 1px solid var(--border); background: var(--s0); display: inline-grid; place-items: center; cursor: pointer; padding: 0; flex: none; position: relative; }
+.g-check.on, .g-check.ind { background: var(--primary); border-color: var(--primary); }
+.g-check.on::after { content: ""; width: 5px; height: 9px; border: 2px solid #fff; border-top: 0; border-left: 0; transform: translateY(-1px) rotate(45deg); }
+.g-check.ind::after { content: ""; width: 8px; height: 2px; border-radius: 1px; background: #fff; }
+.g-check.is-disabled { opacity: 0.5; cursor: not-allowed; }
+.g-radio { width: 17px; height: 17px; border-radius: 50%; border: 1px solid var(--border); background: var(--s0); display: inline-grid; place-items: center; cursor: pointer; padding: 0; flex: none; }
+.g-radio.on { border-color: var(--primary); }
+.g-radio.on::after { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--primary); }
+.g-radio.is-disabled { opacity: 0.5; cursor: not-allowed; }
+.g-opt { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--fg); cursor: pointer; }
+
+/* segmented */
+.g-seg { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--border); border-radius: 9px; background: var(--s1); }
+.g-seg button { border: 0; background: none; font: inherit; font-size: 12px; font-weight: 500; color: var(--muted); padding: 4px 10px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.g-seg button.on { background: var(--s0); color: var(--fg); box-shadow: var(--shadow); }
+.g-seg .cnt { font-variant-numeric: tabular-nums; background: var(--s2); border-radius: 5px; padding: 0 5px; font-size: 10.5px; color: var(--muted); }
+.g-seg button.on .cnt { background: var(--primary-soft); color: var(--primary); }
+
+/* token field */
+.g-token { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 38px; border: 1px solid var(--border); border-radius: 8px; background: var(--s0); padding: 6px 9px; width: 360px; max-width: 100%; font-size: 13px; color: var(--fg-soft); }
+.g-tok { display: inline-flex; align-items: center; gap: 4px; background: color-mix(in oklab, var(--acc-layout) 15%, var(--s0)); border: 1px solid color-mix(in oklab, var(--acc-layout) 38%, transparent); color: color-mix(in oklab, var(--acc-layout) 72%, var(--fg)); border-radius: 6px; padding: 1px 7px; font-family: "IBM Plex Mono", monospace; font-size: 11.5px; }
+
+/* status, kinds, chips, plans */
+.g-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--fg-soft); }
+.g-status .d { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.g-kind { display: inline-block; background: var(--s2); color: var(--muted); border-radius: 5px; padding: 1px 7px; font-size: 10.5px; font-weight: 500; }
+.g-chip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid color-mix(in oklab, var(--hue) 38%, transparent); background: color-mix(in oklab, var(--hue) 13%, var(--s0)); color: color-mix(in oklab, var(--hue) 70%, var(--fg)); border-radius: 6px; padding: 2px 8px; font-size: 11.5px; font-weight: 500; }
+.g-chip .cd { width: 6px; height: 6px; border-radius: 2px; background: var(--hue); flex: none; }
+.g-plan { display: inline-flex; align-items: center; border: 1px solid color-mix(in oklab, var(--hue) 34%, transparent); background: color-mix(in oklab, var(--hue) 12%, var(--s0)); color: color-mix(in oklab, var(--hue) 68%, var(--fg)); border-radius: 999px; padding: 1px 9px; font-size: 11px; font-weight: 600; }
+
+/* feedback: toast, empty, meter, avatars, menu, mini table */
+.g-toast { display: inline-flex; align-items: center; gap: 10px; background: var(--s0); border: 1px solid var(--border); border-radius: 10px; padding: 9px 14px; box-shadow: var(--shadow); font-size: 13px; color: var(--fg); }
+.g-toast .tc { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; flex: none; color: #fff; }
+.g-empty { border: 1px dashed var(--border); border-radius: 12px; padding: 26px 20px; text-align: center; background: var(--s1); max-width: 380px; }
+.g-empty .ei { width: 34px; height: 34px; border-radius: 10px; background: var(--s2); color: var(--muted); display: inline-grid; place-items: center; margin-bottom: 10px; }
+.g-empty p { margin: 0 auto 12px; font-size: 12.5px; color: var(--muted); max-width: 30ch; }
+.g-meter { width: 270px; max-width: 100%; }
+.g-meter-top { display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 6px; }
+.g-meter-top .lab { color: var(--fg-soft); font-weight: 500; }
+.g-meter-top .val { color: var(--muted); font-variant-numeric: tabular-nums; }
+.g-meter-track { height: 7px; border-radius: 999px; background: var(--s2); overflow: hidden; }
+.g-meter-fill { height: 100%; border-radius: 999px; }
+.g-avastack { display: inline-flex; }
+.g-ava { width: 27px; height: 27px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 10.5px; font-weight: 600; color: #fff; border: 2px solid var(--s0); }
+.g-avastack .g-ava + .g-ava { margin-left: -8px; }
+.g-ava.more { background: var(--s3); color: var(--fg-soft); }
+.g-menu { width: 216px; border: 1px solid var(--border); border-radius: 10px; background: var(--s0); box-shadow: var(--shadow); padding: 5px; }
+.g-mi { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 7px; font-size: 13px; color: var(--fg); cursor: pointer; }
+.g-mi .gi { width: 14px; height: 14px; color: var(--muted); }
+.g-mi:hover { background: var(--s2); }
+.g-mi.danger { color: var(--bad); }
+.g-mi.danger .gi { color: var(--bad); }
+.g-msep { height: 1px; background: var(--hairline); margin: 5px 6px; }
+.g-tbl { width: 100%; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--s0); font-size: 12.5px; }
+.g-tbl .g-tr { display: grid; grid-template-columns: 1fr 90px 74px; align-items: center; gap: 10px; padding: 9px 14px; border-bottom: 1px solid var(--hairline); }
+.g-tbl .g-tr:last-child { border-bottom: 0; }
+.g-tbl .g-th { background: var(--s2); font-family: "IBM Plex Mono", monospace; font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.g-tbl .g-tr.sel { background: var(--primary-soft); }
+.g-tbl .g-tr:hover:not(.g-th) { background: var(--s1); }
+
+/* color swatches */
+.g-ramp { display: flex; border-radius: 9px; overflow: hidden; border: 1px solid var(--border); }
+.g-ramp span { flex: 1; height: 44px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 3px; font-family: "IBM Plex Mono", monospace; font-size: 8px; }
+.g-ladder { display: flex; gap: 8px; flex-wrap: wrap; }
+.g-cell { width: 96px; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+.g-cell .sw { height: 46px; }
+.g-cell .mt { padding: 6px 8px; background: var(--s0); }
+.g-cell .mt b { display: block; font-size: 11px; color: var(--fg); }
+.g-cell .mt span { font-family: "IBM Plex Mono", monospace; font-size: 9.5px; color: var(--muted); }
+
+/* type specimen */
+.g-type-row { display: flex; align-items: baseline; gap: 18px; padding: 10px 0; border-bottom: 1px solid var(--hairline); flex-wrap: wrap; }
+.g-type-row:last-child { border-bottom: 0; }
+.g-type-tag { font-family: "IBM Plex Mono", monospace; font-size: 10px; color: var(--muted); width: 150px; flex: none; }
+.g-type-sample { color: var(--fg); }
+
+@media (max-width: 640px) {
+  .g-input { width: 100%; }
+  .g-tbl .g-tr { grid-template-columns: 1fr 70px 60px; }
 }
 </style>
 </head>
@@ -913,6 +1070,298 @@ html[data-theme="dark"] .doc-footer img { filter: brightness(0) invert(1); }
   <p class="eyebrow">Part 3</p>
   <h2>Design system</h2>
   <p class="lede">Every token, type size, component convention, and copy rule that makes BetterCMS read as one product. This is the reference part of the handbook: when you design a new screen, everything on it should be assembled from the pieces documented here.</p>
+
+  <p>Below is the live component gallery. Every specimen on this page is the real component, built from the same tokens the app ships, not a picture of one. Hover, focus and click them in this browser. Each grid also lays out every state at once (rest, hover, focus, pressed, disabled, loading) the way a Figma component sheet does, so you can compare states without chasing them.</p>
+  <div class="callout note"><p><strong>Reading the state grids.</strong> The <em>Hover</em>, <em>Focus</em> and <em>Pressed</em> tiles are pinned to that state so you can see it standing still. The tiles in the <em>Try it live</em> rows are genuinely interactive: move your pointer over them, tab to them, click them.</p></div>
+
+  <h3 id="design-system-buttons-live">Buttons and actions</h3>
+  <p>One button component, four intents, two sizes. Intent is chosen by importance on the screen, never by decoration. A screen has exactly one primary button in view at a time.</p>
+  <div class="spec">
+    <div class="spec-head"><span class="spec-title">Button intents and states</span><span class="spec-meta">h 32px default, radius 8px, 12.5px / 600</span></div>
+    <div class="spec-body">
+      <p class="spec-sub">Primary, the one important action</p>
+      <div class="states">
+        <div class="state"><span class="state-label">Rest</span><button type="button" class="g-btn primary">Publish</button></div>
+        <div class="state"><span class="state-label">Hover</span><button type="button" class="g-btn primary is-hover">Publish</button></div>
+        <div class="state"><span class="state-label">Focus</span><button type="button" class="g-btn primary is-focus">Publish</button></div>
+        <div class="state"><span class="state-label">Pressed</span><button type="button" class="g-btn primary is-active">Publish</button></div>
+        <div class="state"><span class="state-label">Loading</span><button type="button" class="g-btn primary"><span class="g-spin"></span>Publishing</button></div>
+        <div class="state"><span class="state-label">Disabled</span><button type="button" class="g-btn primary is-disabled" disabled>Publish</button></div>
+      </div>
+      <p class="spec-sub">Secondary, the common action</p>
+      <div class="states">
+        <div class="state"><span class="state-label">Rest</span><button type="button" class="g-btn secondary">Save draft</button></div>
+        <div class="state"><span class="state-label">Hover</span><button type="button" class="g-btn secondary is-hover">Save draft</button></div>
+        <div class="state"><span class="state-label">Focus</span><button type="button" class="g-btn secondary is-focus">Save draft</button></div>
+        <div class="state"><span class="state-label">Pressed</span><button type="button" class="g-btn secondary is-active">Save draft</button></div>
+        <div class="state"><span class="state-label">Disabled</span><button type="button" class="g-btn secondary is-disabled" disabled>Save draft</button></div>
+      </div>
+      <p class="spec-sub">Ghost, the quiet action</p>
+      <div class="states">
+        <div class="state"><span class="state-label">Rest</span><button type="button" class="g-btn ghost">Cancel</button></div>
+        <div class="state"><span class="state-label">Hover</span><button type="button" class="g-btn ghost is-hover">Cancel</button></div>
+        <div class="state"><span class="state-label">Focus</span><button type="button" class="g-btn ghost is-focus">Cancel</button></div>
+        <div class="state"><span class="state-label">Disabled</span><button type="button" class="g-btn ghost is-disabled" disabled>Cancel</button></div>
+      </div>
+      <p class="spec-sub">Destructive, the dangerous action</p>
+      <div class="states">
+        <div class="state"><span class="state-label">Solid rest</span><button type="button" class="g-btn destructive">Delete</button></div>
+        <div class="state"><span class="state-label">Solid hover</span><button type="button" class="g-btn destructive is-hover">Delete</button></div>
+        <div class="state"><span class="state-label">Ghost rest</span><button type="button" class="g-btn dghost">Delete</button></div>
+        <div class="state"><span class="state-label">Ghost hover</span><button type="button" class="g-btn dghost is-hover">Delete</button></div>
+        <div class="state"><span class="state-label">Disabled</span><button type="button" class="g-btn destructive is-disabled" disabled>Delete</button></div>
+      </div>
+      <p class="spec-sub">Sizes, icons and icon-only</p>
+      <div class="spec-row">
+        <button type="button" class="g-btn primary">Default 32px</button>
+        <button type="button" class="g-btn primary sm">Compact 28px</button>
+        <button type="button" class="g-btn secondary"><svg class="gi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>New page</button>
+        <button type="button" class="g-btn secondary">Open<svg class="gi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></button>
+        <button type="button" class="g-btn secondary icon" aria-label="Move up"><svg class="gi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg></button>
+        <button type="button" class="g-btn ghost icon sm" aria-label="More"><svg class="gi" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>
+      </div>
+      <p class="spec-sub">Try it live</p>
+      <div class="spec-row">
+        <button type="button" class="g-btn primary">Hover and click me</button>
+        <button type="button" class="g-btn secondary">Tab to me for focus</button>
+        <button type="button" class="g-btn ghost">Ghost</button>
+      </div>
+      <p class="spec-note">The primary hover lightens the pink (<code>--primary-hover</code>), pressed darkens it (<code>--primary-pressed</code>). Focus draws a two step ring: a background gap then a pink halo, so it reads on any surface. Loading swaps the leading slot for a spinner and changes the verb to its present participle (Publish becomes Publishing). Disabled drops to 45 percent opacity with a not-allowed cursor and never keeps a hover.</p>
+    </div>
+  </div>
+
+  <h3 id="design-system-inputs-live">Inputs and forms</h3>
+  <p>Text entry shares one field shell: 34px tall, 8px radius, hairline border that turns pink with a soft ring on focus. Errors turn the border and ring red and add a message below, they never rely on color alone.</p>
+  <div class="spec">
+    <div class="spec-head"><span class="spec-title">Text fields</span><span class="spec-meta">h 34px, radius 8px, focus ring 3px primary at 18%</span></div>
+    <div class="spec-body">
+      <div class="states">
+        <div class="state"><span class="state-label">Rest</span><input class="g-input" type="text" placeholder="Page title" value="Pricing"></div>
+        <div class="state"><span class="state-label">Focus</span><input class="g-input is-focus" type="text" value="Pricing"></div>
+        <div class="state"><span class="state-label">Disabled</span><input class="g-input is-disabled" type="text" value="Locked on this plan" disabled></div>
+        <div class="state"><span class="state-label">Error</span><div class="g-field"><input class="g-input is-error" type="text" value="pricing page"><span class="g-help err">Slugs use lowercase and dashes only.</span></div></div>
+      </div>
+      <p class="spec-sub">Search, select and multi-line</p>
+      <div class="spec-row top">
+        <div class="g-inwrap"><span class="g-in-ic left"><svg class="gi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span><input class="g-input" type="search" placeholder="Search pages"></div>
+        <div class="g-inwrap"><select class="g-input"><option>Published</option><option>Draft</option><option>Scheduled</option></select><span class="g-in-ic right"><svg class="gi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></div>
+        <textarea class="g-input" placeholder="Meta description">A short summary that shows under the title in search results.</textarea>
+      </div>
+      <p class="spec-note">Search adds a leading magnifier, select adds a trailing chevron, both inset 10px. Placeholders use muted text; typed values use full foreground. A field never grows a shadow at rest, the focus ring is the only glow in the system.</p>
+    </div>
+  </div>
+
+  <h3 id="design-system-selection">Selection controls</h3>
+  <p>Switches commit a setting instantly, checkboxes and radios collect a choice inside a form, segmented controls filter a list in place. All three take the pink only in their on state.</p>
+  <div class="spec">
+    <div class="spec-head"><span class="spec-title">Switch, checkbox, radio, segmented</span><span class="spec-meta">the on state is the only pink</span></div>
+    <div class="spec-body">
+      <p class="spec-sub">Switch, instant setting</p>
+      <div class="states">
+        <div class="state"><span class="state-label">Off</span><button type="button" class="g-switch" role="switch" aria-label="Serve markdown"></button></div>
+        <div class="state"><span class="state-label">On</span><button type="button" class="g-switch on" role="switch" aria-checked="true" aria-label="Serve markdown"></button></div>
+        <div class="state"><span class="state-label">Disabled</span><button type="button" class="g-switch is-disabled" role="switch" aria-label="Serve markdown" disabled></button></div>
+        <div class="state"><span class="state-label">Try it</span><button type="button" class="g-switch on" role="switch" aria-checked="true" aria-label="Toggle me"></button></div>
+      </div>
+      <p class="spec-sub">Checkbox and radio</p>
+      <div class="spec-row" style="gap:22px" data-radio>
+        <span class="g-opt"><span class="g-check on"></span>Include in sitemap</span>
+        <span class="g-opt"><span class="g-check"></span>Hide from search</span>
+        <span class="g-opt"><span class="g-check ind"></span>Some selected</span>
+        <span class="g-opt"><span class="g-radio on"></span>Publish now</span>
+        <span class="g-opt"><span class="g-radio"></span>Schedule</span>
+      </div>
+      <p class="spec-sub">Segmented filter with counts</p>
+      <div class="spec-row">
+        <div class="g-seg">
+          <button type="button" class="on">All types <span class="cnt">62</span></button>
+          <button type="button">Static <span class="cnt">41</span></button>
+          <button type="button">Collections <span class="cnt">18</span></button>
+          <button type="button">Generated <span class="cnt">3</span></button>
+        </div>
+      </div>
+      <p class="spec-note">Everything in this card is live. Flip the switches, tick the boxes, pick a radio (they behave as a group), switch the segmented tabs. The segmented control carries a count pill per option that turns pink on the active tab, the same pattern used across the Pages hub and Markdown manager.</p>
+    </div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-head"><span class="spec-title">Token field</span><span class="spec-meta">the purple chip editor for CMS variables</span></div>
+    <div class="spec-body">
+      <div class="g-token"><span>Hi</span><span class="g-tok">{{first_name}}</span><span>, your order</span><span class="g-tok">{{order_id}}</span><span>has shipped.</span></div>
+      <p class="spec-note">Used anywhere copy mixes plain text with live CMS fields (SEO meta, email subjects, the instructions editor). Each variable is an atomic violet chip you cannot split with the caret, so a field name never breaks in half. Chips carry the layout accent (<code>--acc-layout</code>) to separate them from the pink primary and from status colors.</p>
+    </div>
+  </div>
+
+  <h3 id="design-system-badges">Badges, pills and chips</h3>
+  <p>Small labels do a lot of work in a dense tool. Three families, each with a fixed job: status pills say what state a thing is in, kind badges name a type, reference chips point at a specific entity.</p>
+  <div class="spec">
+    <div class="spec-head"><span class="spec-title">Status, kinds, references, plans</span><span class="spec-meta">status pairs a dot with a word, never color alone</span></div>
+    <div class="spec-body">
+      <p class="spec-sub">Content status</p>
+      <div class="spec-row" style="gap:18px">
+        <span class="g-status"><span class="d" style="background:var(--ok)"></span>Published</span>
+        <span class="g-status"><span class="d" style="background:var(--warn)"></span>Draft</span>
+        <span class="g-status"><span class="d" style="background:var(--info)"></span>In review</span>
+        <span class="g-status"><span class="d" style="background:var(--sched)"></span>Scheduled</span>
+        <span class="g-status"><span class="d" style="background:var(--arch)"></span>Archived</span>
+        <span class="g-status"><span class="d" style="background:var(--bad)"></span>Error</span>
+      </div>
+      <p class="spec-sub">Kind badges</p>
+      <div class="spec-row">
+        <span class="g-kind">Static</span><span class="g-kind">Dynamic</span><span class="g-kind">Collection</span><span class="g-kind">Auto</span><span class="g-kind">Organizer</span>
+      </div>
+      <p class="spec-sub">Reference chips, one tint per entity type</p>
+      <div class="spec-row" style="gap:8px">
+        <span class="g-chip" style="--hue:#14b8a6"><span class="cd"></span>Asset</span>
+        <span class="g-chip" style="--hue:#3b82f6"><span class="cd"></span>Collection</span>
+        <span class="g-chip" style="--hue:#64748b"><span class="cd"></span>Field</span>
+        <span class="g-chip" style="--hue:#8b5cf6"><span class="cd"></span>Component</span>
+        <span class="g-chip" style="--hue:#6366f1"><span class="cd"></span>Section</span>
+        <span class="g-chip" style="--hue:#10b981"><span class="cd"></span>Page</span>
+        <span class="g-chip" style="--hue:#f59e0b"><span class="cd"></span>Brand token</span>
+        <span class="g-chip" style="--hue:#ef037f"><span class="cd"></span>Skill</span>
+        <span class="g-chip" style="--hue:#f43f5e"><span class="cd"></span>Rule</span>
+      </div>
+      <p class="spec-sub">Plan badges</p>
+      <div class="spec-row" style="gap:8px">
+        <span class="g-plan" style="--hue:#6b7280">Free</span>
+        <span class="g-plan" style="--hue:#3b82f6">Basic</span>
+        <span class="g-plan" style="--hue:#ef037f">Pro</span>
+        <span class="g-plan" style="--hue:#8b5cf6">Team</span>
+        <span class="g-plan" style="--hue:#f59e0b">Enterprise</span>
+      </div>
+      <p class="spec-note">Status always pairs a colored dot with a word so it survives color blindness and grayscale printing. Reference chips derive their tint from the entity type, the same nine tints the instructions Insert reference menu uses, so a designer learns the color once and reads it everywhere. Plan badges are pill shaped to separate them from status at a glance.</p>
+    </div>
+  </div>
+
+  <h3 id="design-system-feedback-live">Feedback and overlays</h3>
+  <p>How the product talks back: a toast confirms an action, an empty state guides a blank screen, a usage meter shows headroom, a menu offers row actions, avatars show who else is here.</p>
+  <div class="spec">
+    <div class="spec-head"><span class="spec-title">Toast, empty state, usage meter</span><span class="spec-meta">usage is never red, over budget reads sky blue</span></div>
+    <div class="spec-body">
+      <p class="spec-sub">Toast, verb first confirmation</p>
+      <div class="spec-row">
+        <span class="g-toast"><span class="tc" style="background:var(--ok)"><svg class="gi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px"><path d="M20 6 9 17l-5-5"/></svg></span>Published to production</span>
+      </div>
+      <p class="spec-sub">Empty state</p>
+      <div class="g-empty">
+        <span class="ei"><svg class="gi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M4 13 6 5h12l2 8v6H4z"/></svg></span>
+        <p>No collections yet. Model your first content type to start.</p>
+        <button type="button" class="g-btn primary sm"><svg class="gi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>New collection</button>
+      </div>
+      <p class="spec-sub">Usage meters, three calm states</p>
+      <div class="spec-row top" style="gap:26px">
+        <div class="g-meter"><div class="g-meter-top"><span class="lab">Bandwidth</span><span class="val">120 / 500 GB</span></div><div class="g-meter-track"><div class="g-meter-fill" style="width:24%;background:var(--ok)"></div></div></div>
+        <div class="g-meter"><div class="g-meter-top"><span class="lab">AI credits</span><span class="val">2,600 / 3,000</span></div><div class="g-meter-track"><div class="g-meter-fill" style="width:87%;background:var(--warn)"></div></div></div>
+        <div class="g-meter"><div class="g-meter-top"><span class="lab">API requests</span><span class="val">1.2M / 1M</span></div><div class="g-meter-track"><div class="g-meter-fill" style="width:100%;background:#0ea5e9"></div></div></div>
+      </div>
+      <p class="spec-note">Usage is deliberately never red. Healthy is emerald, approaching (over 80 percent) is amber, over budget is sky blue with the message that overage is billed at the add on rate, never cut off. Red is reserved strictly for errors and destruction, so a full meter never reads as a failure.</p>
+    </div>
+  </div>
+  <div class="spec">
+    <div class="spec-head"><span class="spec-title">Row menu, presence, list row</span><span class="spec-meta">floating layers get the only resting shadows</span></div>
+    <div class="spec-body">
+      <div class="spec-row top" style="gap:24px">
+        <div>
+          <p class="spec-sub">Dropdown menu</p>
+          <div class="g-menu">
+            <div class="g-mi"><svg class="gi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>Open entries</div>
+            <div class="g-mi"><svg class="gi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>Duplicate</div>
+            <div class="g-msep"></div>
+            <div class="g-mi danger"><svg class="gi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m6 6 1 14h10l1-14"/></svg>Delete</div>
+          </div>
+        </div>
+        <div>
+          <p class="spec-sub">Presence stack</p>
+          <div class="g-avastack">
+            <span class="g-ava" style="background:#ef037f">SO</span>
+            <span class="g-ava" style="background:#3b82f6">EC</span>
+            <span class="g-ava" style="background:#10b981">NR</span>
+            <span class="g-ava more">+3</span>
+          </div>
+        </div>
+      </div>
+      <p class="spec-sub">List rows, hover and selected</p>
+      <div class="g-tbl">
+        <div class="g-tr g-th"><span>Page</span><span>Status</span><span>Serve</span></div>
+        <div class="g-tr"><span>Home</span><span><span class="g-status"><span class="d" style="background:var(--ok)"></span>Live</span></span><span><span class="g-switch on" style="pointer-events:none"></span></span></div>
+        <div class="g-tr sel"><span>Pricing</span><span><span class="g-status"><span class="d" style="background:var(--warn)"></span>Draft</span></span><span><span class="g-switch" style="pointer-events:none"></span></span></div>
+        <div class="g-tr"><span>About</span><span><span class="g-status"><span class="d" style="background:var(--sched)"></span>Scheduled</span></span><span><span class="g-switch on" style="pointer-events:none"></span></span></div>
+      </div>
+      <p class="spec-note">Menus, popovers and dialogs are the only elements that carry a shadow while at rest, because they float above the page. Resting cards and rows use tone and a hairline instead. The selected row takes a faint pink wash (<code>--primary-soft</code>), hover takes a one step tone lift. Presence avatars overlap by 8px with a 2px card colored ring so they read as a stack on any background.</p>
+    </div>
+  </div>
+
+  <h3 id="design-system-color-live">Color in context</h3>
+  <p>The reference hex tables are further down. This is the palette as the eye meets it: the surface ladder that builds depth, and the accents that carry meaning.</p>
+  <div class="spec">
+    <div class="spec-head"><span class="spec-title">Surface ladder</span><span class="spec-meta">light lifts darker, dark lifts lighter</span></div>
+    <div class="spec-body">
+      <p class="spec-sub">Light theme, s0 to s4</p>
+      <div class="g-ladder">
+        <div class="g-cell"><div class="sw" style="background:#ffffff;border-bottom:1px solid #e3e5ea"></div><div class="mt"><b>s0</b><span>#FFFFFF</span></div></div>
+        <div class="g-cell"><div class="sw" style="background:#fafbfc"></div><div class="mt"><b>s1</b><span>#FAFBFC</span></div></div>
+        <div class="g-cell"><div class="sw" style="background:#f4f5f7"></div><div class="mt"><b>s2</b><span>#F4F5F7</span></div></div>
+        <div class="g-cell"><div class="sw" style="background:#eceef1"></div><div class="mt"><b>s3</b><span>#ECEEF1</span></div></div>
+        <div class="g-cell"><div class="sw" style="background:#e4e6eb"></div><div class="mt"><b>s4</b><span>#E4E6EB</span></div></div>
+      </div>
+      <p class="spec-sub">Dark theme, s0 to s4</p>
+      <div class="g-ladder">
+        <div class="g-cell"><div class="sw" style="background:#141416"></div><div class="mt"><b>s0</b><span>#141416</span></div></div>
+        <div class="g-cell"><div class="sw" style="background:#1c1c1f"></div><div class="mt"><b>s1</b><span>#1C1C1F</span></div></div>
+        <div class="g-cell"><div class="sw" style="background:#222226"></div><div class="mt"><b>s2</b><span>#222226</span></div></div>
+        <div class="g-cell"><div class="sw" style="background:#28282d"></div><div class="mt"><b>s3</b><span>#28282D</span></div></div>
+        <div class="g-cell"><div class="sw" style="background:#2e2e34"></div><div class="mt"><b>s4</b><span>#2E2E34</span></div></div>
+      </div>
+      <p class="spec-note">This is the one rule people get backwards. In light mode elevation gets darker (chrome to card to modal). In dark mode elevation gets lighter, chrome <code>#141416</code> rises to card <code>#1C1C1F</code> to modal <code>#2E2E34</code>. Do not invert it. Both ladders are shown here regardless of the theme you are reading in.</p>
+    </div>
+  </div>
+  <div class="spec">
+    <div class="spec-head"><span class="spec-title">Accents and status hues</span><span class="spec-meta">one pink for action, the rest for meaning</span></div>
+    <div class="spec-body">
+      <p class="spec-sub">Primary pink, allowed only for action, active nav, focus and selection</p>
+      <div class="g-ramp">
+        <span style="background:#fce9f2;color:#7a123f">soft</span>
+        <span style="background:#f8a8cf;color:#7a123f">300</span>
+        <span style="background:#ef037f;color:#fff">EF037F</span>
+        <span style="background:#d6026f;color:#fff">pressed</span>
+        <span style="background:#f63e8f;color:#fff">dark UI</span>
+      </div>
+      <p class="spec-sub">Status hues, meaning only</p>
+      <div class="g-ramp">
+        <span style="background:#16a34a;color:#fff">live 16A34A</span>
+        <span style="background:#d97706;color:#fff">draft D97706</span>
+        <span style="background:#2563eb;color:#fff">review 2563EB</span>
+        <span style="background:#0891b2;color:#fff">sched 0891B2</span>
+        <span style="background:#6b7280;color:#fff">arch 6B7280</span>
+        <span style="background:#b4243a;color:#fff">error B4243A</span>
+      </div>
+      <p class="spec-sub">Category accents, thin left rails on cards, never fills</p>
+      <div class="g-ramp">
+        <span style="background:#3b82f6;color:#fff">media</span>
+        <span style="background:#8b5cf6;color:#fff">layout</span>
+        <span style="background:#10b981;color:#fff">interactive</span>
+        <span style="background:#ef037f;color:#fff">action</span>
+        <span style="background:#f59e0b;color:#fff">advanced</span>
+      </div>
+      <p class="spec-note">The interface is grayscale by default. The pink is the single confident accent and it is spent only on action, active navigation, focus and selection. Status hues carry state, never brand feeling. Category accents appear as thin colored rails on the left edge of a card, never as a background fill.</p>
+    </div>
+  </div>
+
+  <h3 id="design-system-type-live">Type specimen</h3>
+  <p>Inter for the interface, IBM Plex Mono for anything a machine reads: ids, routes, keys, code. The scale is tight because the tool is dense. These are live samples at the real sizes.</p>
+  <div class="spec">
+    <div class="spec-head"><span class="spec-title">The type scale</span><span class="spec-meta">Inter UI, IBM Plex Mono for ids and code</span></div>
+    <div class="spec-body">
+      <div class="g-type-row"><span class="g-type-tag">Page title, 26 / 600</span><span class="g-type-sample" style="font-size:26px;font-weight:600;letter-spacing:-0.015em">Pages</span></div>
+      <div class="g-type-row"><span class="g-type-tag">Section, 16 / 600</span><span class="g-type-sample" style="font-size:16px;font-weight:600">Collection pages</span></div>
+      <div class="g-type-row"><span class="g-type-tag">Card title, 13.5 / 600</span><span class="g-type-sample" style="font-size:13.5px;font-weight:600">Blog posts</span></div>
+      <div class="g-type-row"><span class="g-type-tag">Body, 13 / 400</span><span class="g-type-sample" style="font-size:13px">Every page on your site. Open one to edit it visually.</span></div>
+      <div class="g-type-row"><span class="g-type-tag">Label, 11.5 / 500</span><span class="g-type-sample" style="font-size:11.5px;font-weight:500;color:var(--muted)">Meta description</span></div>
+      <div class="g-type-row"><span class="g-type-tag">Overline, 11 / 600 caps</span><span class="g-type-sample" style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">Delivery</span></div>
+      <div class="g-type-row"><span class="g-type-tag">Mono, 12 Plex</span><span class="g-type-sample" style="font-family:'IBM Plex Mono',monospace;font-size:12px">/resources/posts/:slug</span></div>
+    </div>
+  </div>
 
   <h3 id="design-system-principles">Design principles</h3>
   <p>Six principles govern every visual decision in the app. They are extracted from the live code (<code>src/styles.css</code> and <code>src/components/ui/</code>), not aspiration.</p>
@@ -5196,6 +5645,27 @@ html[data-theme="dark"] .doc-footer img { filter: brightness(0) invert(1); }
       if (window.innerWidth <= 900) { sidebar.classList.add("open"); scrim.classList.add("on"); }
       input.focus();
       input.select();
+    }
+  });
+
+  /* ---------------- gallery toggles (live specimens) ---------------- */
+  document.addEventListener("click", function (e) {
+    var sw = e.target.closest(".g-switch");
+    if (sw && !sw.classList.contains("is-disabled")) { sw.classList.toggle("on"); return; }
+    var ck = e.target.closest(".g-check");
+    if (ck && !ck.classList.contains("is-disabled")) { ck.classList.remove("ind"); ck.classList.toggle("on"); return; }
+    var rd = e.target.closest(".g-radio");
+    if (rd && !rd.classList.contains("is-disabled")) {
+      var grp = rd.closest("[data-radio]");
+      if (grp) grp.querySelectorAll(".g-radio").forEach(function (r) { r.classList.remove("on"); });
+      rd.classList.add("on");
+      return;
+    }
+    var sg = e.target.closest(".g-seg button");
+    if (sg && !sg.disabled) {
+      sg.parentElement.querySelectorAll("button").forEach(function (b) { b.classList.remove("on"); });
+      sg.classList.add("on");
+      return;
     }
   });
 
