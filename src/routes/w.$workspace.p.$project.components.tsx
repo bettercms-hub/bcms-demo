@@ -15,6 +15,7 @@ import {
   Archive,
   AtSign,
   Check,
+  Cloud,
   Code2,
   Copy,
   LayoutGrid,
@@ -24,6 +25,7 @@ import {
   Plus,
   RotateCcw,
   Send,
+  Server,
   Sparkles,
   Trash2,
   Wand2,
@@ -66,6 +68,50 @@ export const Route = createFileRoute("/w/$workspace/p/$project/components")({
 
 type StatusFilter = "all" | "builtin" | "published" | "draft" | "archived";
 
+/**
+ * How a component reaches the live site depends on who runs the frontend. The
+ * model always lives in BetterCMS; the rendering code lives where the site
+ * runs. This drives the in-app education so the note matches the project.
+ */
+function deliveryModel(opts: { hosted: boolean; hostsFrontend: boolean }): { icon: typeof Cloud; tag: string; lines: string[] } {
+  if (opts.hosted || opts.hostsFrontend) {
+    return {
+      icon: Cloud,
+      tag: opts.hosted ? "This site runs on BetterCMS Cloud" : "BetterCMS hosts this frontend",
+      lines: [
+        "We build and serve this site, so a component designed here can go live through our pipeline.",
+        "AI drafts the fields and a React component. A developer reviews the code in your connected repo; once merged, marketers can place it on any page.",
+        "The model lives in BetterCMS, the code in your repo. Generation always lands a draft you review, never a live publish.",
+      ],
+    };
+  }
+  return {
+    icon: Server,
+    tag: "Headless — your app renders the frontend",
+    lines: [
+      "BetterCMS serves the content model over the API; your own app renders it.",
+      "AI drafts the field model (ready over the API and as .md or JSON at once) plus a starter React component for your repo.",
+      "Your developers, or your coding agent over MCP, finish and ship the code. BetterCMS never runs component code for an outside frontend.",
+    ],
+  };
+}
+
+function DeliveryNote({ model, className }: { model: ReturnType<typeof deliveryModel>; className?: string }) {
+  const Icon = model.icon;
+  return (
+    <div className={cn("rounded-lg border border-[color:var(--border-hairline)] bg-[color:var(--s1,var(--card))] p-3.5", className)}>
+      <p className="flex items-center gap-1.5 text-[12px] font-semibold text-foreground">
+        <Icon className="h-3.5 w-3.5 text-primary" /> {model.tag}
+      </p>
+      <ul className="mt-1.5 space-y-1 text-[11.5px] leading-relaxed text-muted-foreground">
+        {model.lines.map((l, i) => (
+          <li key={i}>{l}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function ComponentsHub() {
   const { workspace, project } = Route.useParams();
   const pr = getProjectBySlug(workspace, project)!;
@@ -73,6 +119,7 @@ function ComponentsHub() {
   const canBuild = canSeeDeveloper(effective);
   const composer = canCompose(effective);
 
+  const delivery = deliveryModel({ hosted: !!pr.delivery?.hosted || pr.kind === "managed", hostsFrontend: pr.hosting?.mode === "bettercms" });
   const customs = useCustomComponents(pr.id);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -242,8 +289,8 @@ function ComponentsHub() {
         <div className="rounded-xl border border-dashed border-[color:var(--color-border)] bg-[color:var(--s1)] px-6 py-14 text-center text-[13px] text-muted-foreground">No components match your search.</div>
       )}
 
-      {openCustom && <DetailPanel projectId={pr.id} custom={openCustom} canBuild={canBuild} onClose={() => setOpenId(null)} onEdit={() => { setBuilder({ editId: openCustom.id }); setOpenId(null); }} onDelete={() => tryDelete(openCustom)} />}
-      {openBuiltin && <DetailPanel projectId={pr.id} builtin={openBuiltin} canBuild={canBuild} onClose={() => setOpenId(null)} />}
+      {openCustom && <DetailPanel projectId={pr.id} custom={openCustom} delivery={delivery} canBuild={canBuild} onClose={() => setOpenId(null)} onEdit={() => { setBuilder({ editId: openCustom.id }); setOpenId(null); }} onDelete={() => tryDelete(openCustom)} />}
+      {openBuiltin && <DetailPanel projectId={pr.id} builtin={openBuiltin} delivery={delivery} canBuild={canBuild} onClose={() => setOpenId(null)} />}
       {builder && (
         <BuilderOverlay
           projectId={pr.id}
@@ -255,7 +302,7 @@ function ComponentsHub() {
           }}
         />
       )}
-      {studio && <StudioOverlay projectId={pr.id} workspaceId={pr.workspaceId} onClose={() => setStudio(false)} onOpenComponent={(id) => { setStudio(false); setOpenId(id); }} />}
+      {studio && <StudioOverlay projectId={pr.id} workspaceId={pr.workspaceId} delivery={delivery} onClose={() => setStudio(false)} onOpenComponent={(id) => { setStudio(false); setOpenId(id); }} />}
     </PageShell>
   );
 }
@@ -316,7 +363,7 @@ function ListRow({ icon: Icon, name, blurb, category, usage, badge, onOpen, chil
 
 /* ---------------------------------------------------------- detail panel */
 
-function DetailPanel({ projectId, custom, builtin, canBuild, onClose, onEdit, onDelete }: { projectId: string; custom?: CustomComponent; builtin?: SectionDef; canBuild: boolean; onClose: () => void; onEdit?: () => void; onDelete?: () => void }) {
+function DetailPanel({ projectId, custom, builtin, delivery, canBuild, onClose, onEdit, onDelete }: { projectId: string; custom?: CustomComponent; builtin?: SectionDef; delivery: ReturnType<typeof deliveryModel>; canBuild: boolean; onClose: () => void; onEdit?: () => void; onDelete?: () => void }) {
   const def = custom ? toSectionDef(custom) : builtin!;
   const [variant, setVariant] = useState(def.variants[0]?.id ?? "default");
   const [showCode, setShowCode] = useState(false);
@@ -403,6 +450,10 @@ function DetailPanel({ projectId, custom, builtin, canBuild, onClose, onEdit, on
             ) : (
               <div className="px-3.5 py-3 text-[12px] text-muted-foreground">{custom ? "A starter component for your repo. Production rendering ships from code; this hub owns the model." : "This section's component lives in your repo and is registered through the API."}</div>
             )}
+          </SectionBlock>
+
+          <SectionBlock title="How it reaches your site">
+            <DeliveryNote model={delivery} className="m-3.5 border-0 bg-transparent p-0" />
           </SectionBlock>
         </div>
 
@@ -652,7 +703,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 /* -------------------------------------------------------------- AI studio */
 
-function StudioOverlay({ projectId, workspaceId, onClose, onOpenComponent }: { projectId: string; workspaceId: string; onClose: () => void; onOpenComponent: (id: string) => void }) {
+function StudioOverlay({ projectId, workspaceId, delivery, onClose, onOpenComponent }: { projectId: string; workspaceId: string; delivery: ReturnType<typeof deliveryModel>; onClose: () => void; onOpenComponent: (id: string) => void }) {
   const chats = useComponentChats(projectId);
   const customs = useCustomComponents(projectId);
   const brand = useBrandKit(projectId);
@@ -755,13 +806,16 @@ function StudioOverlay({ projectId, workspaceId, onClose, onOpenComponent }: { p
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
               <div className="mx-auto max-w-2xl space-y-4">
                 {(!chat || chat.messages.length === 0) && (
-                  <div className="rounded-xl border border-dashed border-[color:var(--color-border)] bg-card px-5 py-8 text-center">
-                    <Wand2 className="mx-auto h-6 w-6 text-primary" />
-                    <div className="mt-2 text-[13.5px] font-semibold text-foreground">Describe the component you need</div>
-                    <p className="mx-auto mt-1 max-w-md text-[12px] text-muted-foreground">
-                      Attach references, tag an existing component with @, or apply a workspace skill. First draft costs about {genCost} credits, each refinement about {iterCost}.
-                    </p>
-                  </div>
+                  <>
+                    <div className="rounded-xl border border-dashed border-[color:var(--color-border)] bg-card px-5 py-8 text-center">
+                      <Wand2 className="mx-auto h-6 w-6 text-primary" />
+                      <div className="mt-2 text-[13.5px] font-semibold text-foreground">Describe the component you need</div>
+                      <p className="mx-auto mt-1 max-w-md text-[12px] text-muted-foreground">
+                        Attach references, tag an existing component with @, or apply a workspace skill. First draft costs about {genCost} credits, each refinement about {iterCost}.
+                      </p>
+                    </div>
+                    <DeliveryNote model={delivery} />
+                  </>
                 )}
                 {chat?.messages.map((m) => (
                   <div key={m.id} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
