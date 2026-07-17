@@ -1,22 +1,69 @@
 /**
- * Connected agents — outside tools (Claude Code, Cursor, VS Code, any
- * MCP client) that drive this project through the same operation layer
+ * Connected agents — outside tools (Claude Code, ChatGPT, Cursor, Windsurf,
+ * any MCP client) that drive this project through the same operation layer
  * as the in-app agent.
  *
- * The trust model mirrors the in-app agent exactly: project-scoped,
- * staging-only writes, revocable at any time, every action audited.
+ * Trust model, mirroring where the market landed (Webflow's OAuth site
+ * authorization, Sanity/Contentful token scoping):
+ * - Access is GRANTED per capability, chosen by the person connecting.
+ * - Publishing is never grantable. Drafts and staging only, always.
+ * - A key is scoped to one project or one workspace, never across
+ *   workspaces. The agent connects like a guest: no seat, no billing.
+ * - A connection starts pending and only works after a person authorizes
+ *   it. Grant, authorize and revoke are all audited.
+ *
  * Demo: grants live in memory; the token is generated client side and
  * shown once, like a real key flow.
  */
 import { useSyncExternalStore } from "react";
+import { recordAgentAudit } from "@/lib/cms/store";
+
+export type AccessKey =
+  | "content.read"
+  | "content.write"
+  | "media"
+  | "components"
+  | "schema"
+  | "seo";
+
+export interface AccessOption {
+  key: AccessKey;
+  label: string;
+  hint: string;
+  /** On by default in the connect flow. */
+  suggested: boolean;
+  /** The baseline; a connection without read access is useless. */
+  locked?: boolean;
+}
+
+export const ACCESS_OPTIONS: AccessOption[] = [
+  { key: "content.read", label: "Read content", hint: "Pages, entries and collections, read only", suggested: true, locked: true },
+  { key: "content.write", label: "Write content drafts", hint: "Create and edit pages and entries, drafts only", suggested: true },
+  { key: "media", label: "Media library", hint: "Browse assets and upload new ones", suggested: true },
+  { key: "components", label: "Components", hint: "Draft new section components in the hub", suggested: false },
+  { key: "schema", label: "Schema", hint: "Propose content model changes, as drafts", suggested: false },
+  { key: "seo", label: "SEO surfaces", hint: "Meta, redirects, llms.txt and markdown delivery", suggested: false },
+];
+
+export const accessLabel = (k: AccessKey) => ACCESS_OPTIONS.find((o) => o.key === k)?.label ?? k;
+
+export type GrantScopeKind = "project" | "workspace";
+export type GrantStatus = "pending" | "active";
 
 export interface AgentGrant {
   id: string;
   client: string;
   /** Masked for display; the raw token is shown once at creation. */
   maskedToken: string;
+  /** Human-readable labels, kept for older list surfaces. */
   scopes: string[];
+  access: AccessKey[];
+  scopeKind: GrantScopeKind;
+  status: GrantStatus;
   createdAt: number;
+  /** Keys expire; rotation is a feature, not a chore. */
+  expiresAt: number;
+  authorizedAt?: number;
   lastUsedAt?: number;
 }
 
@@ -75,25 +122,50 @@ function randomToken(): string {
 }
 
 export const agentGrantActions = {
-  /** Creates a grant and returns the raw token. Shown once, never stored. */
-  create(projectId: string, client: string): { grant: AgentGrant; token: string } {
+  /**
+   * Creates a PENDING grant and returns the raw token (shown once, never
+   * stored). The connection only serves requests after authorize().
+   */
+  create(
+    projectId: string,
+    client: string,
+    opts?: { access?: AccessKey[]; scopeKind?: GrantScopeKind },
+  ): { grant: AgentGrant; token: string } {
     const token = randomToken();
+    const access = opts?.access?.length ? opts.access : (["content.read", "content.write", "media"] as AccessKey[]);
     const grant: AgentGrant = {
       id: `grant_${Date.now().toString(36)}${(seq++).toString(36)}`,
       client,
       maskedToken: `${token.slice(0, 11)}...${token.slice(-4)}`,
-      scopes: [...DEFAULT_SCOPES],
+      scopes: access.map(accessLabel),
+      access,
+      scopeKind: opts?.scopeKind ?? "project",
+      status: "pending",
       createdAt: Date.now(),
+      expiresAt: Date.now() + 30 * 86400000,
     };
     byProject.set(projectId, [grant, ...(byProject.get(projectId) ?? [])]);
     emit();
+    recordAgentAudit(projectId, "agent.external_key_created", `${client} connection key created (${access.length} permissions, ${grant.scopeKind} scope), awaiting authorization`, grant.id);
     return { grant, token };
   },
-  revoke(projectId: string, grantId: string) {
+  /** The human moment: nothing serves until a person authorizes it. */
+  authorize(projectId: string, grantId: string) {
     byProject.set(
       projectId,
-      (byProject.get(projectId) ?? []).filter((g) => g.id !== grantId),
+      (byProject.get(projectId) ?? []).map((g) => (g.id === grantId ? { ...g, status: "active" as const, authorizedAt: Date.now() } : g)),
     );
     emit();
+    const g = (byProject.get(projectId) ?? []).find((x) => x.id === grantId);
+    if (g) recordAgentAudit(projectId, "agent.external_authorized", `${g.client} connection authorized (${g.access.map(accessLabel).join(", ")})`, grantId);
+  },
+  revoke(projectId: string, grantId: string) {
+    const g = (byProject.get(projectId) ?? []).find((x) => x.id === grantId);
+    byProject.set(
+      projectId,
+      (byProject.get(projectId) ?? []).filter((x) => x.id !== grantId),
+    );
+    emit();
+    if (g) recordAgentAudit(projectId, "agent.external_revoked", `${g.client} access revoked`, grantId);
   },
 };
