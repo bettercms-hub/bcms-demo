@@ -58,6 +58,7 @@ import { Route as WWorkspacePProjectInstructionsRouteImport } from './routes/w.$
 import { Route as WWorkspacePProjectHostingRouteImport } from './routes/w.$workspace.p.$project.hosting'
 import { Route as WWorkspacePProjectEditorRouteImport } from './routes/w.$workspace.p.$project.editor'
 import { Route as WWorkspacePProjectContentRouteImport } from './routes/w.$workspace.p.$project.content'
+import { Route as WWorkspacePProjectComponentsRouteImport } from './routes/w.$workspace.p.$project.components'
 import { Route as WWorkspacePProjectAnalyticsRouteImport } from './routes/w.$workspace.p.$project.analytics'
 import { Route as WWorkspacePProjectAiRouteImport } from './routes/w.$workspace.p.$project.ai'
 import { Route as WWorkspacePProjectAgentRouteImport } from './routes/w.$workspace.p.$project.agent'
@@ -362,6 +363,12 @@ const WWorkspacePProjectContentRoute =
     path: '/content',
     getParentRoute: () => WWorkspacePProjectRoute,
   } as any)
+const WWorkspacePProjectComponentsRoute =
+  WWorkspacePProjectComponentsRouteImport.update({
+    id: '/components',
+    path: '/components',
+    getParentRoute: () => WWorkspacePProjectRoute,
+  } as any)
 const WWorkspacePProjectAnalyticsRoute =
   WWorkspacePProjectAnalyticsRouteImport.update({
     id: '/analytics',
@@ -621,6 +628,7 @@ export interface FileRoutesByFullPath {
   '/w/$workspace/p/$project/agent': typeof WWorkspacePProjectAgentRoute
   '/w/$workspace/p/$project/ai': typeof WWorkspacePProjectAiRoute
   '/w/$workspace/p/$project/analytics': typeof WWorkspacePProjectAnalyticsRoute
+  '/w/$workspace/p/$project/components': typeof WWorkspacePProjectComponentsRoute
   '/w/$workspace/p/$project/content': typeof WWorkspacePProjectContentRoute
   '/w/$workspace/p/$project/editor': typeof WWorkspacePProjectEditorRoute
   '/w/$workspace/p/$project/hosting': typeof WWorkspacePProjectHostingRoute
@@ -705,6 +713,7 @@ export interface FileRoutesByTo {
   '/w/$workspace/p/$project/agent': typeof WWorkspacePProjectAgentRoute
   '/w/$workspace/p/$project/ai': typeof WWorkspacePProjectAiRoute
   '/w/$workspace/p/$project/analytics': typeof WWorkspacePProjectAnalyticsRoute
+  '/w/$workspace/p/$project/components': typeof WWorkspacePProjectComponentsRoute
   '/w/$workspace/p/$project/content': typeof WWorkspacePProjectContentRoute
   '/w/$workspace/p/$project/editor': typeof WWorkspacePProjectEditorRoute
   '/w/$workspace/p/$project/hosting': typeof WWorkspacePProjectHostingRoute
@@ -794,6 +803,7 @@ export interface FileRoutesById {
   '/w/$workspace/p/$project/agent': typeof WWorkspacePProjectAgentRoute
   '/w/$workspace/p/$project/ai': typeof WWorkspacePProjectAiRoute
   '/w/$workspace/p/$project/analytics': typeof WWorkspacePProjectAnalyticsRoute
+  '/w/$workspace/p/$project/components': typeof WWorkspacePProjectComponentsRoute
   '/w/$workspace/p/$project/content': typeof WWorkspacePProjectContentRoute
   '/w/$workspace/p/$project/editor': typeof WWorkspacePProjectEditorRoute
   '/w/$workspace/p/$project/hosting': typeof WWorkspacePProjectHostingRoute
@@ -884,6 +894,7 @@ export interface FileRouteTypes {
     | '/w/$workspace/p/$project/agent'
     | '/w/$workspace/p/$project/ai'
     | '/w/$workspace/p/$project/analytics'
+    | '/w/$workspace/p/$project/components'
     | '/w/$workspace/p/$project/content'
     | '/w/$workspace/p/$project/editor'
     | '/w/$workspace/p/$project/hosting'
@@ -968,6 +979,7 @@ export interface FileRouteTypes {
     | '/w/$workspace/p/$project/agent'
     | '/w/$workspace/p/$project/ai'
     | '/w/$workspace/p/$project/analytics'
+    | '/w/$workspace/p/$project/components'
     | '/w/$workspace/p/$project/content'
     | '/w/$workspace/p/$project/editor'
     | '/w/$workspace/p/$project/hosting'
@@ -1056,6 +1068,7 @@ export interface FileRouteTypes {
     | '/w/$workspace/p/$project/agent'
     | '/w/$workspace/p/$project/ai'
     | '/w/$workspace/p/$project/analytics'
+    | '/w/$workspace/p/$project/components'
     | '/w/$workspace/p/$project/content'
     | '/w/$workspace/p/$project/editor'
     | '/w/$workspace/p/$project/hosting'
@@ -1463,6 +1476,13 @@ declare module '@tanstack/react-router' {
       path: '/content'
       fullPath: '/w/$workspace/p/$project/content'
       preLoaderRoute: typeof WWorkspacePProjectContentRouteImport
+      parentRoute: typeof WWorkspacePProjectRoute
+    }
+    '/w/$workspace/p/$project/components': {
+      id: '/w/$workspace/p/$project/components'
+      path: '/components'
+      fullPath: '/w/$workspace/p/$project/components'
+      preLoaderRoute: typeof WWorkspacePProjectComponentsRouteImport
       parentRoute: typeof WWorkspacePProjectRoute
     }
     '/w/$workspace/p/$project/analytics': {
@@ -1901,6 +1921,7 @@ interface WWorkspacePProjectRouteChildren {
   WWorkspacePProjectAgentRoute: typeof WWorkspacePProjectAgentRoute
   WWorkspacePProjectAiRoute: typeof WWorkspacePProjectAiRoute
   WWorkspacePProjectAnalyticsRoute: typeof WWorkspacePProjectAnalyticsRoute
+  WWorkspacePProjectComponentsRoute: typeof WWorkspacePProjectComponentsRoute
   WWorkspacePProjectContentRoute: typeof WWorkspacePProjectContentRoute
   WWorkspacePProjectEditorRoute: typeof WWorkspacePProjectEditorRoute
   WWorkspacePProjectHostingRoute: typeof WWorkspacePProjectHostingRoute
@@ -1922,6 +1943,7 @@ const WWorkspacePProjectRouteChildren: WWorkspacePProjectRouteChildren = {
   WWorkspacePProjectAgentRoute: WWorkspacePProjectAgentRoute,
   WWorkspacePProjectAiRoute: WWorkspacePProjectAiRoute,
   WWorkspacePProjectAnalyticsRoute: WWorkspacePProjectAnalyticsRoute,
+  WWorkspacePProjectComponentsRoute: WWorkspacePProjectComponentsRoute,
   WWorkspacePProjectContentRoute: WWorkspacePProjectContentRoute,
   WWorkspacePProjectEditorRoute: WWorkspacePProjectEditorRoute,
   WWorkspacePProjectHostingRoute: WWorkspacePProjectHostingRoute,

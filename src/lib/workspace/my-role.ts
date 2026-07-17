@@ -79,11 +79,11 @@ export function effectiveRoleFor(wsSlug: string): WorkspaceRole {
 /** Project nav tabs visible per role. Keys match ProjectNav tab keys. */
 const ALL_TABS = new Set([
   "content", "schema", "media", "visual", "agent", "seo", "forms", "search", "analytics", "hosting", "settings",
-  "pages", "collections", "components", "publishing", "workflow",
+  "pages", "collections", "components", "library", "publishing", "workflow",
 ]);
 // Lower roles get explicit allow-lists so their workspace stays minimal.
 // Marketer: builds and measures pages. No forms, publishing ops, or settings.
-const MARKETER_TABS = new Set(["content", "pages", "collections", "workflow", "visual", "agent", "media", "seo", "analytics"]);
+const MARKETER_TABS = new Set(["content", "pages", "collections", "workflow", "visual", "library", "agent", "media", "seo", "analytics"]);
 // Content editor: writes and reviews entries, nothing structural.
 const EDITOR_TABS = new Set(["collections", "workflow", "visual", "media", "agent"]);
 // Reviewer: reads and comments; the board is where review work queues up.

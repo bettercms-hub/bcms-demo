@@ -7,6 +7,7 @@
  * by the backend orchestrator; the shapes and the write paths stay put.
  */
 import { buildPage, getPages, pagesActions } from "@/lib/cms/pages-store";
+import { componentHubActions, getCustomComponents } from "@/lib/cms/components-store";
 import { entryActions, entryCreateActions, getCMSState } from "@/lib/cms/store";
 import { getBrandKit, hasBrandVoice } from "@/lib/brand/brand-store";
 import { aiAction, type AiTier } from "@/lib/billing/pricing";
@@ -782,6 +783,13 @@ export function revertRun(projectId: string, undo: UndoOp[]): { reverted: number
       const e = getCMSState().entries.find((x) => x.id === op.entryId);
       if (e && e.status === "draft") {
         entryActions.remove(op.entryId);
+        reverted++;
+      } else {
+        skipped++;
+      }
+    } else if (op.kind === "removeComponent") {
+      const c = getCustomComponents(projectId).find((x) => x.id === op.componentId);
+      if (c && c.status === "draft" && componentHubActions.remove(projectId, op.componentId)) {
         reverted++;
       } else {
         skipped++;

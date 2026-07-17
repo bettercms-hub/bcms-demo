@@ -17,6 +17,7 @@ import { hasBrandVoice } from "@/lib/brand/brand-store";
 import { canEditContent, effectiveRoleFor } from "@/lib/workspace/my-role";
 import { clampToCeiling, generatorAllowed, getGovernance, skillAllowed } from "./governance-store";
 import { enabledInstructions } from "./instructions-store";
+import { buildComponentDraft, componentHubActions, type ComponentGenerateConfig } from "@/lib/cms/components-store";
 import { buildAbmPages, buildSeoPages, type AbmGenerateConfig, type SeoGenerateConfig } from "./generate";
 import { READ_ONLY_SKILLS, agentSkill, skillFromPrompt, type AgentSkill } from "./skills";
 import {
@@ -301,6 +302,85 @@ export const agentRunActions = {
         `Generator created ${pages.length} draft ${pages.length === 1 ? "page" : "pages"} (${title})`,
         id,
       );
+    });
+    return id;
+  },
+
+  /**
+   * Component generator: drafts a new section component from a prompt and the
+   * brand kit. Same contract as the page generators, drafts only, one-click
+   * undo, run lands in history and the audit trail.
+   */
+  startComponentGenerator(input: { projectId: string; config: ComponentGenerateConfig }): string {
+    const { projectId, config } = input;
+    if (!roleCanAct(projectId)) return "";
+    if (!generatorAllowed(workspaceIdFor(projectId), "component")) return "";
+    const plan = getCMSState().projects.find((p) => p.id === projectId)?.sitePlan ?? "free";
+    if (!tierAllowed(plan, "balanced", "section")) return "";
+
+    const credits = aiAction("section")?.costs.balanced ?? 30;
+    const id = newRunId();
+    const draft = buildComponentDraft(config);
+    const title = `Component: ${draft.name}`;
+    const voiceLine = hasBrandVoice(projectId) ? "Follows the brand voice" : "Uses a neutral, factual voice";
+
+    const run: AgentRun = {
+      id,
+      projectId,
+      skillId: "generate-component",
+      title,
+      prompt: config.prompt,
+      tier: "balanced",
+      context: [],
+      status: "applying",
+      steps: [],
+      proposals: [],
+      findings: [],
+      plan: {
+        goal: title,
+        items: [
+          `Model the fields (${draft.fields.length}) and layout variants`,
+          "Write on-brand starter content from the brand kit",
+          "Generate the starter code stub for your repo",
+        ],
+        boundaries: ["Lands as a draft in the Components hub, nothing publishes", voiceLine, "One click undo while the draft is untouched"],
+        estimate: { min: credits, max: credits },
+      },
+      creditsSpent: 0,
+      appliedCount: 0,
+      createdAt: Date.now(),
+    };
+    byProject.set(projectId, [run, ...(byProject.get(projectId) ?? [])]);
+    emit();
+
+    schedule(id, 300, () => pushStep(id, "Reading the brand kit and section catalog"));
+    schedule(id, 1200, () => pushStep(id, "Modeling fields and variants"));
+    schedule(id, 2100, () => pushStep(id, "Writing starter content and the code stub"));
+    schedule(id, 2900, () => {
+      finishSteps(id);
+      const c = componentHubActions.create(projectId, draft);
+      patchRun(id, (r) => ({
+        ...r,
+        proposals: [
+          {
+            id: `prop_${c.id}`,
+            operation: "component.generate",
+            targetType: "page" as const,
+            targetId: c.type,
+            targetLabel: c.name,
+            after: c.blurb,
+            reason: `Prompt: ${config.prompt.slice(0, 80)}`,
+            risk: "low" as const,
+            status: "applied" as const,
+          },
+        ],
+        status: "done",
+        creditsSpent: credits,
+        appliedCount: 1,
+        undo: [{ kind: "removeComponent" as const, componentId: c.id, label: c.name }],
+        finishedAt: Date.now(),
+      }));
+      recordAgentAudit(projectId, "agent.changes_applied", `Generator drafted component ${c.name}`, id);
     });
     return id;
   },

@@ -99,6 +99,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { toSectionDef, useCustomComponents } from "@/lib/cms/components-store";
 import { getProjectBySlug } from "@/lib/cms/use-cms";
 import { useViewportTier } from "@/lib/device";
 import { useProjectPresence } from "@/lib/workspace/presence-store";
@@ -226,6 +227,11 @@ function VisualEditor() {
   const canBuild = canCompose(effective);
   const canEdit = canEditContent(effective);
   const showDev = canSeeDeveloper(effective);
+  // Hub-created components: published for every composer, drafts for developers.
+  const customComponents = useCustomComponents(pr?.id ?? "");
+  const customDefs = customComponents
+    .filter((c) => c.status === "published" || (showDev && c.status === "draft"))
+    .map((c) => toSectionDef(c, c.status === "draft" ? { nameSuffix: "(draft)" } : undefined));
   const publishAllowed = roleCanPublish(effective);
   const composing = canBuild && previewMode === "edit";
 
@@ -985,7 +991,7 @@ function VisualEditor() {
       <CommentStyles />
 
       {/* section library — marketer-facing browser of developer-defined sections */}
-      <SectionLibrary open={libraryAt !== null} onClose={() => setLibraryAt(null)} onAdd={addSection} />
+      <SectionLibrary open={libraryAt !== null} onClose={() => setLibraryAt(null)} onAdd={addSection} extraDefs={customDefs} />
 
       {/* create-page template picker */}
       <TemplatePicker open={pagePicker} onClose={() => setPagePicker(false)} customTemplates={customTemplates} onPick={createFromTemplate} />

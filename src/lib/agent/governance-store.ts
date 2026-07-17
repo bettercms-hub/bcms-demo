@@ -23,7 +23,7 @@ export interface AiGovernance {
   /** Agent skill id -> allowed. Missing id = allowed. */
   skills: Record<string, boolean>;
   /** Page generators. */
-  generators: { seo: boolean; abm: boolean };
+  generators: { seo: boolean; abm: boolean; component: boolean };
   /** Members may attach their own model API keys. */
   byokAllowed: boolean;
   /** External agents (MCP clients, scoped keys) may connect. */
@@ -34,7 +34,7 @@ const DEFAULTS: AiGovernance = {
   monthlyCreditBudget: null,
   tierCeiling: "max",
   skills: {},
-  generators: { seo: true, abm: true },
+  generators: { seo: true, abm: true, component: true },
   byokAllowed: true,
   externalAgentsAllowed: true,
 };
@@ -79,7 +79,7 @@ export const governanceActions = {
     byWorkspace.set(wsId, { ...g, skills: { ...g.skills, [skillId]: on } });
     emit();
   },
-  setGenerator(wsId: string, kind: "seo" | "abm", on: boolean) {
+  setGenerator(wsId: string, kind: "seo" | "abm" | "component", on: boolean) {
     const g = ensure(wsId);
     byWorkspace.set(wsId, { ...g, generators: { ...g.generators, [kind]: on } });
     emit();
@@ -93,7 +93,7 @@ const TIER_RANK: Record<AiTier, number> = { lite: 0, balanced: 1, max: 2 };
 export function skillAllowed(wsId: string, skillId: string): boolean {
   return ensure(wsId).skills[skillId] !== false;
 }
-export function generatorAllowed(wsId: string, kind: "seo" | "abm"): boolean {
+export function generatorAllowed(wsId: string, kind: "seo" | "abm" | "component"): boolean {
   return ensure(wsId).generators[kind];
 }
 /** Clamp a requested tier to the workspace ceiling. */

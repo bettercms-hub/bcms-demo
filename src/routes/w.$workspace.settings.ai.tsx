@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Bot, Check, Gauge, KeyRound, Lock, Plug, ScanSearch, ShieldCheck, Users } from "lucide-react";
+import { Bot, Check, Gauge, KeyRound, Lock, Plug, ScanSearch,
+  Sparkles, ShieldCheck, Users } from "lucide-react";
 import { toast } from "sonner";
 import { SettingsHeader, SettingsRow, SettingsSection } from "@/components/cms/SettingsSubNav";
 import { AGENT_SKILLS } from "@/lib/agent/skills";
@@ -132,6 +133,12 @@ function AiControls() {
           <div className="flex items-center gap-2">
             <Users className="h-3.5 w-3.5 text-muted-foreground" />
             <Switch checked={gov.generators.abm} disabled={!canManage} onCheckedChange={(v) => governanceActions.setGenerator(wsId, "abm", v)} aria-label="Allow ABM page generation" />
+          </div>
+        </SettingsRow>
+        <SettingsRow label="Components" description="Draft new section components from a prompt and the brand kit. Drafts only, a developer publishes.">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+            <Switch checked={gov.generators.component} disabled={!canManage} onCheckedChange={(v) => governanceActions.setGenerator(wsId, "component", v)} aria-label="Allow component generation" />
           </div>
         </SettingsRow>
       </SettingsSection>

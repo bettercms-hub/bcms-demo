@@ -47,6 +47,12 @@ const HEADLESS_TABS: Tab[] = [
     match: (p) => p.includes("/workflow"),
   },
   {
+    key: "library",
+    label: "Components",
+    to: "/w/$workspace/p/$project/components",
+    match: (p) => p.endsWith("/components"),
+  },
+  {
     key: "schema",
     label: "Schema",
     to: "/w/$workspace/p/$project/schema",
@@ -134,6 +140,12 @@ const TABS: Tab[] = [
     label: "Agent",
     to: "/w/$workspace/p/$project/agent",
     match: (p) => p.endsWith("/agent"),
+  },
+  {
+    key: "library",
+    label: "Components",
+    to: "/w/$workspace/p/$project/components",
+    match: (p) => p.endsWith("/components"),
   },
   {
     key: "components",
