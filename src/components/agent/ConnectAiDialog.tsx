@@ -11,9 +11,9 @@
  *    explicitly authorize. The connection stays pending until a person
  *    approves it; grant, authorize and revoke are all audited.
  */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Bot, Braces, Check, Copy, ExternalLink, KeySquare, Lock, Plug, ShieldCheck, Terminal } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Bot, Braces, Check, Copy, ExternalLink, FolderOpen, KeySquare, Layers, Lock, Plug, ShieldCheck, Terminal } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -28,11 +28,14 @@ import {
   ACCESS_OPTIONS,
   accessLabel,
   agentGrantActions,
+  grantReach,
   useAgentGrants,
   type AccessKey,
+  type AgentGrant,
   type GrantScopeKind,
 } from "@/lib/agent/connected-store";
 import { useGovernance } from "@/lib/agent/governance-store";
+import { useCMS } from "@/lib/cms/store";
 
 interface Props {
   open: boolean;
@@ -49,10 +52,19 @@ type Step = 1 | 2 | 3;
 export function ConnectAiDialog({ open, onOpenChange, projectId, projectName, wsId, wsSlug, projectSlug }: Props) {
   const gov = useGovernance(wsId);
   const grants = useAgentGrants(projectId);
+  // Projects in this workspace, and every workspace, for the scope pickers.
+  // Select stable state refs, then shape in a memo — mapping inside the
+  // selector makes fresh objects each render and defeats useCMS's cache.
+  const wsProjectsRaw = useCMS((s) => s.projects.filter((p) => p.workspaceId === wsId));
+  const workspacesRaw = useCMS((s) => s.workspaces);
+  const wsProjects = useMemo(() => wsProjectsRaw.map((p) => ({ id: p.id, name: p.name })), [wsProjectsRaw]);
+  const allWorkspaces = useMemo(() => workspacesRaw.map((w) => ({ id: w.id, name: w.name })), [workspacesRaw]);
   const [step, setStep] = useState<Step>(1);
   const [clientId, setClientId] = useState(MCP_CLIENTS[0].id);
   const [access, setAccess] = useState<AccessKey[]>(ACCESS_OPTIONS.filter((o) => o.suggested).map((o) => o.key));
-  const [scopeKind, setScopeKind] = useState<GrantScopeKind>("project");
+  const [scopeKind, setScopeKind] = useState<GrantScopeKind>("projects");
+  const [projectIds, setProjectIds] = useState<string[]>([projectId]);
+  const [workspaceIds, setWorkspaceIds] = useState<string[]>([wsId]);
   const [token, setToken] = useState<string | null>(null);
   const [grantId, setGrantId] = useState<string | null>(null);
 
@@ -61,6 +73,19 @@ export function ConnectAiDialog({ open, onOpenChange, projectId, projectName, ws
   const steps = client.steps({ token: token ?? TOKEN_PLACEHOLDER, projectId });
   const pendingGrant = grantId ? grants.find((g) => g.id === grantId) : undefined;
   const authorized = pendingGrant?.status === "active";
+  // Whether the current scope choice is actually complete enough to continue.
+  const scopeReady = scopeKind === "workspace" || (scopeKind === "projects" ? projectIds.length > 0 : workspaceIds.length > 0);
+
+  const wsName = allWorkspaces.find((w) => w.id === wsId)?.name ?? "this workspace";
+  const scopeSummary = useMemo(() => {
+    if (scopeKind === "workspace") return `All of ${wsName}`;
+    if (scopeKind === "workspaces") {
+      if (workspaceIds.length === 1) return `All of ${allWorkspaces.find((w) => w.id === workspaceIds[0])?.name ?? wsName}`;
+      return `${workspaceIds.length} workspaces`;
+    }
+    if (projectIds.length === 1) return `Only ${wsProjects.find((p) => p.id === projectIds[0])?.name ?? projectName}`;
+    return `${projectIds.length} projects`;
+  }, [scopeKind, projectIds, workspaceIds, wsProjects, allWorkspaces, wsName, projectName]);
 
   const copy = (value: string, label: string) => {
     navigator.clipboard?.writeText(value).catch(() => {});
@@ -73,7 +98,13 @@ export function ConnectAiDialog({ open, onOpenChange, projectId, projectName, ws
   };
 
   const generate = () => {
-    const { grant, token: fresh } = agentGrantActions.create(projectId, client.label, { access, scopeKind });
+    const { grant, token: fresh } = agentGrantActions.create(projectId, client.label, {
+      access,
+      scopeKind,
+      homeWorkspaceId: wsId,
+      projectIds: scopeKind === "projects" ? projectIds : undefined,
+      workspaceIds: scopeKind === "workspaces" ? workspaceIds : undefined,
+    });
     setToken(fresh);
     setGrantId(grant.id);
     toast.success("Connection key generated", { description: "Shown once. Authorize below to activate it." });
@@ -91,6 +122,9 @@ export function ConnectAiDialog({ open, onOpenChange, projectId, projectName, ws
       setStep(1);
       setToken(null);
       setGrantId(null);
+      setScopeKind("projects");
+      setProjectIds([projectId]);
+      setWorkspaceIds([wsId]);
     }
   };
 
@@ -172,7 +206,7 @@ export function ConnectAiDialog({ open, onOpenChange, projectId, projectName, ws
                         <Plug className={cn("h-3.5 w-3.5 shrink-0", g.status === "active" ? "text-emerald-500" : "text-amber-500")} />
                         <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">{g.client}</span>
                         <span className="shrink-0 rounded-md bg-[color:var(--s2)] px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          {g.access.length} permissions · {g.scopeKind === "project" ? "this project" : "workspace"}
+                          {g.access.length} permissions · {grantScopeChip(g)}
                         </span>
                         {g.status === "pending" ? (
                           <button type="button" onClick={() => agentGrantActions.authorize(projectId, g.id)} className="shrink-0 text-[11.5px] font-semibold text-primary hover:underline">
@@ -239,20 +273,69 @@ export function ConnectAiDialog({ open, onOpenChange, projectId, projectName, ws
                 <div className="space-y-1.5">
                   {(
                     [
-                      { id: "project", label: `Only ${projectName}`, hint: "The key works for this project alone. Recommended." },
-                      { id: "workspace", label: "Every project in this workspace", hint: "One key for all sites here. New projects are included." },
+                      { id: "projects", icon: FolderOpen, label: "Specific projects", hint: "The key touches only the projects you tick. Recommended." },
+                      { id: "workspace", icon: Layers, label: `Every project in ${wsName}`, hint: "One key for all sites here. New projects are included." },
+                      { id: "workspaces", icon: Bot, label: "Multiple workspaces", hint: "For agencies running one agent across client workspaces." },
                     ] as const
-                  ).map((s) => (
-                    <button key={s.id} type="button" onClick={() => setScopeKind(s.id)} aria-pressed={scopeKind === s.id} className={cn("flex w-full items-start gap-2.5 rounded-lg border px-3.5 py-2.5 text-left", scopeKind === s.id ? "border-[color:color-mix(in_oklab,var(--primary)_45%,transparent)] bg-[color:color-mix(in_oklab,var(--primary)_6%,transparent)]" : "border-[color:var(--color-border)] hover:bg-[color:var(--color-row-hover)]")}>
-                      <span className={cn("mt-0.5 h-3.5 w-3.5 shrink-0 rounded-full border-[5px]", scopeKind === s.id ? "border-primary" : "border-[color:var(--s3)]")} />
-                      <span>
-                        <span className="block text-[13px] font-medium text-foreground">{s.label}</span>
-                        <span className="block text-[11.5px] text-muted-foreground">{s.hint}</span>
-                      </span>
-                    </button>
-                  ))}
+                  ).map((s) => {
+                    const on = scopeKind === s.id;
+                    return (
+                      <div key={s.id} className={cn("rounded-lg border transition-colors", on ? "border-[color:color-mix(in_oklab,var(--primary)_45%,transparent)] bg-[color:color-mix(in_oklab,var(--primary)_6%,transparent)]" : "border-[color:var(--color-border)]")}>
+                        <button type="button" onClick={() => setScopeKind(s.id)} aria-pressed={on} className="flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left">
+                          <span className={cn("mt-0.5 h-3.5 w-3.5 shrink-0 rounded-full border-[5px]", on ? "border-primary" : "border-[color:var(--s3)]")} />
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground"><s.icon className="h-3.5 w-3.5 text-muted-foreground" />{s.label}</span>
+                            <span className="block text-[11.5px] text-muted-foreground">{s.hint}</span>
+                          </span>
+                        </button>
+
+                        {/* project checklist */}
+                        {on && s.id === "projects" && (
+                          <div className="border-t border-[color:var(--border-hairline)] px-3.5 py-2">
+                            <div className="max-h-[148px] space-y-0.5 overflow-y-auto">
+                              {wsProjects.map((p) => {
+                                const checked = projectIds.includes(p.id);
+                                return (
+                                  <label key={p.id} className="flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 hover:bg-[color:var(--color-row-hover)]">
+                                    <span className={cn("grid h-[16px] w-[16px] shrink-0 place-items-center rounded border", checked ? "border-transparent bg-primary text-white" : "border-[color:var(--border-strong,var(--color-border))]")}>{checked && <Check className="h-2.5 w-2.5" />}</span>
+                                    <input type="checkbox" className="sr-only" checked={checked} onChange={() => setProjectIds((a) => (a.includes(p.id) ? a.filter((x) => x !== p.id) : [...a, p.id]))} />
+                                    <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">{p.name}</span>
+                                    {p.id === projectId && <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">This one</span>}
+                                  </label>
+                                );
+                              })}
+                            </div>
+                            {projectIds.length === 0 && <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">Tick at least one project.</p>}
+                          </div>
+                        )}
+
+                        {/* workspace checklist */}
+                        {on && s.id === "workspaces" && (
+                          <div className="border-t border-[color:var(--border-hairline)] px-3.5 py-2">
+                            <div className="max-h-[148px] space-y-0.5 overflow-y-auto">
+                              {allWorkspaces.map((w) => {
+                                const checked = workspaceIds.includes(w.id);
+                                const isHome = w.id === wsId;
+                                return (
+                                  <label key={w.id} className={cn("flex items-center gap-2.5 rounded-md px-1 py-1", isHome ? "opacity-70" : "cursor-pointer hover:bg-[color:var(--color-row-hover)]")}>
+                                    <span className={cn("grid h-[16px] w-[16px] shrink-0 place-items-center rounded border", checked ? "border-transparent bg-primary text-white" : "border-[color:var(--border-strong,var(--color-border))]")}>{checked && <Check className="h-2.5 w-2.5" />}</span>
+                                    <input type="checkbox" className="sr-only" checked={checked} disabled={isHome} onChange={() => setWorkspaceIds((a) => (a.includes(w.id) ? a.filter((x) => x !== w.id) : [...a, w.id]))} />
+                                    <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">{w.name}</span>
+                                    {isHome && <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Home</span>}
+                                  </label>
+                                );
+                              })}
+                            </div>
+                            <p className="mt-1.5 flex items-start gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
+                              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                              A cross-workspace key is the widest reach. You must be an admin on each, and one revoke pulls it from all of them.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-                <p className="mt-2 text-[11px] text-muted-foreground">Keys never span workspaces. For another workspace, create its own key there.</p>
               </>
             )}
 
@@ -266,7 +349,7 @@ export function ConnectAiDialog({ open, onOpenChange, projectId, projectName, ws
                     {access.map((k) => (
                       <span key={k} className="rounded-md border border-[color:var(--color-border)] px-1.5 py-0.5 text-[10.5px] font-medium text-muted-foreground">{accessLabel(k)}</span>
                     ))}
-                    <span className="rounded-md border border-[color:var(--color-border)] px-1.5 py-0.5 text-[10.5px] font-medium text-muted-foreground">{scopeKind === "project" ? `Only ${projectName}` : "Whole workspace"}</span>
+                    <span className="rounded-md border border-[color:color-mix(in_oklab,var(--primary)_45%,transparent)] bg-[color:color-mix(in_oklab,var(--primary)_6%,transparent)] px-1.5 py-0.5 text-[10.5px] font-medium text-foreground">{scopeSummary}</span>
                   </div>
                 </div>
 
@@ -347,7 +430,7 @@ export function ConnectAiDialog({ open, onOpenChange, projectId, projectName, ws
             </button>
           )}
           {gov.externalAgentsAllowed && step < 3 ? (
-            <button type="button" onClick={() => setStep((s) => (s === 1 ? 2 : 3) as Step)} className="inline-flex h-8 items-center rounded-md bg-primary px-3.5 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]">
+            <button type="button" disabled={step === 2 && !scopeReady} onClick={() => setStep((s) => (s === 1 ? 2 : 3) as Step)} className={cn("inline-flex h-8 items-center rounded-md px-3.5 text-[12.5px] font-semibold transition-colors", step === 2 && !scopeReady ? "bg-[color:var(--s2)] text-muted-foreground" : "bg-primary text-primary-foreground hover:bg-[var(--primary-hover)]")}>
               {step === 1 ? "Choose access" : `Continue with ${access.length} permissions`}
             </button>
           ) : (
@@ -359,6 +442,14 @@ export function ConnectAiDialog({ open, onOpenChange, projectId, projectName, ws
       </DialogContent>
     </Dialog>
   );
+}
+
+/** Compact scope label for the Connected list. */
+function grantScopeChip(g: AgentGrant): string {
+  const { kind, count } = grantReach(g);
+  if (kind === "workspace") return "whole workspace";
+  if (kind === "workspaces") return count === 1 ? "1 workspace" : `${count} workspaces`;
+  return count === 1 ? "this project" : `${count} projects`;
 }
 
 function CodeBlock({ code, onCopy }: { code: string; onCopy: () => void }) {

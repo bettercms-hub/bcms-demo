@@ -533,7 +533,7 @@ function BuilderOverlay({ projectId, existing, onClose, onSaved }: { projectId: 
         </div>
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           {/* settings pane */}
-          <div className="w-full space-y-5 overflow-y-auto border-b border-[color:var(--border-hairline)] p-5 md:w-[420px] md:border-b-0 md:border-r">
+          <div className="w-full shrink-0 space-y-5 overflow-y-auto border-b border-[color:var(--border-hairline)] p-5 md:w-[420px] md:border-b-0 md:border-r">
             <Field label="Name">
               <input autoFocus={!existing} value={name} onChange={(e) => setName(e.target.value)} placeholder="Stats band" className="h-9 w-full rounded-md border border-[color:var(--color-border)] bg-card px-2.5 text-[13px] outline-none focus:border-[color:var(--primary)]" />
             </Field>
@@ -608,7 +608,7 @@ function BuilderOverlay({ projectId, existing, onClose, onSaved }: { projectId: 
             </Field>
           </div>
           {/* live preview pane */}
-          <div className="flex min-h-0 flex-1 flex-col bg-[color:var(--s2)] p-5">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[color:var(--s2)] p-5">
             <div className="mb-2 flex items-center gap-2">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Live preview</span>
               <div className="flex-1" />
@@ -618,7 +618,7 @@ function BuilderOverlay({ projectId, existing, onClose, onSaved }: { projectId: 
                 </button>
               ))}
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-[color:var(--color-border)] bg-white">
+            <div className="min-h-0 min-w-0 flex-1 overflow-auto rounded-xl border border-[color:var(--color-border)] bg-white">
               <SectionPreviewTall component={preview} variant={variant} />
             </div>
           </div>

@@ -47,7 +47,14 @@ export const ACCESS_OPTIONS: AccessOption[] = [
 
 export const accessLabel = (k: AccessKey) => ACCESS_OPTIONS.find((o) => o.key === k)?.label ?? k;
 
-export type GrantScopeKind = "project" | "workspace";
+/**
+ * Where a key reaches:
+ * - "projects"   — a hand-picked set of projects inside its home workspace.
+ * - "workspace"  — every project in the home workspace, future ones included.
+ * - "workspaces" — whole workspaces, for the agency/org case. Broadest blast
+ *   radius; the connect flow warns and requires admin on each.
+ */
+export type GrantScopeKind = "projects" | "workspace" | "workspaces";
 export type GrantStatus = "pending" | "active";
 
 export interface AgentGrant {
@@ -59,12 +66,25 @@ export interface AgentGrant {
   scopes: string[];
   access: AccessKey[];
   scopeKind: GrantScopeKind;
+  /** The workspace the key was minted in; the anchor for its reach. */
+  homeWorkspaceId: string;
+  /** scopeKind "projects": the exact projects it may touch. */
+  projectIds?: string[];
+  /** scopeKind "workspaces": the whole workspaces it spans (home included). */
+  workspaceIds?: string[];
   status: GrantStatus;
   createdAt: number;
   /** Keys expire; rotation is a feature, not a chore. */
   expiresAt: number;
   authorizedAt?: number;
   lastUsedAt?: number;
+}
+
+/** Count of distinct targets a grant reaches, for compact chips. */
+export function grantReach(g: AgentGrant): { kind: GrantScopeKind; count: number } {
+  if (g.scopeKind === "projects") return { kind: "projects", count: g.projectIds?.length ?? 1 };
+  if (g.scopeKind === "workspaces") return { kind: "workspaces", count: g.workspaceIds?.length ?? 1 };
+  return { kind: "workspace", count: 1 };
 }
 
 export const EXTERNAL_CLIENTS = [
@@ -129,24 +149,36 @@ export const agentGrantActions = {
   create(
     projectId: string,
     client: string,
-    opts?: { access?: AccessKey[]; scopeKind?: GrantScopeKind },
+    opts?: {
+      access?: AccessKey[];
+      scopeKind?: GrantScopeKind;
+      homeWorkspaceId: string;
+      projectIds?: string[];
+      workspaceIds?: string[];
+    },
   ): { grant: AgentGrant; token: string } {
     const token = randomToken();
     const access = opts?.access?.length ? opts.access : (["content.read", "content.write", "media"] as AccessKey[]);
+    const scopeKind = opts?.scopeKind ?? "projects";
     const grant: AgentGrant = {
       id: `grant_${Date.now().toString(36)}${(seq++).toString(36)}`,
       client,
       maskedToken: `${token.slice(0, 11)}...${token.slice(-4)}`,
       scopes: access.map(accessLabel),
       access,
-      scopeKind: opts?.scopeKind ?? "project",
+      scopeKind,
+      homeWorkspaceId: opts?.homeWorkspaceId ?? "",
+      projectIds: scopeKind === "projects" ? (opts?.projectIds?.length ? opts.projectIds : [projectId]) : undefined,
+      workspaceIds: scopeKind === "workspaces" ? opts?.workspaceIds : undefined,
       status: "pending",
       createdAt: Date.now(),
       expiresAt: Date.now() + 30 * 86400000,
     };
     byProject.set(projectId, [grant, ...(byProject.get(projectId) ?? [])]);
     emit();
-    recordAgentAudit(projectId, "agent.external_key_created", `${client} connection key created (${access.length} permissions, ${grant.scopeKind} scope), awaiting authorization`, grant.id);
+    const { count, kind } = grantReach(grant);
+    const reach = kind === "workspace" ? "whole workspace" : `${count} ${kind === "workspaces" ? (count === 1 ? "workspace" : "workspaces") : count === 1 ? "project" : "projects"}`;
+    recordAgentAudit(projectId, "agent.external_key_created", `${client} connection key created (${access.length} permissions, ${reach}), awaiting authorization`, grant.id);
     return { grant, token };
   },
   /** The human moment: nothing serves until a person authorizes it. */
