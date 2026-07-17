@@ -1,36 +1,61 @@
 /**
  * Components hub — one library for every building block on the site.
  *
- * Built-in sections are registered in code and immutable here; hub-created
- * components are modeled visually (fields, variants, starter content) and
- * render through the token-driven generic renderer. The agent can draft new
- * components from a prompt and the brand kit; drafts never self-publish.
+ * Gallery and list views over built-in + hub-created components, a two-pane
+ * visual builder with typed fields (text, long text, image, number, link,
+ * slot) and a live preview, and a conversational AI studio: iterate on a
+ * draft across turns, attach references and skills, tweak the brand inline.
+ * Every generation spends credits and is logged as a browsable chat.
  * Decision record: COMPONENTS_PLAN.md.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Archive, Check, Code2, Copy, Plus, RotateCcw, Sparkles, Trash2, X } from "lucide-react";
+import {
+  Archive,
+  AtSign,
+  Check,
+  Code2,
+  Copy,
+  LayoutGrid,
+  List,
+  Paperclip,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Send,
+  Sparkles,
+  Trash2,
+  Wand2,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PageShell } from "@/components/cms/layout";
 import { ListToolbar, SegmentedFilter } from "@/components/cms/ListToolbar";
+import { SectionPreview, SECTION_DEFS, type SectionDef } from "@/components/cms/editor/sections/SectionSystem";
 import {
-  SectionPreview,
-  SECTION_DEFS,
-  type SectionDef,
-} from "@/components/cms/editor/sections/SectionSystem";
-import {
+  COMPONENT_ICONS,
+  FIELD_TYPES,
+  buildComponentDraft,
+  componentChatActions,
   componentCodeStub,
   componentHubActions,
+  componentIcon,
   componentUsage,
+  iterateComponent,
+  slotTargets,
   toSectionDef,
+  useComponentChats,
   useCustomComponents,
+  type ChatAttachment,
   type CustomComponent,
+  type CustomField,
 } from "@/lib/cms/components-store";
-import { useBrandKit } from "@/lib/brand/brand-store";
+import { brandActions, useBrandKit } from "@/lib/brand/brand-store";
 import { aiAction } from "@/lib/billing/pricing";
-import { agentRunActions, useAgentRuns } from "@/lib/agent/runs-store";
+import { enabledInstructions } from "@/lib/agent/instructions-store";
+import { recordAgentAudit } from "@/lib/cms/store";
 import { getProjectBySlug } from "@/lib/cms/use-cms";
 import { canCompose, canSeeDeveloper, useEffectiveRole } from "@/lib/workspace/my-role";
 import { cn } from "@/lib/utils";
@@ -51,9 +76,10 @@ function ComponentsHub() {
   const customs = useCustomComponents(pr.id);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
-  const [openId, setOpenId] = useState<string | null>(null); // custom id or `builtin:${type}`
-  const [creating, setCreating] = useState(false);
-  const [generating, setGenerating] = useState(false);
+  const [view, setView] = useState<"grid" | "list">("grid");
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [builder, setBuilder] = useState<{ editId?: string } | null>(null);
+  const [studio, setStudio] = useState(false);
 
   const q = query.trim().toLowerCase();
   const matches = (name: string, blurb: string, category: string) =>
@@ -86,6 +112,20 @@ function ComponentsHub() {
 
   const openCustom = openId && !openId.startsWith("builtin:") ? customs.find((c) => c.id === openId) : undefined;
   const openBuiltin = openId?.startsWith("builtin:") ? SECTION_DEFS.find((d) => d.type === openId.slice(8)) : undefined;
+  const showBuiltins = status === "all" || status === "builtin";
+  const showCustoms = status !== "builtin";
+
+  const tryDelete = (c: CustomComponent) => {
+    const usage = componentUsage(pr.id, c.type);
+    if (usage.count > 0) {
+      toast.error(`${c.name} is used on ${usage.count} ${usage.count === 1 ? "page" : "pages"}. Remove it from those pages or archive it instead.`);
+      return;
+    }
+    if (componentHubActions.remove(pr.id, c.id)) {
+      toast.success(`${c.name} deleted`);
+      if (openId === c.id) setOpenId(null);
+    }
+  };
 
   return (
     <PageShell
@@ -99,10 +139,10 @@ function ComponentsHub() {
       actions={
         canBuild ? (
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => setGenerating(true)}>
-              <Sparkles className="mr-1 h-3.5 w-3.5" /> Generate with AI
+            <Button size="sm" variant="outline" onClick={() => setStudio(true)}>
+              <Sparkles className="mr-1 h-3.5 w-3.5" /> AI studio
             </Button>
-            <Button size="sm" onClick={() => setCreating(true)}>
+            <Button size="sm" onClick={() => setBuilder({})}>
               <Plus className="mr-1 h-3.5 w-3.5" /> New component
             </Button>
           </div>
@@ -121,64 +161,106 @@ function ComponentsHub() {
             { id: "archived", label: "Archived", count: counts.archived },
           ]}
         />
+        <div className="flex rounded-lg border border-[color:var(--color-border)] p-0.5">
+          {(
+            [
+              { id: "grid", icon: LayoutGrid, label: "Gallery view" },
+              { id: "list", icon: List, label: "List view" },
+            ] as const
+          ).map((v) => (
+            <button
+              key={v.id}
+              type="button"
+              aria-label={v.label}
+              aria-pressed={view === v.id}
+              onClick={() => setView(v.id)}
+              className={cn("grid h-7 w-8 place-items-center rounded-md transition-colors", view === v.id ? "bg-[color:var(--s2)] text-foreground" : "text-muted-foreground hover:text-foreground")}
+            >
+              <v.icon className="h-3.5 w-3.5" />
+            </button>
+          ))}
+        </div>
       </ListToolbar>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {(status === "all" || status === "builtin") &&
-          builtins.map((def) => (
-            <ComponentCard
-              key={def.type}
-              def={def}
-              usage={componentUsage(pr.id, def.type).count}
-              badge={<Badge tone="code">Built in code</Badge>}
-              onOpen={() => setOpenId(`builtin:${def.type}`)}
-            />
-          ))}
-        {status !== "builtin" &&
-          filteredCustoms.map((c) => (
-            <ComponentCard
-              key={c.id}
-              def={toSectionDef(c)}
-              usage={componentUsage(pr.id, c.type).count}
-              badge={
-                <span className="flex items-center gap-1.5">
-                  {c.origin === "ai" && <Sparkles className="h-3 w-3 text-primary" />}
-                  <Badge tone={c.status}>{c.status === "published" ? "Published" : c.status === "draft" ? "Draft" : "Archived"}</Badge>
-                </span>
-              }
-              onOpen={() => setOpenId(c.id)}
-            />
-          ))}
-      </div>
-      {builtins.length === 0 && filteredCustoms.length === 0 && (
-        <div className="rounded-xl border border-dashed border-[color:var(--color-border)] bg-[color:var(--s1)] px-6 py-14 text-center text-[13px] text-muted-foreground">
-          No components match your search.
+      {view === "grid" ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {showBuiltins &&
+            builtins.map((def) => (
+              <ComponentCard key={def.type} def={def} usage={componentUsage(pr.id, def.type).count} badge={<Badge tone="code">Built in code</Badge>} onOpen={() => setOpenId(`builtin:${def.type}`)} />
+            ))}
+          {showCustoms &&
+            filteredCustoms.map((c) => (
+              <ComponentCard
+                key={c.id}
+                def={toSectionDef(c)}
+                usage={componentUsage(pr.id, c.type).count}
+                badge={
+                  <span className="flex items-center gap-1.5">
+                    {c.origin === "ai" && <Sparkles className="h-3 w-3 text-primary" />}
+                    <Badge tone={c.status}>{c.status === "published" ? "Published" : c.status === "draft" ? "Draft" : "Archived"}</Badge>
+                  </span>
+                }
+                onOpen={() => setOpenId(c.id)}
+              />
+            ))}
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-[color:var(--border-hairline)] bg-card">
+          <div className="grid grid-cols-[1fr_90px_110px] items-center gap-3 border-b border-[color:var(--border-hairline)] bg-[color:var(--s2)] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid-cols-[1fr_110px_90px_80px_120px]">
+            <span>Component</span>
+            <span className="hidden sm:block">Category</span>
+            <span>Status</span>
+            <span className="hidden sm:block">Usage</span>
+            <span />
+          </div>
+          <ul className="divide-y divide-[color:var(--border-hairline)]">
+            {showBuiltins &&
+              builtins.map((def) => (
+                <ListRow key={def.type} icon={def.icon} name={def.name} blurb={def.blurb} category={def.category} usage={componentUsage(pr.id, def.type).count} badge={<Badge tone="code">Built in</Badge>} onOpen={() => setOpenId(`builtin:${def.type}`)}>
+                  <span className="text-[11px] text-muted-foreground">In code</span>
+                </ListRow>
+              ))}
+            {showCustoms &&
+              filteredCustoms.map((c) => (
+                <ListRow key={c.id} icon={componentIcon(c.iconId)} name={c.name} blurb={c.blurb} category={c.category} usage={componentUsage(pr.id, c.type).count} badge={<Badge tone={c.status}>{c.status === "published" ? "Published" : c.status === "draft" ? "Draft" : "Archived"}</Badge>} onOpen={() => setOpenId(c.id)}>
+                  {canBuild && (
+                    <span className="flex items-center justify-end gap-1">
+                      <button type="button" aria-label={`Edit ${c.name}`} onClick={(e) => { e.stopPropagation(); setBuilder({ editId: c.id }); }} className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-[color:var(--color-row-hover)] hover:text-foreground">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button type="button" aria-label={`Delete ${c.name}`} onClick={(e) => { e.stopPropagation(); tryDelete(c); }} className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-[color:var(--color-row-hover)] hover:text-destructive">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                  )}
+                </ListRow>
+              ))}
+          </ul>
         </div>
       )}
+      {builtins.length === 0 && filteredCustoms.length === 0 && (
+        <div className="rounded-xl border border-dashed border-[color:var(--color-border)] bg-[color:var(--s1)] px-6 py-14 text-center text-[13px] text-muted-foreground">No components match your search.</div>
+      )}
 
-      {openCustom && (
-        <DetailPanel projectId={pr.id} custom={openCustom} canBuild={canBuild} onClose={() => setOpenId(null)} />
-      )}
-      {openBuiltin && (
-        <DetailPanel projectId={pr.id} builtin={openBuiltin} canBuild={canBuild} onClose={() => setOpenId(null)} />
-      )}
-      {creating && (
-        <NewComponentDialog
-          onClose={() => setCreating(false)}
-          onCreate={(input) => {
-            const c = componentHubActions.create(pr.id, input);
-            setCreating(false);
-            setOpenId(c.id);
-            toast.success(`${c.name} created as a draft`);
+      {openCustom && <DetailPanel projectId={pr.id} custom={openCustom} canBuild={canBuild} onClose={() => setOpenId(null)} onEdit={() => { setBuilder({ editId: openCustom.id }); setOpenId(null); }} onDelete={() => tryDelete(openCustom)} />}
+      {openBuiltin && <DetailPanel projectId={pr.id} builtin={openBuiltin} canBuild={canBuild} onClose={() => setOpenId(null)} />}
+      {builder && (
+        <BuilderOverlay
+          projectId={pr.id}
+          existing={builder.editId ? customs.find((c) => c.id === builder.editId) : undefined}
+          onClose={() => setBuilder(null)}
+          onSaved={(id) => {
+            setBuilder(null);
+            setOpenId(id);
           }}
         />
       )}
-      {generating && <GenerateDialog projectId={pr.id} onClose={() => setGenerating(false)} onOpen={(id) => setOpenId(id)} />}
+      {studio && <StudioOverlay projectId={pr.id} workspaceId={pr.workspaceId} onClose={() => setStudio(false)} onOpenComponent={(id) => { setStudio(false); setOpenId(id); }} />}
     </PageShell>
   );
 }
 
-/* ------------------------------------------------------------------ card */
+/* ------------------------------------------------------------ shared bits */
 
 function Badge({ tone, children }: { tone: "code" | "draft" | "published" | "archived"; children: React.ReactNode }) {
   const cls = {
@@ -192,11 +274,7 @@ function Badge({ tone, children }: { tone: "code" | "draft" | "published" | "arc
 
 function ComponentCard({ def, usage, badge, onOpen }: { def: SectionDef; usage: number; badge: React.ReactNode; onOpen: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="group overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-card text-left transition-all hover:border-[color:var(--primary)] hover:shadow-[0_8px_30px_-12px_rgba(239,3,127,0.25)]"
-    >
+    <button type="button" onClick={onOpen} className="group overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-card text-left transition-all hover:border-[color:var(--primary)] hover:shadow-[0_8px_30px_-12px_rgba(239,3,127,0.25)]">
       <SectionPreview def={def} variant={def.variants[0]?.id ?? "default"} />
       <div className="border-t border-[color:var(--border-hairline)] px-3 py-2.5">
         <div className="flex items-center gap-2">
@@ -209,35 +287,42 @@ function ComponentCard({ def, usage, badge, onOpen }: { def: SectionDef; usage: 
             </div>
             <div className="truncate text-[11px] text-muted-foreground">{def.blurb}</div>
           </div>
-          <span className="shrink-0 text-[10.5px] tabular-nums text-muted-foreground">
-            {usage === 0 ? "Unused" : usage === 1 ? "1 page" : `${usage} pages`}
-          </span>
+          <span className="shrink-0 text-[10.5px] tabular-nums text-muted-foreground">{usage === 0 ? "Unused" : usage === 1 ? "1 page" : `${usage} pages`}</span>
         </div>
       </div>
     </button>
   );
 }
 
+function ListRow({ icon: Icon, name, blurb, category, usage, badge, onOpen, children }: { icon: React.ComponentType<{ className?: string }>; name: string; blurb: string; category: string; usage: number; badge: React.ReactNode; onOpen: () => void; children?: React.ReactNode }) {
+  return (
+    <li onClick={onOpen} className="grid cursor-pointer grid-cols-[1fr_90px_110px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--s4)] sm:grid-cols-[1fr_110px_90px_80px_120px]">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[color:var(--s2)] text-muted-foreground">
+          <Icon className="h-3.5 w-3.5" />
+        </span>
+        <div className="min-w-0">
+          <div className="truncate text-[13px] font-medium text-foreground">{name}</div>
+          <div className="truncate text-[11px] text-muted-foreground">{blurb}</div>
+        </div>
+      </div>
+      <span className="hidden text-[12px] text-muted-foreground sm:block">{category}</span>
+      <span>{badge}</span>
+      <span className="hidden text-[11.5px] tabular-nums text-muted-foreground sm:block">{usage === 0 ? "Unused" : `${usage} ${usage === 1 ? "page" : "pages"}`}</span>
+      {children ?? <span />}
+    </li>
+  );
+}
+
 /* ---------------------------------------------------------- detail panel */
 
-function DetailPanel({
-  projectId,
-  custom,
-  builtin,
-  canBuild,
-  onClose,
-}: {
-  projectId: string;
-  custom?: CustomComponent;
-  builtin?: SectionDef;
-  canBuild: boolean;
-  onClose: () => void;
-}) {
+function DetailPanel({ projectId, custom, builtin, canBuild, onClose, onEdit, onDelete }: { projectId: string; custom?: CustomComponent; builtin?: SectionDef; canBuild: boolean; onClose: () => void; onEdit?: () => void; onDelete?: () => void }) {
   const def = custom ? toSectionDef(custom) : builtin!;
   const [variant, setVariant] = useState(def.variants[0]?.id ?? "default");
   const [showCode, setShowCode] = useState(false);
   const usage = componentUsage(projectId, def.type);
   const code = custom ? componentCodeStub(custom) : `// ${def.type} is registered in your repo.\n// See src/sections/${def.type}.tsx`;
+  const typeLabel = (f: CustomField) => FIELD_TYPES.find((t) => t.id === f.type)?.label ?? "Text";
 
   return createPortal(
     <div className="fixed inset-0 z-[92]">
@@ -247,11 +332,7 @@ function DetailPanel({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 text-[15px] font-semibold text-foreground">
               {def.name}
-              {custom ? (
-                <Badge tone={custom.status}>{custom.status === "published" ? "Published" : custom.status === "draft" ? "Draft" : "Archived"}</Badge>
-              ) : (
-                <Badge tone="code">Built in code</Badge>
-              )}
+              {custom ? <Badge tone={custom.status}>{custom.status === "published" ? "Published" : custom.status === "draft" ? "Draft" : "Archived"}</Badge> : <Badge tone="code">Built in code</Badge>}
               {custom?.origin === "ai" && (
                 <span className="inline-flex items-center gap-1 text-[11px] font-medium text-primary">
                   <Sparkles className="h-3 w-3" /> AI drafted
@@ -260,46 +341,40 @@ function DetailPanel({
             </div>
             <div className="truncate text-[12px] text-muted-foreground">{def.blurb}</div>
           </div>
+          {custom && canBuild && onEdit && (
+            <Button size="sm" variant="outline" onClick={onEdit}>
+              <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
+            </Button>
+          )}
           <button type="button" onClick={onClose} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-[color:var(--color-row-hover)] hover:text-foreground">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
-          {/* preview + variant switcher */}
           <div className="overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-white">
             <SectionPreview def={def} variant={variant} />
           </div>
           {def.variants.length > 1 && (
             <div className="mt-2 flex gap-1.5">
               {def.variants.map((v) => (
-                <button
-                  key={v.id}
-                  type="button"
-                  onClick={() => setVariant(v.id)}
-                  className={cn(
-                    "rounded-md border px-2.5 py-1 text-[11.5px] font-medium transition-colors",
-                    variant === v.id ? "border-[color:var(--primary)] bg-[color:var(--primary)]/10 text-primary" : "border-[color:var(--color-border)] text-muted-foreground hover:text-foreground",
-                  )}
-                >
+                <button key={v.id} type="button" onClick={() => setVariant(v.id)} className={cn("rounded-md border px-2.5 py-1 text-[11.5px] font-medium transition-colors", variant === v.id ? "border-[color:var(--primary)] bg-[color:var(--primary)]/10 text-primary" : "border-[color:var(--color-border)] text-muted-foreground hover:text-foreground")}>
                   {v.name}
                 </button>
               ))}
             </div>
           )}
 
-          {/* fields */}
-          <SectionBlock title={`Fields · ${def.fields.length}`}>
-            {def.fields.map((f) => (
+          <SectionBlock title={`Fields · ${custom ? custom.fields.length : def.fields.length}`}>
+            {(custom?.fields ?? def.fields.map((f) => ({ key: f.key, label: f.label, type: (f.multiline ? "longtext" : "text") as CustomField["type"] }))).map((f) => (
               <div key={f.key} className="flex items-center gap-3 border-b border-[color:var(--border-hairline)] px-3.5 py-2.5 last:border-0">
                 <span className="w-32 shrink-0 text-[12.5px] font-medium text-foreground">{f.label}</span>
                 <code className="rounded bg-[color:var(--s2)] px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">{f.key}</code>
-                <span className="text-[11px] text-muted-foreground">{f.multiline ? "Long text" : "Text"}</span>
+                <span className="text-[11px] text-muted-foreground">{typeLabel(f as CustomField)}</span>
               </div>
             ))}
           </SectionBlock>
 
-          {/* usage */}
           <SectionBlock title={usage.count === 0 ? "Not used on any page yet" : `Used on ${usage.count} ${usage.count === 1 ? "page" : "pages"}`}>
             {usage.pages.slice(0, 6).map((p) => (
               <div key={p.path} className="flex items-center justify-between border-b border-[color:var(--border-hairline)] px-3.5 py-2.5 text-[12.5px] last:border-0">
@@ -307,12 +382,9 @@ function DetailPanel({
                 <code className="font-mono text-[11px] text-muted-foreground">{p.path}</code>
               </div>
             ))}
-            {usage.count === 0 && (
-              <div className="px-3.5 py-3 text-[12px] text-muted-foreground">Add it from the section library in the visual editor.</div>
-            )}
+            {usage.count === 0 && <div className="px-3.5 py-3 text-[12px] text-muted-foreground">Add it from the section library in the visual editor.</div>}
           </SectionBlock>
 
-          {/* code */}
           <SectionBlock
             title="Code"
             action={
@@ -329,16 +401,11 @@ function DetailPanel({
             {showCode ? (
               <pre className="max-h-64 overflow-auto bg-[color:var(--s2)] p-3.5 font-mono text-[11px] leading-relaxed text-foreground">{code}</pre>
             ) : (
-              <div className="px-3.5 py-3 text-[12px] text-muted-foreground">
-                {custom
-                  ? "A starter component for your repo. Production rendering ships from code; this hub owns the model."
-                  : "This section's component lives in your repo and is registered through the API."}
-              </div>
+              <div className="px-3.5 py-3 text-[12px] text-muted-foreground">{custom ? "A starter component for your repo. Production rendering ships from code; this hub owns the model." : "This section's component lives in your repo and is registered through the API."}</div>
             )}
           </SectionBlock>
         </div>
 
-        {/* actions */}
         {canBuild && (
           <div className="flex items-center gap-2 border-t border-[color:var(--border-hairline)] bg-card px-5 py-3">
             {custom ? (
@@ -363,21 +430,7 @@ function DetailPanel({
                   </Button>
                 )}
                 <div className="flex-1" />
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-destructive hover:text-destructive"
-                  onClick={() => {
-                    if (usage.count > 0) {
-                      toast.error(`${custom.name} is used on ${usage.count} ${usage.count === 1 ? "page" : "pages"}. Remove it from those pages or archive it instead.`);
-                      return;
-                    }
-                    if (componentHubActions.remove(projectId, custom.id)) {
-                      toast.success(`${custom.name} deleted`);
-                      onClose();
-                    }
-                  }}
-                >
+                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={onDelete}>
                   <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
                 </Button>
               </>
@@ -385,15 +438,7 @@ function DetailPanel({
               <>
                 <span className="text-[12px] text-muted-foreground">Registered in code. Duplicate it to customize a copy here.</span>
                 <div className="flex-1" />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    const c = componentHubActions.duplicate(projectId, builtin!);
-                    toast.success(`${c.name} created as a draft`);
-                    onClose();
-                  }}
-                >
+                <Button size="sm" variant="outline" onClick={() => { const c = componentHubActions.duplicate(projectId, builtin!); toast.success(`${c.name} created as a draft`); onClose(); }}>
                   <Copy className="mr-1 h-3.5 w-3.5" /> Duplicate to customize
                 </Button>
               </>
@@ -418,88 +463,181 @@ function SectionBlock({ title, action, children }: { title: string; action?: Rea
   );
 }
 
-/* --------------------------------------------------------- new component */
+/* --------------------------------------------------------------- builder */
 
-function NewComponentDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (input: { name: string; blurb: string; category: string; fields: { key: string; label: string; multiline?: boolean }[] }) => void }) {
-  const [name, setName] = useState("");
-  const [blurb, setBlurb] = useState("");
-  const [category, setCategory] = useState("Content");
-  const [fields, setFields] = useState<{ label: string; multiline: boolean }[]>([
-    { label: "Heading", multiline: false },
-    { label: "Body", multiline: true },
+function BuilderOverlay({ projectId, existing, onClose, onSaved }: { projectId: string; existing?: CustomComponent; onClose: () => void; onSaved: (id: string) => void }) {
+  const [name, setName] = useState(existing?.name ?? "");
+  const [blurb, setBlurb] = useState(existing?.blurb ?? "");
+  const [category, setCategory] = useState(existing?.category ?? "Content");
+  const [iconId, setIconId] = useState(existing?.iconId ?? "sparkles");
+  const [fields, setFields] = useState<CustomField[]>(existing?.fields.map((f) => ({ ...f })) ?? [
+    { key: "heading", label: "Heading", type: "text" },
+    { key: "body", label: "Body", type: "longtext" },
   ]);
+  const [defaults, setDefaults] = useState<Record<string, string>>({ ...(existing?.defaults ?? { heading: "A heading to edit", body: "Supporting copy your editors will replace." }) });
+  const [leftLayout, setLeftLayout] = useState(existing ? existing.variants.some((v) => v.id === "left") : true);
+  const [variant, setVariant] = useState("centered");
   const valid = name.trim().length > 1 && fields.some((f) => f.label.trim());
+  const targets = slotTargets(projectId);
+
+  // Live preview object, recomputed every keystroke.
+  const preview: CustomComponent = {
+    id: existing?.id ?? "cmp_preview",
+    projectId,
+    type: existing?.type ?? "preview",
+    name: name || "New component",
+    blurb,
+    category,
+    status: "draft",
+    origin: existing?.origin ?? "manual",
+    iconId,
+    fields: fields.filter((f) => f.label.trim()),
+    variants: leftLayout ? [{ id: "centered", name: "Centered" }, { id: "left", name: "Left aligned" }] : [{ id: "centered", name: "Centered" }],
+    defaults,
+    createdAt: 0,
+    updatedAt: 0,
+  };
+
+  const setField = (i: number, up: Partial<CustomField>) =>
+    setFields((arr) =>
+      arr.map((f, j) => {
+        if (j !== i) return f;
+        const next = { ...f, ...up };
+        if (up.label !== undefined) next.key = existing?.fields[j]?.key ?? (up.label.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || `field_${i}`);
+        return next;
+      }),
+    );
+
+  const save = () => {
+    const clean = fields.filter((f) => f.label.trim());
+    if (existing) {
+      componentHubActions.update(projectId, existing.id, { name: name.trim(), blurb: blurb.trim() || preview.blurb, category, iconId, fields: clean, defaults, variants: preview.variants });
+      toast.success(`${name.trim()} saved`);
+      onSaved(existing.id);
+    } else {
+      const c = componentHubActions.create(projectId, { name, blurb, category, iconId, fields: clean, defaults, variants: preview.variants });
+      toast.success(`${c.name} created as a draft`);
+      onSaved(c.id);
+    }
+  };
 
   return createPortal(
-    <div className="fixed inset-0 z-[94]">
-      <div className="absolute inset-0 bg-slate-900/45" onMouseDown={onClose} aria-hidden />
-      <div role="dialog" aria-modal="true" aria-label="New component" className="absolute left-1/2 top-[8vh] w-[min(560px,calc(100vw-24px))] -translate-x-1/2 overflow-hidden rounded-2xl border border-[color:var(--color-border)] bg-card shadow-2xl">
-        <div className="border-b border-[color:var(--border-hairline)] px-5 py-3.5 text-[14px] font-semibold text-foreground">New component</div>
-        <div className="max-h-[62vh] space-y-4 overflow-y-auto px-5 py-4">
-          <Field label="Name">
-            <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Stats band" className="h-9 w-full rounded-md border border-[color:var(--color-border)] bg-card px-2.5 text-[13px] outline-none focus:border-[color:var(--primary)]" />
-          </Field>
-          <Field label="What it's for">
-            <input value={blurb} onChange={(e) => setBlurb(e.target.value)} placeholder="Three headline numbers with labels" className="h-9 w-full rounded-md border border-[color:var(--color-border)] bg-card px-2.5 text-[13px] outline-none focus:border-[color:var(--primary)]" />
-          </Field>
-          <Field label="Category">
-            <div className="flex gap-1.5">
-              {["Hero", "Content", "Social proof", "Conversion"].map((c) => (
-                <button key={c} type="button" onClick={() => setCategory(c)} className={cn("rounded-md border px-2.5 py-1.5 text-[12px] font-medium", category === c ? "border-[color:var(--primary)] bg-[color:var(--primary)]/10 text-primary" : "border-[color:var(--color-border)] text-muted-foreground")}>
-                  {c}
+    <div className="fixed inset-0 z-[94] bg-[color:var(--s1)]">
+      <div className="flex h-full flex-col">
+        <div className="flex items-center gap-3 border-b border-[color:var(--border-hairline)] bg-card px-5 py-3">
+          <span className="text-[15px] font-semibold text-foreground">{existing ? `Edit ${existing.name}` : "New component"}</span>
+          <span className="hidden text-[12px] text-muted-foreground sm:block">The preview updates as you type. Saves as a draft until you publish.</span>
+          <div className="flex-1" />
+          <Button size="sm" variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button size="sm" disabled={!valid} onClick={save}>{existing ? "Save changes" : "Create draft"}</Button>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+          {/* settings pane */}
+          <div className="w-full space-y-5 overflow-y-auto border-b border-[color:var(--border-hairline)] p-5 md:w-[420px] md:border-b-0 md:border-r">
+            <Field label="Name">
+              <input autoFocus={!existing} value={name} onChange={(e) => setName(e.target.value)} placeholder="Stats band" className="h-9 w-full rounded-md border border-[color:var(--color-border)] bg-card px-2.5 text-[13px] outline-none focus:border-[color:var(--primary)]" />
+            </Field>
+            <Field label="What it's for">
+              <input value={blurb} onChange={(e) => setBlurb(e.target.value)} placeholder="Three headline numbers with labels" className="h-9 w-full rounded-md border border-[color:var(--color-border)] bg-card px-2.5 text-[13px] outline-none focus:border-[color:var(--primary)]" />
+            </Field>
+            <Field label="Category">
+              <div className="flex flex-wrap gap-1.5">
+                {["Hero", "Content", "Social proof", "Conversion"].map((c) => (
+                  <button key={c} type="button" onClick={() => setCategory(c)} className={cn("rounded-md border px-2.5 py-1.5 text-[12px] font-medium", category === c ? "border-[color:var(--primary)] bg-[color:var(--primary)]/10 text-primary" : "border-[color:var(--color-border)] text-muted-foreground")}>
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </Field>
+            <Field label="Icon">
+              <div className="flex flex-wrap gap-1.5">
+                {COMPONENT_ICONS.map((i) => (
+                  <button key={i.id} type="button" aria-label={`Icon ${i.id}`} onClick={() => setIconId(i.id)} className={cn("grid h-8 w-8 place-items-center rounded-md border", iconId === i.id ? "border-[color:var(--primary)] bg-[color:var(--primary)]/10 text-primary" : "border-[color:var(--color-border)] text-muted-foreground hover:text-foreground")}>
+                    <i.icon className="h-4 w-4" />
+                  </button>
+                ))}
+              </div>
+            </Field>
+            <Field label={`Fields · ${fields.length}`}>
+              <div className="space-y-2.5">
+                {fields.map((f, i) => (
+                  <div key={i} className="rounded-lg border border-[color:var(--border-hairline)] bg-card p-2.5">
+                    <div className="flex items-center gap-2">
+                      <input value={f.label} onChange={(e) => setField(i, { label: e.target.value })} placeholder="Field label" className="h-8 flex-1 rounded-md border border-[color:var(--color-border)] bg-card px-2.5 text-[12.5px] outline-none focus:border-[color:var(--primary)]" />
+                      <select value={f.type} onChange={(e) => setField(i, { type: e.target.value as CustomField["type"] })} aria-label="Field type" className="h-8 rounded-md border border-[color:var(--color-border)] bg-card px-1.5 text-[12px] text-foreground outline-none">
+                        {FIELD_TYPES.map((t) => (
+                          <option key={t.id} value={t.id}>{t.label}</option>
+                        ))}
+                      </select>
+                      <button type="button" aria-label="Remove field" onClick={() => setFields((arr) => arr.filter((_, j) => j !== i))} className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:text-destructive">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    {/* starter content per type */}
+                    <div className="mt-2">
+                      {f.type === "slot" ? (
+                        <select value={defaults[f.key] ?? ""} onChange={(e) => setDefaults((d) => ({ ...d, [f.key]: e.target.value }))} aria-label="Slot component" className="h-8 w-full rounded-md border border-[color:var(--color-border)] bg-card px-1.5 text-[12px] text-foreground outline-none">
+                          <option value="">Empty slot</option>
+                          {targets.filter((t) => t.type !== preview.type).map((t) => (
+                            <option key={t.type} value={t.type}>{t.name}</option>
+                          ))}
+                        </select>
+                      ) : f.type === "image" ? (
+                        <div className="flex items-center gap-2 text-[11.5px] text-muted-foreground">
+                          <span className="h-6 w-9 rounded border border-[color:var(--color-border)] bg-gradient-to-br from-pink-100 via-white to-pink-50" />
+                          Placeholder art now, the media library in the editor.
+                        </div>
+                      ) : f.type === "longtext" ? (
+                        <textarea value={defaults[f.key] ?? ""} onChange={(e) => setDefaults((d) => ({ ...d, [f.key]: e.target.value }))} rows={2} placeholder="Starter content" className="w-full resize-none rounded-md border border-[color:var(--color-border)] bg-card px-2.5 py-1.5 text-[12px] outline-none focus:border-[color:var(--primary)]" />
+                      ) : (
+                        <input value={defaults[f.key] ?? ""} onChange={(e) => setDefaults((d) => ({ ...d, [f.key]: e.target.value }))} placeholder="Starter content" className="h-8 w-full rounded-md border border-[color:var(--color-border)] bg-card px-2.5 text-[12px] outline-none focus:border-[color:var(--primary)]" />
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <Button size="sm" variant="outline" onClick={() => setFields((arr) => [...arr, { key: `field_${arr.length}`, label: "", type: "text" }])}>
+                  <Plus className="mr-1 h-3 w-3" /> Add field
+                </Button>
+              </div>
+            </Field>
+            <Field label="Layouts">
+              <label className="flex items-center gap-2 text-[12.5px] text-foreground">
+                <input type="checkbox" checked={leftLayout} onChange={(e) => setLeftLayout(e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" />
+                Include a left aligned layout
+              </label>
+            </Field>
+          </div>
+          {/* live preview pane */}
+          <div className="flex min-h-0 flex-1 flex-col bg-[color:var(--s2)] p-5">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Live preview</span>
+              <div className="flex-1" />
+              {preview.variants.map((v) => (
+                <button key={v.id} type="button" onClick={() => setVariant(v.id)} className={cn("rounded-md border px-2 py-0.5 text-[11px] font-medium", variant === v.id ? "border-[color:var(--primary)] bg-[color:var(--primary)]/10 text-primary" : "border-[color:var(--color-border)] text-muted-foreground")}>
+                  {v.name}
                 </button>
               ))}
             </div>
-          </Field>
-          <Field label={`Fields · ${fields.length}`}>
-            <div className="space-y-2">
-              {fields.map((f, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input
-                    value={f.label}
-                    onChange={(e) => setFields((arr) => arr.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
-                    placeholder="Field label"
-                    className="h-8 flex-1 rounded-md border border-[color:var(--color-border)] bg-card px-2.5 text-[12.5px] outline-none focus:border-[color:var(--primary)]"
-                  />
-                  <button type="button" onClick={() => setFields((arr) => arr.map((x, j) => (j === i ? { ...x, multiline: !x.multiline } : x)))} className={cn("rounded-md border px-2 py-1 text-[11px] font-medium", f.multiline ? "border-[color:var(--primary)] text-primary" : "border-[color:var(--color-border)] text-muted-foreground")}>
-                    {f.multiline ? "Long text" : "Text"}
-                  </button>
-                  <button type="button" aria-label="Remove field" onClick={() => setFields((arr) => arr.filter((_, j) => j !== i))} className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:text-destructive">
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
-              <Button size="sm" variant="outline" onClick={() => setFields((arr) => [...arr, { label: "", multiline: false }])}>
-                <Plus className="mr-1 h-3 w-3" /> Add field
-              </Button>
+            <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-[color:var(--color-border)] bg-white">
+              <SectionPreviewTall component={preview} variant={variant} />
             </div>
-          </Field>
-        </div>
-        <div className="flex items-center justify-between border-t border-[color:var(--border-hairline)] px-5 py-3">
-          <span className="text-[11.5px] text-muted-foreground">Starts as a draft. Publish it when it's ready for the library.</span>
-          <div className="flex gap-2">
-            <Button size="sm" variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button
-              size="sm"
-              disabled={!valid}
-              onClick={() =>
-                onCreate({
-                  name,
-                  blurb,
-                  category,
-                  fields: fields
-                    .filter((f) => f.label.trim())
-                    .map((f, i) => ({ key: f.label.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || `field_${i}`, label: f.label.trim(), multiline: f.multiline || undefined })),
-                })
-              }
-            >
-              Create draft
-            </Button>
           </div>
         </div>
       </div>
     </div>,
     document.body,
+  );
+}
+
+/** Full-height live render (unlike the masked 36px gallery preview). */
+function SectionPreviewTall({ component, variant }: { component: CustomComponent; variant: string }) {
+  const def = toSectionDef(component);
+  return (
+    <div className="pointer-events-none select-none" aria-hidden>
+      <div style={{ width: 1400, transform: "scale(0.62)", transformOrigin: "top left" }}>
+        {def.render({ c: component.defaults, variant, editable: false, onEdit: () => {}, fid: () => undefined, label: () => undefined })}
+      </div>
+    </div>
   );
 }
 
@@ -512,97 +650,286 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-/* ------------------------------------------------------------ AI dialog */
+/* -------------------------------------------------------------- AI studio */
 
-function GenerateDialog({ projectId, onClose, onOpen }: { projectId: string; onClose: () => void; onOpen: (id: string) => void }) {
-  const [prompt, setPrompt] = useState("");
-  const [runId, setRunId] = useState<string | null>(null);
-  const runs = useAgentRuns(projectId);
-  const run = runId ? runs.find((r) => r.id === runId) : undefined;
+function StudioOverlay({ projectId, workspaceId, onClose, onOpenComponent }: { projectId: string; workspaceId: string; onClose: () => void; onOpenComponent: (id: string) => void }) {
+  const chats = useComponentChats(projectId);
+  const customs = useCustomComponents(projectId);
   const brand = useBrandKit(projectId);
-  const credits = aiAction("section")?.costs.balanced ?? 30;
-  const done = run?.status === "done";
-  const draftId = done ? run?.undo?.find((u) => u.kind === "removeComponent")?.componentId : undefined;
+  const [chatId, setChatId] = useState<string | null>(chats[0]?.id ?? null);
+  const [text, setText] = useState("");
+  const [thinking, setThinking] = useState(false);
+  const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+  const [refs, setRefs] = useState<string[]>([]);
+  const [skills, setSkills] = useState<string[]>([]);
+  const [pop, setPop] = useState<"attach" | "skills" | "refs" | "brand" | null>(null);
+  const endRef = useRef<HTMLDivElement>(null);
+
+  const chat = chats.find((c) => c.id === chatId) ?? null;
+  const draft = chat?.componentId ? customs.find((c) => c.id === chat.componentId) : undefined;
+  const genCost = aiAction("section")?.costs.balanced ?? 30;
+  const iterCost = aiAction("section")?.costs.lite ?? 15;
+  const availableSkills = enabledInstructions(workspaceId, projectId).filter((i) => i.kind === "skill").map((i) => i.name);
+  const targets = slotTargets(projectId);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: "end" });
+  }, [chat?.messages.length, thinking]);
+
+  const send = () => {
+    const prompt = text.trim();
+    if (prompt.length < 4 || thinking) return;
+    let id = chatId;
+    if (!id) id = componentChatActions.newChat(projectId, prompt).id;
+    setChatId(id);
+    componentChatActions.addMessage(projectId, id, {
+      role: "user",
+      text: prompt,
+      attachments: attachments.length ? attachments : undefined,
+      refs: refs.length ? refs : undefined,
+      skills: skills.length ? skills : undefined,
+    });
+    setText("");
+    setAttachments([]);
+    setThinking(true);
+    const isIteration = !!chat?.componentId;
+    setTimeout(() => {
+      if (!isIteration) {
+        const input = buildComponentDraft({ prompt, refType: refs[0] });
+        const c = componentHubActions.create(projectId, input);
+        componentChatActions.addMessage(projectId, id!, {
+          role: "assistant",
+          text: `Drafted ${c.name}: ${c.blurb.toLowerCase()}. ${c.fields.length} fields, on-brand starter content${skills.length ? `, following ${skills.join(" and ")}` : ""}. It's in the library as a draft, review and publish when ready.`,
+          credits: genCost,
+          componentId: c.id,
+        });
+        recordAgentAudit(projectId, "agent.changes_applied", `AI studio drafted component ${c.name}`, id!);
+      } else {
+        const note = iterateComponent(projectId, chat!.componentId!, prompt);
+        componentChatActions.addMessage(projectId, id!, { role: "assistant", text: note, credits: iterCost, componentId: chat!.componentId });
+      }
+      setThinking(false);
+    }, 1100);
+  };
+
+  const spent = (c: { messages: { credits?: number }[] }) => c.messages.reduce((n, m) => n + (m.credits ?? 0), 0);
 
   return createPortal(
-    <div className="fixed inset-0 z-[94]">
-      <div className="absolute inset-0 bg-slate-900/45" onMouseDown={run && !done ? undefined : onClose} aria-hidden />
-      <div role="dialog" aria-modal="true" aria-label="Generate a component" className="absolute left-1/2 top-[10vh] w-[min(560px,calc(100vw-24px))] -translate-x-1/2 overflow-hidden rounded-2xl border border-[color:var(--color-border)] bg-card shadow-2xl">
-        <div className="flex items-center gap-2 border-b border-[color:var(--border-hairline)] px-5 py-3.5">
+    <div className="fixed inset-0 z-[94] bg-[color:var(--s1)]">
+      <div className="flex h-full flex-col">
+        <div className="flex items-center gap-2.5 border-b border-[color:var(--border-hairline)] bg-card px-5 py-3">
           <Sparkles className="h-4 w-4 text-primary" />
-          <span className="text-[14px] font-semibold text-foreground">Generate a component</span>
+          <span className="text-[15px] font-semibold text-foreground">AI studio</span>
+          <span className="hidden text-[12px] text-muted-foreground md:block">Draft a component, then keep talking until it's right. Drafts never publish themselves.</span>
+          <div className="flex-1" />
+          <button type="button" onClick={onClose} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-[color:var(--color-row-hover)] hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
         </div>
-
-        {!runId ? (
-          <>
-            <div className="space-y-4 px-5 py-4">
-              <textarea
-                autoFocus
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                rows={3}
-                placeholder="A stats band with three headline numbers and a short heading"
-                className="w-full resize-none rounded-lg border border-[color:var(--color-border)] bg-card px-3 py-2.5 text-[13px] outline-none focus:border-[color:var(--primary)]"
-              />
-              <div className="rounded-lg border border-[color:var(--border-hairline)] bg-[color:var(--s1)] px-3.5 py-3">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Grounded in your brand kit</div>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {[brand.colors.primary, brand.colors.accent, brand.colors.surface].filter(Boolean).map((c) => (
-                    <span key={c} className="flex items-center gap-1.5 rounded-md border border-[color:var(--color-border)] px-2 py-1 text-[11px] font-medium text-muted-foreground">
-                      <span className="h-3 w-3 rounded-full border border-black/10" style={{ backgroundColor: c }} /> {c}
-                    </span>
-                  ))}
-                  <span className="rounded-md border border-[color:var(--color-border)] px-2 py-1 text-[11px] font-medium text-muted-foreground">{brand.typography.headingFont}</span>
-                  <span className="rounded-md border border-[color:var(--color-border)] px-2 py-1 text-[11px] font-medium text-muted-foreground">Brand voice</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center justify-between border-t border-[color:var(--border-hairline)] px-5 py-3">
-              <span className="text-[11.5px] text-muted-foreground">This run will use about {credits} credits. Lands as a draft, never publishes itself.</span>
-              <Button
-                size="sm"
-                disabled={prompt.trim().length < 8}
-                onClick={() => {
-                  const id = agentRunActions.startComponentGenerator({ projectId, config: { prompt } });
-                  if (id) setRunId(id);
-                  else toast.error("Component generation is turned off for this workspace.");
-                }}
-              >
-                <Sparkles className="mr-1 h-3.5 w-3.5" /> Generate draft
+        <div className="flex min-h-0 flex-1">
+          {/* chats rail */}
+          <div className="hidden w-60 shrink-0 flex-col border-r border-[color:var(--border-hairline)] bg-card md:flex">
+            <div className="p-3">
+              <Button size="sm" variant="outline" className="w-full" onClick={() => { setChatId(null); setRefs([]); setSkills([]); }}>
+                <Plus className="mr-1 h-3.5 w-3.5" /> New chat
               </Button>
             </div>
-          </>
-        ) : (
-          <>
-            <div className="space-y-2.5 px-5 py-4">
-              {run?.steps.map((s) => (
-                <div key={s.id} className="flex items-center gap-2.5 text-[13px]">
-                  {s.status === "done" ? (
-                    <Check className="h-3.5 w-3.5 text-emerald-500" />
-                  ) : (
-                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[color:var(--primary)]/25 border-t-[color:var(--primary)]" />
-                  )}
-                  <span className={s.status === "done" ? "text-muted-foreground" : "text-foreground"}>{s.label}</span>
-                </div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+              {chats.length === 0 && <div className="px-2 py-6 text-center text-[11.5px] text-muted-foreground">Every generation is saved here, browse and pick any thread back up.</div>}
+              {chats.map((c) => (
+                <button key={c.id} type="button" onClick={() => setChatId(c.id)} className={cn("group mb-1 w-full rounded-lg px-2.5 py-2 text-left transition-colors", c.id === chatId ? "bg-[color:var(--primary)]/10" : "hover:bg-[color:var(--color-row-hover)]")}>
+                  <div className="flex items-center gap-1.5">
+                    <span className={cn("min-w-0 flex-1 truncate text-[12.5px] font-medium", c.id === chatId ? "text-primary" : "text-foreground")}>{c.title}</span>
+                    <span role="button" tabIndex={0} aria-label="Delete chat" onClick={(e) => { e.stopPropagation(); componentChatActions.remove(projectId, c.id); if (chatId === c.id) setChatId(null); }} className="hidden h-5 w-5 place-items-center rounded text-muted-foreground hover:text-destructive group-hover:grid">
+                      <Trash2 className="h-3 w-3" />
+                    </span>
+                  </div>
+                  <div className="mt-0.5 text-[10.5px] text-muted-foreground">{c.messages.length} messages · {spent(c)} credits</div>
+                </button>
               ))}
-              {done && (
-                <div className="mt-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-3 text-[12.5px] text-foreground">
-                  Draft ready. It used {run?.creditsSpent} credits and is waiting in the library as a draft, with one-click undo in the agent history.
+            </div>
+          </div>
+
+          {/* thread */}
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+              <div className="mx-auto max-w-2xl space-y-4">
+                {(!chat || chat.messages.length === 0) && (
+                  <div className="rounded-xl border border-dashed border-[color:var(--color-border)] bg-card px-5 py-8 text-center">
+                    <Wand2 className="mx-auto h-6 w-6 text-primary" />
+                    <div className="mt-2 text-[13.5px] font-semibold text-foreground">Describe the component you need</div>
+                    <p className="mx-auto mt-1 max-w-md text-[12px] text-muted-foreground">
+                      Attach references, tag an existing component with @, or apply a workspace skill. First draft costs about {genCost} credits, each refinement about {iterCost}.
+                    </p>
+                  </div>
+                )}
+                {chat?.messages.map((m) => (
+                  <div key={m.id} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
+                    <div className={cn("max-w-[85%] rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed", m.role === "user" ? "bg-[color:var(--primary)] text-white" : "border border-[color:var(--border-hairline)] bg-card text-foreground")}>
+                      {m.text}
+                      {(m.attachments?.length || m.refs?.length || m.skills?.length) ? (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {m.attachments?.map((a) => (
+                            <span key={a.name} className={cn("rounded-md px-1.5 py-0.5 text-[10.5px] font-medium", m.role === "user" ? "bg-white/20" : "bg-[color:var(--s2)] text-muted-foreground")}>📎 {a.name}</span>
+                          ))}
+                          {m.refs?.map((r) => (
+                            <span key={r} className={cn("rounded-md px-1.5 py-0.5 text-[10.5px] font-medium", m.role === "user" ? "bg-white/20" : "bg-[color:var(--s2)] text-muted-foreground")}>@{targets.find((t) => t.type === r)?.name ?? r}</span>
+                          ))}
+                          {m.skills?.map((s) => (
+                            <span key={s} className={cn("rounded-md px-1.5 py-0.5 text-[10.5px] font-medium", m.role === "user" ? "bg-white/20" : "bg-[color:var(--s2)] text-muted-foreground")}>Skill: {s}</span>
+                          ))}
+                        </div>
+                      ) : null}
+                      {m.role === "assistant" && m.componentId && draft && (
+                        <div className="mt-3 overflow-hidden rounded-lg border border-[color:var(--color-border)]">
+                          <SectionPreview def={toSectionDef(draft)} variant={draft.variants[0]?.id ?? "centered"} />
+                          <div className="flex items-center justify-between border-t border-[color:var(--border-hairline)] bg-[color:var(--s1)] px-2.5 py-1.5">
+                            <span className="text-[11px] font-medium text-foreground">{draft.name} <Badge tone={draft.status}>{draft.status === "published" ? "Published" : "Draft"}</Badge></span>
+                            <button type="button" onClick={() => onOpenComponent(draft.id)} className="text-[11px] font-semibold text-primary hover:underline">Open in library</button>
+                          </div>
+                        </div>
+                      )}
+                      {m.credits ? <div className={cn("mt-1.5 text-[10.5px]", m.role === "user" ? "text-white/70" : "text-muted-foreground")}>{m.credits} credits</div> : null}
+                    </div>
+                  </div>
+                ))}
+                {thinking && (
+                  <div className="flex justify-start">
+                    <div className="flex items-center gap-2 rounded-2xl border border-[color:var(--border-hairline)] bg-card px-4 py-2.5 text-[12.5px] text-muted-foreground">
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[color:var(--primary)]/25 border-t-[color:var(--primary)]" />
+                      {chat?.componentId ? "Refining the draft" : "Reading the brand kit and drafting"}
+                    </div>
+                  </div>
+                )}
+                <div ref={endRef} />
+              </div>
+            </div>
+
+            {/* composer */}
+            <div className="border-t border-[color:var(--border-hairline)] bg-card px-5 py-3.5">
+              <div className="mx-auto max-w-2xl">
+                {/* brand row */}
+                <div className="mb-2 flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">Brand</span>
+                  {[brand.colors.primary, brand.colors.accent, brand.colors.surface].map((c) => (
+                    <span key={c} className="h-4 w-4 rounded-full border border-black/10" style={{ backgroundColor: c }} title={c} />
+                  ))}
+                  <span className="text-[11px] text-muted-foreground">{brand.typography.headingFont}</span>
+                  <button type="button" onClick={() => setPop(pop === "brand" ? null : "brand")} className="text-[11px] font-semibold text-primary hover:underline">Edit brand</button>
+                  {pop === "brand" && (
+                    <div className="flex items-center gap-2 rounded-md border border-[color:var(--color-border)] bg-[color:var(--s1)] px-2 py-1">
+                      {(["primary", "accent", "surface"] as const).map((k) => (
+                        <label key={k} className="flex items-center gap-1 text-[10.5px] text-muted-foreground">
+                          {k}
+                          <input type="color" value={brand.colors[k]} onChange={(e) => brandActions.update(projectId, { colors: { ...brand.colors, [k]: e.target.value } })} aria-label={`Brand ${k} color`} className="h-5 w-7 cursor-pointer border-0 bg-transparent p-0" />
+                        </label>
+                      ))}
+                      <span className="text-[10px] text-muted-foreground">Previews update live</span>
+                    </div>
+                  )}
                 </div>
-              )}
+                {/* chips */}
+                {(attachments.length > 0 || refs.length > 0 || skills.length > 0) && (
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {attachments.map((a) => (
+                      <Chip key={a.name} onX={() => setAttachments((arr) => arr.filter((x) => x.name !== a.name))}>📎 {a.name}</Chip>
+                    ))}
+                    {refs.map((r) => (
+                      <Chip key={r} onX={() => setRefs((arr) => arr.filter((x) => x !== r))}>@{targets.find((t) => t.type === r)?.name ?? r}</Chip>
+                    ))}
+                    {skills.map((s) => (
+                      <Chip key={s} onX={() => setSkills((arr) => arr.filter((x) => x !== s))}>Skill: {s}</Chip>
+                    ))}
+                  </div>
+                )}
+                <div className="relative rounded-xl border border-[color:var(--color-border)] bg-[color:var(--s1)] focus-within:border-[color:var(--primary)]">
+                  <textarea
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+                    rows={2}
+                    placeholder={chat?.componentId ? "Refine it: add an image, make it punchier, rename it…" : "A stats band with three numbers and a bold heading…"}
+                    className="w-full resize-none bg-transparent px-3.5 pb-9 pt-2.5 text-[13px] text-foreground outline-none"
+                  />
+                  <div className="absolute bottom-2 left-2.5 flex items-center gap-1">
+                    <ComposerBtn label="Attach a file" onClick={() => setPop(pop === "attach" ? null : "attach")}><Paperclip className="h-3.5 w-3.5" /></ComposerBtn>
+                    <ComposerBtn label="Reference a component" onClick={() => setPop(pop === "refs" ? null : "refs")}><AtSign className="h-3.5 w-3.5" /></ComposerBtn>
+                    <ComposerBtn label="Apply a skill" onClick={() => setPop(pop === "skills" ? null : "skills")}><Wand2 className="h-3.5 w-3.5" /></ComposerBtn>
+                  </div>
+                  <div className="absolute bottom-2 right-2.5 flex items-center gap-2">
+                    <span className="text-[10.5px] text-muted-foreground">{chat?.componentId ? `~${iterCost}` : `~${genCost}`} credits</span>
+                    <button type="button" onClick={send} disabled={text.trim().length < 4 || thinking} aria-label="Send" className={cn("grid h-7 w-7 place-items-center rounded-lg", text.trim().length >= 4 && !thinking ? "bg-[color:var(--primary)] text-white" : "bg-[color:var(--s2)] text-muted-foreground")}>
+                      <Send className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  {pop === "attach" && (
+                    <Pop title="Attach">
+                      {(["image", "video", "file"] as const).map((k) => (
+                        <PopRow key={k} onClick={() => { setAttachments((a) => [...a, { kind: k, name: k === "image" ? `reference-${a.length + 1}.png` : k === "video" ? "walkthrough.mp4" : "brand-notes.md" }]); setPop(null); }}>
+                          {k === "image" ? "Image or screenshot" : k === "video" ? "Video" : "Markdown or doc"}
+                        </PopRow>
+                      ))}
+                    </Pop>
+                  )}
+                  {pop === "refs" && (
+                    <Pop title="Reference a component">
+                      {targets.slice(0, 12).map((t) => (
+                        <PopRow key={t.type} onClick={() => { setRefs((r) => (r.includes(t.type) ? r : [...r, t.type])); setPop(null); }}>{t.name}</PopRow>
+                      ))}
+                    </Pop>
+                  )}
+                  {pop === "skills" && (
+                    <Pop title="Workspace skills">
+                      {availableSkills.length === 0 && <div className="px-3 py-2 text-[11.5px] text-muted-foreground">No skills yet. Create them under Instructions.</div>}
+                      {availableSkills.map((s) => (
+                        <PopRow key={s} onClick={() => { setSkills((x) => (x.includes(s) ? x : [...x, s])); setPop(null); }}>{s}</PopRow>
+                      ))}
+                    </Pop>
+                  )}
+                </div>
+                <div className="mt-1.5 text-[10.5px] text-muted-foreground">Every turn is logged here and in the audit trail. Drafts land in the library, publishing stays with you.</div>
+              </div>
             </div>
-            <div className="flex items-center justify-end gap-2 border-t border-[color:var(--border-hairline)] px-5 py-3">
-              <Button size="sm" variant="ghost" onClick={onClose}>Close</Button>
-              {done && draftId && (
-                <Button size="sm" onClick={() => { onClose(); onOpen(draftId); }}>
-                  Open the draft
-                </Button>
-              )}
-            </div>
-          </>
-        )}
+          </div>
+        </div>
       </div>
     </div>,
     document.body,
+  );
+}
+
+function Chip({ children, onX }: { children: React.ReactNode; onX: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md border border-[color:var(--color-border)] bg-card px-1.5 py-0.5 text-[11px] font-medium text-foreground">
+      {children}
+      <button type="button" onClick={onX} aria-label="Remove" className="text-muted-foreground hover:text-foreground">
+        <X className="h-3 w-3" />
+      </button>
+    </span>
+  );
+}
+
+function ComposerBtn({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" title={label} aria-label={label} onClick={onClick} className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-[color:var(--color-row-hover)] hover:text-foreground">
+      {children}
+    </button>
+  );
+}
+
+function Pop({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="absolute bottom-11 left-2 z-10 w-60 overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-card shadow-xl">
+      <div className="border-b border-[color:var(--border-hairline)] bg-[color:var(--s2)] px-3 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
+      <div className="max-h-52 overflow-y-auto p-1">{children}</div>
+    </div>
+  );
+}
+
+function PopRow({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" onClick={onClick} className="block w-full rounded-md px-2.5 py-1.5 text-left text-[12.5px] text-foreground hover:bg-[color:var(--color-row-hover)]">
+      {children}
+    </button>
   );
 }

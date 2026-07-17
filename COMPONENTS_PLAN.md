@@ -108,3 +108,29 @@ counts, code stub generation), `GenericSection.tsx`, the hub route with gallery,
 detail sheet (preview, fields, variants, usage list, code), New component
 dialog, Generate-with-AI dialog wired to the runs store and brand kit, section
 library merge with Draft badges, nav/role wiring (`library` tab key).
+
+## v2 addendum (2026-07-17): list view, typed fields, slots, the AI studio
+
+- **Typed fields**: text, long text, image, number, link, and **slot**. A slot
+  is a field whose value is another component from the library, rendered one
+  level deep and never recursive. This is the Webflow-slots idea grounded in
+  our model: the component declares the opening, content fills it. Full
+  instance-level slot overrides across the visual editor (choose the filling
+  per page, override its content) are the committed next step; the model is
+  already shaped for it (slot value = component type on the instance).
+- **Builder**: a two-pane surface, settings left (name, category, icon picker
+  from a curated set, typed field rows with per-type starter content, layout
+  toggle), live preview right, updating per keystroke. Also used for Edit.
+- **List view** joins the gallery: same data, row actions (edit, guarded
+  delete) for people managing many components.
+- **AI studio** replaces the one-shot dialog: a conversational surface with a
+  chats rail (every generation is a persistent, browsable thread with credit
+  totals), iterative refinement turns (~15 credits) after the first draft
+  (~30), attachments (image, video, markdown), @-references to existing
+  components (the draft inherits their field shape), workspace skills from the
+  instructions library, and inline brand editing (color tweaks update the
+  preview live, because color always comes from the brand kit, never from the
+  prompt). Every turn is credit-priced and logged to the audit trail; drafts
+  never publish themselves.
+- Icons on built-ins remain code-defined; hub components pick from the curated
+  set. Arbitrary icon upload was considered and skipped, consistency wins.
