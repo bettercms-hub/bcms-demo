@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isGuest } from "@/lib/guest";
+import { defaultWorkspaceSlug } from "@/lib/cms/store";
 import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -13,14 +14,14 @@ function IndexRedirect() {
 
   useEffect(() => {
     if (isGuest()) {
-      navigate({ to: "/w/$workspace", params: { workspace: "flowtrix" }, replace: true });
+      navigate({ to: "/w/$workspace", params: { workspace: defaultWorkspaceSlug() }, replace: true });
       return;
     }
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session) {
         navigate({ to: "/auth", replace: true });
       } else {
-        navigate({ to: "/w/$workspace", params: { workspace: "flowtrix" }, replace: true });
+        navigate({ to: "/w/$workspace", params: { workspace: defaultWorkspaceSlug() }, replace: true });
       }
     });
   }, [navigate]);

@@ -76,7 +76,7 @@ export function PageSettingsDialog({
 
   return createPortal(
     <div className="fixed inset-0 z-[95]">
-      <div className="absolute inset-0 bg-slate-900/45" onMouseDown={onClose} aria-hidden />
+      <div className="absolute inset-0 bg-[rgba(24,18,16,0.4)]" onMouseDown={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
@@ -136,7 +136,7 @@ export function PageSettingsDialog({
               placeholder="https://example.com/original-page"
               className={cn(
                 "h-9 w-full rounded-md border bg-[color:var(--card)] px-2.5 text-[13px] outline-none transition-colors focus:border-[color:var(--primary)]",
-                canonicalValid ? "border-[color:var(--color-border)]" : "border-rose-400",
+                canonicalValid ? "border-[color:var(--color-border)]" : "border-[color:var(--destructive)]",
               )}
             />
           </FieldRow>
@@ -197,7 +197,7 @@ export function PageSettingsDialog({
               placeholder={'{\n  "@context": "https://schema.org",\n  "@type": "WebPage",\n  "name": "..."\n}'}
               className={cn(
                 "w-full resize-y rounded-md border bg-[color:var(--s2)] px-2.5 py-2 font-mono text-[11.5px] leading-relaxed outline-none transition-colors",
-                jsonLdValid ? "border-[color:var(--color-border)] focus:border-[color:var(--primary)]" : "border-rose-400",
+                jsonLdValid ? "border-[color:var(--color-border)] focus:border-[color:var(--primary)]" : "border-[color:var(--destructive)]",
               )}
             />
           </FieldRow>
@@ -209,7 +209,7 @@ export function PageSettingsDialog({
 
         <div className="flex items-center gap-2 border-t border-[color:var(--border-hairline)] px-4 py-3">
           {onDelete && (
-            <button type="button" onClick={() => { onDelete(); onClose(); }} className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[12.5px] font-medium text-rose-600 transition-colors hover:bg-rose-50">
+            <button type="button" onClick={() => { onDelete(); onClose(); }} className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[12.5px] font-medium text-destructive transition-colors hover:bg-destructive/10">
               <Trash2 className="h-3.5 w-3.5" /> Delete page
             </button>
           )}
@@ -231,7 +231,7 @@ function FieldRow({ label, hint, error, children }: { label: string; hint?: stri
     <label className="block">
       <div className="mb-1 text-[12px] font-medium text-foreground">{label}</div>
       {children}
-      {hint && <div className={cn("mt-1 text-[11px]", error ? "text-rose-500" : "text-muted-foreground")}>{hint}</div>}
+      {hint && <div className={cn("mt-1 text-[11px]", error ? "text-destructive" : "text-muted-foreground")}>{hint}</div>}
     </label>
   );
 }

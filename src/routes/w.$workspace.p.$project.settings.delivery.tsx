@@ -74,7 +74,7 @@ function DeliveryPage() {
                 <div className="mb-1 flex items-center gap-2">
                   <span className="text-[13.5px] font-semibold text-foreground">{def.label}</span>
                   {active && (
-                    <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10.5px] font-semibold text-primary">
+                    <span className="ml-auto inline-flex items-center gap-1 rounded-[4px] bg-primary/10 px-2 py-0.5 text-[10.5px] font-semibold text-primary">
                       <Check className="h-3 w-3" /> Current
                     </span>
                   )}
@@ -83,7 +83,7 @@ function DeliveryPage() {
                 <ul className="mt-auto space-y-1">
                   {def.includes.map((line) => (
                     <li key={line} className="flex items-start gap-1.5 text-[11.5px] text-muted-foreground">
-                      <Check className="mt-0.5 h-3 w-3 shrink-0 text-emerald-500" />
+                      <Check className="mt-0.5 h-3 w-3 shrink-0 text-status-success" />
                       {line}
                     </li>
                   ))}
@@ -199,10 +199,10 @@ function DeliveryPage() {
                   <li
                     key={line}
                     className={`flex items-start gap-2 text-[12.5px] leading-relaxed ${
-                      i === arr.length - 1 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                      i === arr.length - 1 ? "text-status-success" : "text-muted-foreground"
                     }`}
                   >
-                    <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                    <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-status-success" />
                     {line}
                   </li>
                 ))}
@@ -211,14 +211,14 @@ function DeliveryPage() {
                 <button
                   type="button"
                   onClick={() => setTarget(null)}
-                  className="inline-flex h-9 items-center rounded-lg px-3.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
+                  className="inline-flex h-9 items-center rounded-[6px] px-3.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={() => applyMode(target)}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-[6px] bg-primary px-4 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
                 >
                   Switch to {DELIVERY_MODES[target].label}
                 </button>
@@ -252,7 +252,7 @@ function AdapterBox({
         <Icon className={`h-3.5 w-3.5 ${on ? "text-primary" : "text-muted-foreground"}`} />
         <span className="text-[12.5px] font-medium text-foreground">{label}</span>
         <span
-          className={`ml-auto h-1.5 w-1.5 shrink-0 rounded-full ${on ? "bg-emerald-400" : "bg-[color:var(--s4)]"}`}
+          className={`ml-auto h-1.5 w-1.5 shrink-0 rounded-full ${on ? "bg-status-success" : "bg-[color:var(--s4)]"}`}
           aria-hidden
         />
       </div>
@@ -289,7 +289,7 @@ function TargetRow({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[color:var(--border-hairline)] bg-[color:var(--card)] px-3.5 py-2.5">
-      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${on ? "bg-emerald-400" : "bg-[color:var(--s4)]"}`} aria-hidden />
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${on ? "bg-status-success" : "bg-[color:var(--s4)]"}`} aria-hidden />
       <span className="w-40 shrink-0 text-[12.5px] font-medium text-foreground">{label}</span>
       <span className={`min-w-0 flex-1 truncate text-[12px] ${mono ? "font-mono" : ""} ${on ? "text-foreground/80" : "text-muted-foreground"}`}>
         {value}

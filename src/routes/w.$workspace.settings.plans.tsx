@@ -299,7 +299,7 @@ function Plans() {
                 <ul className="mt-3 space-y-1.5">
                   {limitLines(planId).map((line) => (
                     <li key={line} className="flex items-start gap-2 text-[12px] text-foreground/90">
-                      <Check className="mt-0.5 h-3 w-3 shrink-0 text-emerald-500" strokeWidth={2.5} />
+                      <Check className="mt-0.5 h-3 w-3 shrink-0 text-[color:var(--status-success)]" strokeWidth={2.5} />
                       <span>{line}</span>
                     </li>
                   ))}
@@ -423,7 +423,7 @@ function Plans() {
                 <ul className="mt-3 space-y-1.5">
                   {plan.includes.map((line) => (
                     <li key={line} className="flex items-start gap-2 text-[12px] text-foreground/90">
-                      <Check className="mt-0.5 h-3 w-3 shrink-0 text-emerald-500" strokeWidth={2.5} />
+                      <Check className="mt-0.5 h-3 w-3 shrink-0 text-[color:var(--status-success)]" strokeWidth={2.5} />
                       <span>{line}</span>
                     </li>
                   ))}
@@ -463,7 +463,7 @@ function Plans() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-[12.5px]">
             <thead>
-              <tr className="text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              <tr className="text-left text-[12.5px] font-medium text-muted-foreground">
                 <th className="px-5 py-2.5 font-semibold">Seat</th>
                 <th className="px-3 py-2.5 font-semibold">What they do</th>
                 <th className="px-5 py-2.5 text-right font-semibold">Price</th>
@@ -499,7 +499,7 @@ function Plans() {
       >
         <div className="grid grid-cols-1 gap-4 p-4 lg:grid-cols-2">
           <div className="overflow-hidden rounded-lg border border-[color:var(--border-hairline)]">
-            <div className="border-b border-[color:var(--border-hairline)] bg-[color:var(--s1)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            <div className="border-b border-[color:var(--border-hairline)] bg-[color:var(--s1)] px-4 py-2 text-[12.5px] font-medium text-muted-foreground">
               Add-ons
             </div>
             {ADDONS.map((a, i) => (
@@ -519,7 +519,7 @@ function Plans() {
           </div>
 
           <div className="overflow-hidden rounded-lg border border-[color:var(--border-hairline)]">
-            <div className="grid grid-cols-[1fr_auto_auto] gap-4 border-b border-[color:var(--border-hairline)] bg-[color:var(--s1)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            <div className="grid grid-cols-[1fr_auto_auto] gap-4 border-b border-[color:var(--border-hairline)] bg-[color:var(--s1)] px-4 py-2 text-[12.5px] font-medium text-muted-foreground">
               <span>AI credit pack</span>
               <span className="text-right">Price</span>
               <span className="w-[64px] text-right">Per credit</span>
@@ -563,7 +563,7 @@ function Plans() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-[12.5px]">
               <thead>
-                <tr className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                <tr className="text-[12.5px] font-medium text-muted-foreground">
                   <th className="px-5 py-2.5 text-left font-semibold">Feature</th>
                   {SITE_PLAN_ORDER.map((pid) => (
                     <th key={pid} className="px-3 py-2.5 text-center font-semibold">
@@ -581,7 +581,7 @@ function Plans() {
                       return (
                         <td key={pid} className="px-3 py-2 text-center">
                           {v === true ? (
-                            <Check className="mx-auto h-3.5 w-3.5 text-emerald-500" strokeWidth={2.5} />
+                            <Check className="mx-auto h-3.5 w-3.5 text-[color:var(--status-success)]" strokeWidth={2.5} />
                           ) : v === false ? (
                             <Minus className="mx-auto h-3.5 w-3.5 text-muted-foreground/40" />
                           ) : (
@@ -689,7 +689,7 @@ function Plans() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button size="sm" variant="secondary" onClick={() => setDowngrade(null)}>
+            <Button size="sm" variant="outline" onClick={() => setDowngrade(null)}>
               Cancel
             </Button>
             <Button
@@ -781,7 +781,7 @@ function ContactDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button size="sm" variant="secondary" onClick={() => onOpenChange(false)}>
+          <Button size="sm" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button size="sm" onClick={submit} disabled={!name.trim() || !email.trim()}>

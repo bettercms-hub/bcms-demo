@@ -3,22 +3,30 @@ import type { SitePlanId, WorkspacePlanId } from "@/lib/cms/types";
 /**
  * The one plan badge system, used everywhere a plan name appears:
  * workspace switcher, dashboard rows, billing pages, site plan pages.
+ *
+ * V2: plan chips are the single rounded-full exception — outlined pills in
+ * the plan blue (`--plan-fg` / `--plan-border`). Free stays neutral.
  */
 
+const PLAN_PILL =
+  "border-[color:var(--plan-border)] bg-transparent text-[color:var(--plan-fg)]";
+const FREE_PILL =
+  "border-[color:var(--color-border)] bg-transparent text-muted-foreground";
+
 const SITE_TONE: Record<SitePlanId, string> = {
-  free: "border-[color:var(--color-border)] bg-[color:var(--s2)] text-muted-foreground",
-  basic: "border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400",
-  pro: "border-primary/35 bg-primary/10 text-primary",
-  team: "border-violet-500/30 bg-violet-500/10 text-violet-600 dark:text-violet-400",
-  enterprise: "border-amber-500/35 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  free: FREE_PILL,
+  basic: PLAN_PILL,
+  pro: PLAN_PILL,
+  team: PLAN_PILL,
+  enterprise: PLAN_PILL,
 };
 
 const WS_TONE: Record<WorkspacePlanId, string> = {
-  free: SITE_TONE.free,
-  company: "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  agency: "border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
-  team: SITE_TONE.team,
-  enterprise: SITE_TONE.enterprise,
+  free: FREE_PILL,
+  company: PLAN_PILL,
+  agency: PLAN_PILL,
+  team: PLAN_PILL,
+  enterprise: PLAN_PILL,
 };
 
 const SITE_LABEL: Record<SitePlanId, string> = {
@@ -40,7 +48,7 @@ const WS_LABEL: Record<WorkspacePlanId, string> = {
 export function SitePlanBadge({ plan, className = "" }: { plan: SitePlanId; className?: string }) {
   return (
     <span
-      className={`inline-flex shrink-0 items-center rounded-md border px-1.5 py-0.5 text-[10.5px] font-semibold leading-none ${SITE_TONE[plan]} ${className}`}
+      className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-none ${SITE_TONE[plan]} ${className}`}
     >
       {SITE_LABEL[plan]}
     </span>
@@ -50,7 +58,7 @@ export function SitePlanBadge({ plan, className = "" }: { plan: SitePlanId; clas
 export function WorkspacePlanBadge({ plan, className = "" }: { plan: WorkspacePlanId; className?: string }) {
   return (
     <span
-      className={`inline-flex shrink-0 items-center rounded-md border px-1.5 py-0.5 text-[10.5px] font-semibold leading-none ${WS_TONE[plan]} ${className}`}
+      className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-none ${WS_TONE[plan]} ${className}`}
     >
       {WS_LABEL[plan]}
     </span>

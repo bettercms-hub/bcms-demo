@@ -185,14 +185,14 @@ function DiffView({
           <details
             key={r.key}
             open={r.changed}
-            className={`rounded-md border ${r.changed ? "border-amber-500/30 bg-amber-500/[0.03]" : "border-border bg-background"}`}
+            className={`rounded-md border ${r.changed ? "border-status-warning/30 bg-status-warning/[0.03]" : "border-border bg-background"}`}
           >
             <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[12px]">
               <span className="font-medium">{FIELD_LABELS[r.key]}</span>
               <span
                 className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
                   r.changed
-                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                    ? "bg-status-warning/15 text-status-warning"
                     : "bg-muted text-muted-foreground"
                 }`}
               >
@@ -221,9 +221,9 @@ function FieldPane({
 }) {
   const bg =
     tone === "before"
-      ? "bg-red-500/[0.06]"
+      ? "bg-status-error/[0.06]"
       : tone === "after"
-        ? "bg-emerald-500/[0.06]"
+        ? "bg-status-success/[0.06]"
         : "bg-background";
   return (
     <div className={`flex min-h-[44px] flex-col gap-1 p-3 ${bg}`}>

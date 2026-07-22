@@ -47,6 +47,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useCMS } from "@/lib/cms/store";
 import { useFolders, type Folder as FolderType } from "@/lib/cms/use-folders";
@@ -146,7 +148,7 @@ function WorkspaceHome() {
   return (
     <div className="mx-auto w-full max-w-[1240px] px-4 pb-24 pt-8 sm:px-8 sm:pt-12">
       <IncomingTransfers ws={ws} />
-      <WorkspaceHeader name={ws.name} onNewProject={() => setWizardOpen(true)} />
+      <WorkspaceHeader name={ws.name} />
       <ProjectsExplorer workspace={workspace} projects={rows} onNewProject={() => setWizardOpen(true)} />
       <NewProjectWizard
         open={wizardOpen}
@@ -160,27 +162,18 @@ function WorkspaceHome() {
 
 /* ──────────────────────────  header  ────────────────────────── */
 
-function WorkspaceHeader({ name, onNewProject }: { name: string; onNewProject: () => void }) {
+function WorkspaceHeader({ name }: { name: string }) {
   return (
-    <section className="mb-8 flex flex-wrap items-end justify-between gap-4">
-      <div className="min-w-0">
-        <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-          Workspace
-        </div>
-        <h1 className="mt-1.5 text-[26px] font-semibold leading-[1.1] tracking-tight text-foreground">
-          {name}
-        </h1>
-        <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted-foreground">
-          All your projects, organized.
-        </p>
+    <section className="mb-8 min-w-0">
+      <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+        Workspace
       </div>
-      <button
-        type="button"
-        onClick={onNewProject}
-        className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-[0_2px_8px_-2px_rgba(239,3,127,0.4)] transition-all duration-150 hover:bg-[var(--primary-hover)] hover:shadow-[0_5px_14px_-3px_rgba(239,3,127,0.55)] active:scale-[0.98]"
-      >
-        <Plus className="h-3.5 w-3.5" /> New project
-      </button>
+      <h1 className="mt-1.5 text-[28px] font-semibold leading-[1.1] tracking-tight text-foreground">
+        {name}
+      </h1>
+      <p className="mt-1.5 text-[14px] leading-relaxed text-muted-foreground">
+        All your projects, organized.
+      </p>
     </section>
   );
 }
@@ -322,16 +315,43 @@ function ProjectsExplorer({
         </div>
       )}
 
-      {/* toolbar */}
+      {/* toolbar — search left; view toggle, sort, folder, New project right */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex h-9 min-w-[220px] flex-1 items-center gap-2 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--input-bg)] px-3 transition-colors duration-[120ms] focus-within:border-[color:var(--color-border-strong)]">
-          <Search className="h-3.5 w-3.5 text-muted-foreground" />
+        <div className="flex h-9 w-full max-w-[360px] items-center gap-2 rounded-[8px] border border-[color:var(--color-border)] bg-[color:var(--input-bg)] px-3 transition-colors duration-[120ms] focus-within:border-[color:var(--color-border-strong)]">
+          <Search className="h-4 w-4 text-muted-foreground" strokeWidth={1.8} />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search all projects…"
             className="h-full flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
           />
+        </div>
+        <div className="flex-1" />
+        <div className="flex h-9 items-center gap-0.5 rounded-[8px] bg-[color:var(--s2)] p-1 shadow-[var(--shadow-seg-track)]">
+          <button
+            type="button"
+            onClick={() => setView("list")}
+            aria-label="List view"
+            className={`grid h-7 w-8 place-items-center rounded-[6px] transition-all duration-150 ${
+              view === "list"
+                ? "border border-[color:var(--color-border)] bg-card text-foreground shadow-[var(--shadow-seg)]"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <List className="h-4 w-4" strokeWidth={1.9} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("grid")}
+            aria-label="Grid view"
+            className={`grid h-7 w-8 place-items-center rounded-[6px] transition-all duration-150 ${
+              view === "grid"
+                ? "border border-[color:var(--color-border)] bg-card text-foreground shadow-[var(--shadow-seg)]"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <LayoutGrid className="h-4 w-4" strokeWidth={1.9} />
+          </button>
         </div>
         <ToolbarSelect
           icon={ArrowUpDown}
@@ -342,41 +362,19 @@ function ProjectsExplorer({
             { label: "Status", onSelect: () => setSort("status") },
           ]}
         />
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="sm"
+          className="h-9 w-9 p-0"
           onClick={() => setDialog({ open: true, mode: "create", name: "" })}
           aria-label="New folder"
           title="New folder"
-          className="grid h-9 w-9 place-items-center rounded-lg border border-[color:var(--color-border)] bg-[color:var(--card)] text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:border-[color:var(--color-border-strong)] hover:text-foreground"
         >
           <FolderPlus className="h-4 w-4" />
-        </button>
-        <div className="flex h-9 items-center gap-0.5 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--s2)] p-1">
-          <button
-            type="button"
-            onClick={() => setView("list")}
-            aria-label="List view"
-            className={`grid h-7 w-8 place-items-center rounded-md transition-all duration-150 ${
-              view === "list"
-                ? "bg-[color:var(--elevated)] text-foreground shadow-[var(--shadow-1)]"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <List className="h-4 w-4" strokeWidth={1.9} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("grid")}
-            aria-label="Grid view"
-            className={`grid h-7 w-8 place-items-center rounded-md transition-all duration-150 ${
-              view === "grid"
-                ? "bg-[color:var(--elevated)] text-foreground shadow-[var(--shadow-1)]"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <LayoutGrid className="h-4 w-4" strokeWidth={1.9} />
-          </button>
-        </div>
+        </Button>
+        <Button size="sm" className="h-9 gap-1.5 px-3.5 text-[13px]" onClick={onNewProject}>
+          <Plus className="h-4 w-4" /> New project
+        </Button>
       </div>
 
       {/* content */}
@@ -436,21 +434,16 @@ function ProjectsExplorer({
 
 /* ──────────────────────────  status / env badges  ────────────────────────── */
 
-const STATUS_META: Record<StatusKey, { label: string; dot: string }> = {
-  live: { label: "Live", dot: "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.55)]" },
-  draft: { label: "Draft", dot: "bg-amber-400" },
-  scheduled: { label: "Scheduled", dot: "bg-sky-400" },
-  archived: { label: "Archived", dot: "bg-rose-400" },
+const STATUS_META: Record<StatusKey, { label: string; variant: "live" | "draft" | "scheduled" | "archived" }> = {
+  live: { label: "Live", variant: "live" },
+  draft: { label: "Draft", variant: "draft" },
+  scheduled: { label: "Scheduled", variant: "scheduled" },
+  archived: { label: "Archived", variant: "archived" },
 };
 
 function StatusBadge({ status }: { status: StatusKey }) {
   const m = STATUS_META[status];
-  return (
-    <span className="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-muted-foreground">
-      <span className={`inline-block h-1.5 w-1.5 rounded-full ${m.dot}`} />
-      {m.label}
-    </span>
-  );
+  return <Badge variant={m.variant}>{m.label}</Badge>;
 }
 
 // Small framework mark chip — dark on light, white on dark (currentColor).
@@ -631,7 +624,7 @@ function ExplorerTable({
   return (
     <div>
       <div
-        className={`grid ${LIST_COLS} gap-3 px-3 py-3 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground border-b border-[color:var(--border-hairline)] sticky top-0 z-[1] bg-[color:var(--canvas)]/85 backdrop-blur md:gap-5`}
+        className={`grid ${LIST_COLS} h-10 items-center gap-3 px-3 text-[12.5px] font-medium text-muted-foreground md:gap-5`}
       >
         <div>Name</div>
         <div className={LIST_HIDE}>Type</div>
@@ -641,6 +634,7 @@ function ExplorerTable({
         <div />
       </div>
 
+      <div className="flex flex-col gap-1.5">
       {items.map((it) =>
         it.kind === "folder" ? (
           <div
@@ -655,15 +649,15 @@ function ExplorerTable({
                 onOpenFolder(it.folder.id);
               }
             }}
-            className={`group relative grid ${LIST_COLS} cursor-pointer items-center gap-3 border-b border-[color:var(--border-hairline)] px-3 py-4 text-[13px] transition-[background-color] duration-150 hover:bg-[color:var(--row-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60 md:gap-5`}
+            className={`group relative grid ${LIST_COLS} h-12 cursor-pointer items-center gap-3 rounded-[6px] px-3 text-[13px] transition-[background-color] duration-150 hover:bg-[color:var(--row-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60 md:gap-5`}
           >
             <div className="relative z-[1] flex min-w-0 items-center gap-3">
-              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[color:var(--s3)] text-muted-foreground">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[6px] bg-[color:var(--s3)] text-muted-foreground">
                 <Folder className="h-[18px] w-[18px]" strokeWidth={1.75} />
               </div>
               <div className="min-w-0">
-                <div className="truncate text-[13.5px] font-medium text-foreground">{it.folder.name}</div>
-                <div className="truncate text-[11.5px] text-muted-foreground">
+                <div className="truncate text-[13px] font-medium text-foreground">{it.folder.name}</div>
+                <div className="truncate text-[12px] text-muted-foreground">
                   {it.count} project{it.count === 1 ? "" : "s"}
                 </div>
               </div>
@@ -691,34 +685,32 @@ function ExplorerTable({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") navigate({ to: "/w/$workspace/p/$project", params: { workspace, project: p.slug } });
                 }}
-                className={`group relative grid ${LIST_COLS} cursor-pointer items-center gap-3 border-b border-[color:var(--border-hairline)] px-3 py-4 text-[13px] transition-[background-color] duration-150 hover:bg-[color:var(--row-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60 md:gap-5`}
+                className={`group relative grid ${LIST_COLS} h-12 cursor-pointer items-center gap-3 rounded-[6px] px-3 text-[13px] transition-[background-color] duration-150 hover:bg-[color:var(--row-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60 md:gap-5`}
               >
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-y-2 left-0 w-[2px] rounded-r-full bg-primary opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-                />
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="h-9 w-14 shrink-0 overflow-hidden rounded border border-[color:var(--border-hairline)] bg-white">
+                  <div className="h-8 w-[52px] shrink-0 overflow-hidden rounded-[4px] border border-[color:var(--border-hairline)] bg-white">
                     <SitePreview seed={p.id} />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="truncate text-[13.5px] font-medium text-foreground">{p.name}</span>
+                      <span className="truncate text-[13px] font-medium tracking-[-0.013em] text-foreground">{p.name}</span>
                       <StackTag stack={p.stack}>
                         <span className="inline-flex shrink-0 cursor-default">
                           <StackIcon stack={p.stack} className="h-3.5 w-3.5 text-foreground/70" />
                         </span>
                       </StackTag>
                     </div>
-                    <div className="truncate text-[11.5px] text-muted-foreground">{p.domain}</div>
+                    <div className="truncate text-[12px] text-muted-foreground">{p.domain}</div>
                   </div>
                 </div>
                 <div className={LIST_HIDE}><TypeCell kind="project" mode={p.mode} /></div>
                 <div><StatusBadge status={p.status} /></div>
                 <div className={`text-[12.5px] tabular-nums text-muted-foreground ${LIST_HIDE}`}>{relTime(p.updatedAt)}</div>
                 <div className={LIST_HIDE}><SitePlanBadge plan={p.plan} /></div>
-                <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100 max-md:opacity-100">
-                  <IconButton icon={ExternalLink} label="Open" />
+                <div className="flex items-center justify-end gap-1">
+                  <span className="opacity-0 transition-opacity duration-150 focus-within:opacity-100 group-hover:opacity-100 max-md:opacity-100">
+                    <IconButton icon={ExternalLink} label="Open" />
+                  </span>
                   <ProjectMenu
                     projectId={p.id}
                     folders={folders}
@@ -733,6 +725,7 @@ function ExplorerTable({
           })()
         ),
       )}
+      </div>
     </div>
   );
 }
@@ -1032,26 +1025,26 @@ function IncomingTransfers({ ws }: { ws: Workspace }) {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground"
               onClick={() => {
                 transferActions.decline(r.id);
                 toast.success("Transfer declined");
               }}
-              className="h-8 rounded-md px-3 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
             >
               Decline
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              size="sm"
               onClick={() => {
                 transferActions.accept(r.id, ws.id);
                 toast.success(`${r.projectName} joined ${ws.name}`);
               }}
-              className="h-8 rounded-md bg-primary px-3.5 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
             >
               Accept into {ws.name}
-            </button>
+            </Button>
           </div>
         </div>
       ))}
@@ -1139,20 +1132,12 @@ function FolderDialog({
             maxLength={40}
           />
           <DialogFooter className="mt-5">
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="inline-flex h-9 items-center rounded-md px-3.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
-            >
+            <Button type="button" variant="outline" size="sm" className="h-9" onClick={() => onOpenChange(false)}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!name.trim()}
-              className="inline-flex h-9 items-center rounded-md bg-primary px-3.5 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] disabled:opacity-50"
-            >
+            </Button>
+            <Button type="submit" size="sm" className="h-9" disabled={!name.trim()}>
               {mode === "create" ? "Create folder" : "Save changes"}
-            </button>
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -1172,14 +1157,14 @@ function Shimmer({ className = "" }: { className?: string }) {
 
 function ProjectsTableSkeleton({ rows }: { rows: number }) {
   return (
-    <div>
+    <div className="flex flex-col gap-1.5">
       {Array.from({ length: rows }).map((_, i) => (
         <div
           key={i}
-          className={`grid ${LIST_COLS} items-center gap-5 border-b border-[color:var(--border-hairline)] px-3 py-4`}
+          className={`grid ${LIST_COLS} h-12 items-center gap-5 rounded-[6px] px-3`}
         >
           <div className="flex items-center gap-3">
-            <Shimmer className="h-9 w-14 rounded" />
+            <Shimmer className="h-8 w-[52px] rounded" />
             <div className="min-w-0 flex-1 space-y-1.5">
               <Shimmer className="h-3 w-[55%] rounded" />
               <Shimmer className="h-2.5 w-[80%] rounded" />
@@ -1242,17 +1227,13 @@ function ExplorerEmpty({
         {inFolder && !searching ? <Folder className="h-4 w-4" strokeWidth={1.75} /> : <Search className="h-4 w-4" strokeWidth={1.75} />}
       </div>
       <div>
-        <div className="text-[13.5px] font-semibold text-foreground">{title}</div>
-        <div className="mt-1 max-w-sm text-[12.5px] text-muted-foreground">{body}</div>
+        <div className="text-[15px] font-semibold text-foreground">{title}</div>
+        <div className="mt-1 max-w-sm text-[13px] text-muted-foreground">{body}</div>
       </div>
       {searching && (
-        <button
-          type="button"
-          onClick={onClear}
-          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-elevated)] px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
-        >
+        <Button variant="outline" size="sm" onClick={onClear}>
           Clear search
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -1270,13 +1251,9 @@ function EmptyProjects({ onNewProject }: { onNewProject: () => void }) {
           Create your first website, import an existing one, or start from a template.
         </div>
       </div>
-      <button
-        type="button"
-        onClick={onNewProject}
-        className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-[var(--primary-hover)]"
-      >
-        <Plus className="h-3.5 w-3.5" /> New project
-      </button>
+      <Button size="sm" className="h-9 gap-1.5 px-3.5 text-[13px]" onClick={onNewProject}>
+        <Plus className="h-4 w-4" /> New project
+      </Button>
     </div>
   );
 }

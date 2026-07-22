@@ -294,7 +294,7 @@ function SchemaEditor({
                   type="button"
                   onClick={() => removeField(i)}
                   aria-label="Remove field"
-                  className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-rose-500/12 hover:text-rose-400"
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -351,14 +351,14 @@ function SchemaEditor({
         <button
           type="button"
           onClick={onRemove}
-          className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground transition-colors hover:text-rose-400"
+          className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground transition-colors hover:text-destructive"
         >
           <Trash2 className="h-3.5 w-3.5" /> Delete schema
         </button>
         <button
           type="button"
           onClick={() => toast.success("Schema saved")}
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3.5 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
+          className="inline-flex h-8 items-center gap-1.5 rounded-[6px] bg-primary px-3.5 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
         >
           Save
         </button>

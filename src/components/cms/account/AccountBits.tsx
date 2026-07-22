@@ -31,7 +31,7 @@ export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTML
       <input
         ref={ref}
         className={cn(
-          "h-9 w-full rounded-lg border border-[color:var(--color-border)] bg-[color:var(--card)] px-3 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-[color:var(--primary)] disabled:cursor-not-allowed disabled:opacity-60",
+          "h-9 w-full rounded-[8px] border border-[color:var(--color-border)] bg-[color:var(--card)] px-3 text-[13px] text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground/70 focus:border-[color:var(--border-strong)] focus:shadow-[var(--shadow-focus)] disabled:cursor-not-allowed disabled:opacity-60",
           className,
         )}
         {...props}
@@ -55,7 +55,7 @@ export function Field({
     <label className="block">
       <Label hint={hint}>{label}</Label>
       {children}
-      {error && <p className="mt-1 text-[11.5px] text-rose-500">{error}</p>}
+      {error && <p className="mt-1 text-[11.5px] text-destructive">{error}</p>}
     </label>
   );
 }
@@ -65,7 +65,7 @@ export function PrimaryButton({ className, ...props }: React.ButtonHTMLAttribute
     <button
       type="button"
       className={cn(
-        "inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-3.5 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-40",
+        "inline-flex h-9 items-center justify-center gap-1.5 rounded-[6px] bg-primary px-3.5 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] active:bg-[var(--primary-pressed)] disabled:cursor-not-allowed disabled:opacity-40",
         className,
       )}
       {...props}
@@ -78,7 +78,7 @@ export function GhostButton({ className, ...props }: React.ButtonHTMLAttributes<
     <button
       type="button"
       className={cn(
-        "inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--card)] px-3.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)] disabled:cursor-not-allowed disabled:opacity-40",
+        "inline-flex h-9 items-center justify-center gap-1.5 rounded-[6px] border border-[color:var(--color-border)] bg-[color:var(--card)] px-3.5 text-[12.5px] font-medium text-foreground transition-colors hover:border-[color:var(--border-strong)] hover:bg-[color:var(--color-row-hover)] disabled:cursor-not-allowed disabled:opacity-40",
         className,
       )}
       {...props}
@@ -91,7 +91,7 @@ export function DangerButton({ className, ...props }: React.ButtonHTMLAttributes
     <button
       type="button"
       className={cn(
-        "inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[color:color-mix(in_oklab,var(--destructive)_35%,transparent)] bg-[color:var(--card)] px-3.5 text-[12.5px] font-medium text-destructive transition-colors hover:bg-[color:color-mix(in_oklab,var(--destructive)_10%,transparent)] disabled:cursor-not-allowed disabled:opacity-40",
+        "inline-flex h-9 items-center justify-center gap-1.5 rounded-[6px] border border-[color:color-mix(in_oklab,var(--destructive)_35%,transparent)] bg-[color:var(--card)] px-3.5 text-[12.5px] font-medium text-destructive transition-colors hover:bg-[color:color-mix(in_oklab,var(--destructive)_10%,transparent)] disabled:cursor-not-allowed disabled:opacity-40",
         className,
       )}
       {...props}

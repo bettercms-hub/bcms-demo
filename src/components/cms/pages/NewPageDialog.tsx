@@ -74,7 +74,7 @@ export function NewPageDialog({
     step === 0 ? (
       <>
         <span className="text-[11.5px] text-muted-foreground">
-          {taken ? <span className="text-rose-500">That path is already used.</span> : <>URL: <span className="font-mono text-foreground">{path}</span></>}
+          {taken ? <span className="text-destructive">That path is already used.</span> : <>URL: <span className="font-mono text-foreground">{path}</span></>}
         </span>
         <Button size="sm" disabled={!valid} onClick={() => setStep(1)}>
           Continue <ArrowRight className="ml-1 h-3.5 w-3.5" />

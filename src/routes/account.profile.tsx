@@ -143,7 +143,7 @@ function ProfilePage() {
               rows={3}
               maxLength={240}
               placeholder="A sentence about what you do."
-              className="w-full resize-none rounded-lg border border-[color:var(--color-border)] bg-[color:var(--card)] px-3 py-2 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-[color:var(--primary)]"
+              className="w-full resize-none rounded-[8px] border border-[color:var(--color-border)] bg-[color:var(--card)] px-3 py-2 text-[13px] text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground/70 focus:border-[color:var(--border-strong)] focus:shadow-[var(--shadow-focus)]"
             />
             <div className="mt-1 text-right text-[11px] tabular-nums text-muted-foreground">{bio.length}/240</div>
           </label>

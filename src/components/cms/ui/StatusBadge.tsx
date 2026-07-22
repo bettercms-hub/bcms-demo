@@ -3,12 +3,12 @@ import type { PublishState, MemberStatus, DomainStatus, EnvScope } from "@/lib/c
 export type StatusTone = "neutral" | "info" | "success" | "warning" | "danger" | "muted";
 
 const TONE_CLASSES: Record<StatusTone, string> = {
-  neutral: "bg-muted text-foreground border-border",
-  muted:   "bg-muted/60 text-muted-foreground border-border",
-  info:    "bg-primary/10 text-primary border-primary/20",
-  success: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-  warning: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
-  danger:  "bg-destructive/10 text-destructive border-destructive/20",
+  neutral: "bg-[color:var(--s3)] text-[color:var(--foreground-secondary)] border-transparent",
+  muted:   "bg-[color:var(--status-draft-bg)] text-[color:var(--status-draft-fg)] border-transparent",
+  info:    "bg-[color:var(--status-review-bg)] text-[color:var(--status-review-fg)] border-transparent",
+  success: "bg-[color:var(--status-live-bg)] text-[color:var(--status-live-fg)] border-transparent",
+  warning: "bg-[color-mix(in_srgb,var(--status-warning)_14%,transparent)] text-[color:var(--status-warning)] border-transparent",
+  danger:  "bg-[color-mix(in_srgb,var(--destructive)_12%,transparent)] text-[color:var(--destructive)] border-transparent",
 };
 
 interface BaseProps {
@@ -21,7 +21,7 @@ interface BaseProps {
 export function StatusBadge({ label, tone = "neutral", dot, className = "" }: BaseProps) {
   return (
     <span
-      className={`inline-flex h-5 items-center gap-1.5 rounded border px-2 text-[10.5px] font-medium uppercase tracking-wider ${TONE_CLASSES[tone]} ${className}`}
+      className={`inline-flex h-5 items-center gap-1.5 rounded-[4px] border px-1.5 text-[11.5px] font-medium capitalize ${TONE_CLASSES[tone]} ${className}`}
     >
       {dot && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
       {label}

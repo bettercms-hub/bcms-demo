@@ -148,7 +148,7 @@ function CustomCode() {
             <button
               type="button"
               onClick={() => removeOverride(o.pageId)}
-              className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-rose-500/10 hover:text-rose-500"
+              className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
               title="Remove page code"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -179,14 +179,14 @@ function ApiCard({ endpoint, headless, hosted }: { endpoint: string; headless: b
   return (
     <div className="rounded-xl border border-[color:var(--border-hairline)] bg-[color:var(--s2)] p-4">
       <div className="flex items-center gap-2">
-        <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+        <span className="rounded-md border border-status-success/30 bg-status-success/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-status-success">
           Public key
         </span>
         <span className="text-[13px] font-medium text-foreground">Managed over the API</span>
       </div>
       <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">{behavior}</p>
       <div className="mt-3 flex items-center gap-2 rounded-lg border border-[color:var(--border-hairline)] bg-[color:var(--card)] px-3 py-2">
-        <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[10.5px] font-semibold text-emerald-600 dark:text-emerald-400">
+        <span className="rounded bg-status-success/10 px-1.5 py-0.5 font-mono text-[10.5px] font-semibold text-status-success">
           GET
         </span>
         <code className="min-w-0 flex-1 truncate font-mono text-[12px] text-foreground">{endpoint}?path=/</code>
@@ -199,7 +199,7 @@ function ApiCard({ endpoint, headless, hosted }: { endpoint: string; headless: b
           }}
           className="inline-flex items-center gap-1 text-[11.5px] text-muted-foreground transition-colors hover:text-foreground"
         >
-          {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? <Check className="h-3.5 w-3.5 text-status-success" /> : <Copy className="h-3.5 w-3.5" />}
         </button>
       </div>
       <p className="mt-2 font-mono text-[11px] leading-relaxed text-muted-foreground">
@@ -278,7 +278,7 @@ function CodeCard({
       {fullscreen && (
         <div className="fixed inset-0 z-[80] grid place-items-center bg-black/50 p-6" onClick={() => setFullscreen(false)}>
           <div
-            className="flex h-[84vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[color:var(--color-border)] bg-card shadow-2xl"
+            className="flex h-[84vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-card shadow-[var(--shadow-3)]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-border px-4 py-2.5">

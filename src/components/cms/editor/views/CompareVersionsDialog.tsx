@@ -222,7 +222,7 @@ function CompareRow({ row, canEdit, onRestore }: { row: FieldRowModel; canEdit: 
             <span className="italic text-muted-foreground/60">Empty</span>
           ) : diff ? (
             diff.before.map((p, i) => (
-              <span key={i} className={p.changed ? "rounded bg-rose-500/15 px-0.5 text-rose-600 line-through decoration-rose-500/50 dark:text-rose-400" : undefined}>
+              <span key={i} className={p.changed ? "rounded bg-[color-mix(in_srgb,var(--status-error)_14%,transparent)] px-0.5 text-[var(--status-error)] line-through decoration-[color-mix(in_srgb,var(--status-error)_50%,transparent)]" : undefined}>
                 {p.text}
               </span>
             ))

@@ -433,7 +433,7 @@ function SourceRowItem({ projectId, row, config }: { projectId: string; row: Sou
           <div className="flex items-center gap-2">
             <span className="min-w-0 truncate text-[12.5px] font-medium text-foreground">{row.title}</span>
             <TypeBadge kind="page" />
-            <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide", PAGE_STATE_BADGE[row.state] ?? PAGE_STATE_BADGE.draft)}>
+            <span className={cn("shrink-0 rounded-[4px] px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide", PAGE_STATE_BADGE[row.state] ?? PAGE_STATE_BADGE.draft)}>
               {row.state}
             </span>
           </div>

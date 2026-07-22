@@ -37,7 +37,7 @@ export function TurnstileWidget({
     >
       <span
         className={`grid h-5 w-5 shrink-0 place-items-center rounded-[5px] border ${
-          isDone ? "border-emerald-500 bg-emerald-500 text-white" : "border-border"
+          isDone ? "border-status-success bg-status-success text-white" : "border-border"
         }`}
       >
         {state === "checking" ? (

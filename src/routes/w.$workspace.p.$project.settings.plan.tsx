@@ -184,7 +184,7 @@ function PlanAndUsage() {
                   <button
                     type="button"
                     onClick={() => setUpgradeOpen(true)}
-                    className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-[12.5px] font-medium text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
+                    className="inline-flex h-8 items-center rounded-[6px] bg-primary px-3 text-[12.5px] font-medium text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
                   >
                     Move up to {SITE_PLANS[nextPlan].name}
                   </button>
@@ -212,7 +212,7 @@ function PlanAndUsage() {
                   {contact.contactEmail && (
                     <a
                       href={`mailto:${contact.contactEmail}`}
-                      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--card)] px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
+                      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] border border-[color:var(--color-border)] bg-[color:var(--card)] px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
                     >
                       <Mail className="h-3.5 w-3.5" /> Email {contact.contactName.split(" ")[0]}
                     </a>
@@ -318,7 +318,7 @@ function PlanAndUsage() {
               type="button"
               disabled={scalingExtras === 0}
               onClick={() => setScaleCheckoutOpen(true)}
-              className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-[12.5px] font-medium text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] disabled:opacity-50"
+              className="inline-flex h-8 items-center rounded-[6px] bg-primary px-3 text-[12.5px] font-medium text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] disabled:opacity-50"
             >
               Apply scaling
             </button>
@@ -397,7 +397,7 @@ function PlanAndUsage() {
               type="button"
               disabled={!pack}
               onClick={() => setPackCheckoutOpen(true)}
-              className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-[12.5px] font-medium text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] disabled:opacity-50"
+              className="inline-flex h-8 items-center rounded-[6px] bg-primary px-3 text-[12.5px] font-medium text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] disabled:opacity-50"
             >
               {pack ? `Buy ${pack.credits.toLocaleString("en-US")} credits` : "Buy credits"}
             </button>
@@ -481,7 +481,7 @@ function PlanAndUsage() {
               <button
                 type="button"
                 onClick={() => setDowngradeOpen(false)}
-                className="inline-flex h-9 items-center rounded-lg px-3.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
+                className="inline-flex h-9 items-center rounded-[6px] px-3.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
               >
                 Keep {def.name}
               </button>
@@ -492,7 +492,7 @@ function PlanAndUsage() {
                   setDowngradeOpen(false);
                   toast.success(`${domain} is now on ${SITE_PLANS[prevPlan].name}`);
                 }}
-                className="inline-flex h-9 items-center rounded-lg border border-[color:var(--color-border)] bg-[color:var(--card)] px-3.5 text-[13px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
+                className="inline-flex h-9 items-center rounded-[6px] border border-[color:var(--color-border)] bg-[color:var(--card)] px-3.5 text-[13px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
               >
                 Downgrade to {SITE_PLANS[prevPlan].name}
               </button>
@@ -560,7 +560,7 @@ function PlanAndUsage() {
               <button
                 type="button"
                 onClick={() => setSwitchDown(null)}
-                className="inline-flex h-9 items-center rounded-lg px-3.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
+                className="inline-flex h-9 items-center rounded-[6px] px-3.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
               >
                 Keep {def.name}
               </button>
@@ -571,7 +571,7 @@ function PlanAndUsage() {
                   toast.success(`${domain} is now on ${SITE_PLANS[switchDown].name}`);
                   setSwitchDown(null);
                 }}
-                className="inline-flex h-9 items-center rounded-lg border border-[color:var(--color-border)] bg-[color:var(--card)] px-3.5 text-[13px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
+                className="inline-flex h-9 items-center rounded-[6px] border border-[color:var(--color-border)] bg-[color:var(--card)] px-3.5 text-[13px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
               >
                 Switch to {SITE_PLANS[switchDown].name}
               </button>
@@ -624,20 +624,20 @@ function PlanCard({
       <ul className="mt-3 flex-1 space-y-1.5 text-[12px] text-muted-foreground">
         {lines.map((x) => (
           <li key={x} className="flex items-center gap-1.5">
-            <Check className="h-3 w-3 shrink-0 text-emerald-500" /> {x}
+            <Check className="h-3 w-3 shrink-0 text-status-success" /> {x}
           </li>
         ))}
       </ul>
       <div className="mt-4">
         {isCurrent ? (
-          <div className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-primary/40 text-[12.5px] font-medium text-primary">
+          <div className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-[6px] border border-primary/40 text-[12.5px] font-medium text-primary">
             <Check className="h-3.5 w-3.5" /> Current plan
           </div>
         ) : isUpgrade ? (
           <button
             type="button"
             onClick={() => onBuy(planId)}
-            className="inline-flex h-8 w-full items-center justify-center rounded-lg bg-primary text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
+            className="inline-flex h-8 w-full items-center justify-center rounded-[6px] bg-primary text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
           >
             Upgrade to {def.name}
           </button>
@@ -645,7 +645,7 @@ function PlanCard({
           <button
             type="button"
             onClick={() => onDown(planId)}
-            className="inline-flex h-8 w-full items-center justify-center rounded-lg border border-[color:var(--color-border)] text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
+            className="inline-flex h-8 w-full items-center justify-center rounded-[6px] border border-[color:var(--color-border)] text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
           >
             Switch to {def.name}
           </button>
@@ -661,14 +661,14 @@ function FeatureValueCell({ value, featureKey }: { value: boolean | string; feat
   if (value === true) {
     return (
       <span className="inline-flex shrink-0 items-center gap-1.5 text-[12.5px] text-foreground">
-        <Check className="h-3.5 w-3.5 text-emerald-500" strokeWidth={2.5} /> Included
+        <Check className="h-3.5 w-3.5 text-status-success" strokeWidth={2.5} /> Included
       </span>
     );
   }
   if (typeof value === "string") {
     if (value === "Coming soon") {
       return (
-        <span className="inline-flex shrink-0 items-center rounded-md border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 text-[10.5px] font-semibold leading-none text-violet-600 dark:text-violet-400">
+        <span className="inline-flex shrink-0 items-center rounded-[4px] bg-[var(--status-review-bg)] px-1.5 py-0.5 text-[10.5px] font-semibold leading-none text-[var(--status-review-fg)]">
           Coming soon
         </span>
       );

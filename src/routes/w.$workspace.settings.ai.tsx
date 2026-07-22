@@ -41,7 +41,7 @@ function AiControls() {
 
       {/* Always-on safety: the two rules governance cannot loosen. */}
       <div className="mb-4 flex items-start gap-3 rounded-xl border border-[color:var(--border-hairline)] bg-card px-4 py-3.5">
-        <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-500/10 text-emerald-600">
+        <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--status-live-bg)] text-[color:var(--status-live-fg)]">
           <ShieldCheck className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
@@ -51,7 +51,7 @@ function AiControls() {
             The controls below narrow what the agent may do; they never remove the human.
           </p>
         </div>
-        <span className="mt-1 inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-emerald-600">
+        <span className="mt-1 inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-[color:var(--status-live-fg)]">
           <Check className="h-3 w-3" /> Always on
         </span>
       </div>

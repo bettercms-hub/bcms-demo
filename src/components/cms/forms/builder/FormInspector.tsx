@@ -382,7 +382,7 @@ function CountryExclude({ value, onChange }: { value: string[]; onChange: (next:
             return (
               <span
                 key={iso}
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-[color:var(--card)] py-0.5 pl-2 pr-1 text-[11px] text-foreground"
+                className="inline-flex items-center gap-1 rounded-[4px] border border-border bg-[color:var(--card)] py-0.5 pl-2 pr-1 text-[11px] text-foreground"
               >
                 {c.flag} {c.name}
                 <button

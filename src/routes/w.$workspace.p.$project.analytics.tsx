@@ -130,7 +130,7 @@ function AnalyticsPage() {
             label="Real-time"
             value={String(m.realtime)}
             suffix={
-              <span className="ml-1 flex items-center gap-1 text-[10px] text-emerald-500">
+              <span className="ml-1 flex items-center gap-1 text-[10px] text-status-success">
                 <Circle className="h-1.5 w-1.5 fill-current" />
                 live
               </span>
@@ -226,7 +226,7 @@ function MetricCard({
         {suffix}
       </div>
       {delta !== undefined && (
-        <div className={`mt-1 flex items-center gap-0.5 text-[11px] tabular-nums ${up ? "text-emerald-500" : "text-red-500"}`}>
+        <div className={`mt-1 flex items-center gap-0.5 text-[11px] tabular-nums ${up ? "text-status-success" : "text-status-error"}`}>
           {up ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
           {Math.abs(delta).toFixed(1)}%
         </div>

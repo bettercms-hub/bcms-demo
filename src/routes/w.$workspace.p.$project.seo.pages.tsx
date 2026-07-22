@@ -71,7 +71,7 @@ function PagesSeoTable() {
           <button
             type="button"
             onClick={addPage}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
+            className="inline-flex h-9 items-center gap-1.5 rounded-[6px] bg-primary px-3 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
           >
             <Plus className="h-4 w-4" /> Add page
           </button>
@@ -296,7 +296,7 @@ function OgPicker({
                   onChange("");
                   setOpen(false);
                 }}
-                className="mt-2 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-rose-400"
+                className="mt-2 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-destructive"
               >
                 <X className="h-3 w-3" /> Remove image
               </button>
@@ -334,7 +334,7 @@ function PageEditModal({
   return (
     <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/45 p-4" onClick={onClose}>
       <div
-        className="my-4 w-full max-w-3xl rounded-2xl border border-[color:var(--color-border)] bg-[color:var(--elevated-modal)] shadow-2xl"
+        className="my-4 w-full max-w-3xl rounded-xl border border-[color:var(--color-border)] bg-[color:var(--elevated-modal)] shadow-[var(--shadow-3)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-[color:var(--border-hairline)] px-5 py-3.5">
@@ -406,7 +406,7 @@ function PageEditModal({
             <div>
               <div className="mb-1.5 text-[12px] font-medium text-foreground">Google result</div>
               <div className="rounded-lg border border-[color:var(--border-hairline)] bg-white p-3.5 dark:bg-[color:var(--s1)]">
-                <div className="text-[12px] text-emerald-700 dark:text-emerald-500">
+                <div className="text-[12px] text-status-success">
                   {domain}
                   <span className="text-muted-foreground"> › {d.slug.replace(/^\//, "")}</span>
                 </div>
@@ -456,7 +456,7 @@ function PageEditModal({
           <button
             type="button"
             onClick={onDelete}
-            className="inline-flex items-center gap-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-rose-400"
+            className="inline-flex items-center gap-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-destructive"
           >
             <Trash2 className="h-3.5 w-3.5" /> Delete page
           </button>
@@ -464,14 +464,14 @@ function PageEditModal({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 items-center rounded-lg px-3.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
+              className="inline-flex h-9 items-center rounded-[6px] px-3.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={() => onSave(d)}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
+              className="inline-flex h-9 items-center gap-1.5 rounded-[6px] bg-primary px-4 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
             >
               Save
             </button>
@@ -495,7 +495,7 @@ function Field({
 }) {
   const c = counter;
   const inRange = c ? c.len >= c.good[0] && c.len <= c.good[1] : false;
-  const tone = c && c.len === 0 ? "text-muted-foreground/60" : inRange ? "text-emerald-500" : "text-amber-500";
+  const tone = c && c.len === 0 ? "text-muted-foreground/60" : inRange ? "text-status-success" : "text-status-warning";
   return (
     <label className="block">
       <div className="mb-1.5 flex items-center justify-between">

@@ -12,6 +12,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { enableGuest } from "@/lib/guest";
+import { defaultWorkspaceSlug } from "@/lib/cms/store";
 import { patchOnboarding } from "@/lib/onboarding/onboarding-store";
 import { Logo } from "@/components/cms/shell/Logo";
 import { toast } from "sonner";
@@ -104,7 +105,7 @@ function AuthPage() {
   }
 
   const inputCls =
-    "h-10 w-full rounded-lg border border-[color:var(--color-border)] bg-card px-3 text-[13.5px] text-foreground outline-none transition-colors focus:border-[color:var(--primary)]";
+    "h-10 w-full rounded-[8px] border border-[color:var(--color-border)] bg-card px-3 text-[13.5px] text-foreground outline-none transition-[border-color,box-shadow] focus:border-[color:var(--border-strong)] focus:shadow-[var(--shadow-focus)]";
 
   return (
     <div className="grid min-h-screen bg-background lg:grid-cols-2">
@@ -113,8 +114,8 @@ function AuthPage() {
         <Logo className="h-6 w-auto self-start" />
 
         <div className="mx-auto flex w-full max-w-[360px] flex-1 flex-col justify-center py-10">
-          <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-foreground">{copy.title}</h1>
-          <p className="mt-1 text-[13px] text-muted-foreground">{copy.subtitle}</p>
+          <h1 className="text-[28px] font-semibold tracking-tight text-foreground">{copy.title}</h1>
+          <p className="mt-1.5 text-[14px] text-muted-foreground">{copy.subtitle}</p>
 
           {mode !== "forgot" && (
             <>
@@ -122,14 +123,14 @@ function AuthPage() {
                 <button
                   type="button"
                   onClick={() => ssoContinue("Google")}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[color:var(--color-border)] bg-card text-[13px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-[6px] border border-[color:var(--color-border)] bg-card text-[13px] font-medium text-foreground transition-colors hover:border-[color:var(--border-strong)] hover:bg-[color:var(--color-row-hover)]"
                 >
                   <GoogleMark /> Google
                 </button>
                 <button
                   type="button"
                   onClick={() => ssoContinue("GitHub")}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[color:var(--color-border)] bg-card text-[13px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-[6px] border border-[color:var(--color-border)] bg-card text-[13px] font-medium text-foreground transition-colors hover:border-[color:var(--border-strong)] hover:bg-[color:var(--color-row-hover)]"
                 >
                   <Github className="h-4 w-4" /> GitHub
                 </button>
@@ -182,7 +183,7 @@ function AuthPage() {
             <button
               type="submit"
               disabled={loading}
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary text-[13.5px] font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-[6px] bg-primary text-[13.5px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] active:bg-[var(--primary-pressed)] disabled:opacity-60"
             >
               {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {copy.cta}
@@ -209,9 +210,9 @@ function AuthPage() {
               type="button"
               onClick={() => {
                 enableGuest();
-                navigate({ to: "/w/$workspace", params: { workspace: "flowtrix" }, replace: true });
+                navigate({ to: "/w/$workspace", params: { workspace: defaultWorkspaceSlug() }, replace: true });
               }}
-              className="flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-dashed border-[color:var(--color-border)] text-[12.5px] font-medium text-muted-foreground transition-colors hover:border-[color:var(--color-border-strong)] hover:text-foreground"
+              className="flex h-9 w-full items-center justify-center gap-2 rounded-[6px] border border-dashed border-[color:var(--color-border)] text-[12.5px] font-medium text-muted-foreground transition-colors hover:border-[color:var(--color-border-strong)] hover:text-foreground"
             >
               <Sparkles className="h-3.5 w-3.5" /> Continue without signing in
             </button>
@@ -225,7 +226,7 @@ function AuthPage() {
       {/* ----------------------------------------------------- brand side */}
       <div className="relative hidden overflow-hidden bg-[color:var(--s2)] lg:block">
         <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-primary/10 blur-3xl" aria-hidden />
-        <div className="absolute -bottom-32 left-10 h-96 w-96 rounded-full bg-indigo-400/10 blur-3xl" aria-hidden />
+        <div className="absolute -bottom-32 left-10 h-96 w-96 rounded-full bg-[color:color-mix(in_srgb,var(--brand-burgundy)_10%,transparent)] blur-3xl" aria-hidden />
 
         <div className="relative flex h-full flex-col justify-center px-14 xl:px-20">
           <h2 className="max-w-[420px] text-[26px] font-semibold leading-[1.25] tracking-[-0.01em] text-foreground">
@@ -240,7 +241,7 @@ function AuthPage() {
                 <div className="text-[13px] font-semibold text-foreground">Acme Inc</div>
                 <div className="text-[10.5px] text-muted-foreground">Agency workspace · 3 projects</div>
               </div>
-              <span className="ml-auto rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600">All sites live</span>
+              <span className="ml-auto rounded-[4px] bg-[var(--status-live-bg)] px-2 py-0.5 text-[10px] font-medium text-[var(--status-live-fg)]">All sites live</span>
             </div>
             <div className="mt-3 space-y-1.5">
               {[

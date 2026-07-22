@@ -134,7 +134,7 @@ export function PublishMenu({
             {page.state === "scheduled" && page.scheduledAt && <span className="text-muted-foreground">for {fmtWhen(page.scheduledAt)}</span>}
           </span>
           {page.staged && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-[color:var(--s2)] px-1.5 text-[10.5px] font-medium text-muted-foreground">
+            <span className="inline-flex items-center gap-1 rounded-[4px] bg-[color:var(--s2)] px-1.5 text-[10.5px] font-medium text-muted-foreground">
               <ShieldCheck className="h-2.5 w-2.5" /> On staging
             </span>
           )}
@@ -222,7 +222,7 @@ export function PublishMenu({
             <LayoutTemplate className="h-3 w-3" /> Save as template
           </button>
         )}
-        <button type="button" onClick={archive} className="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-rose-500">
+        <button type="button" onClick={archive} className="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-destructive">
           <Archive className="h-3 w-3" /> Archive
         </button>
       </div>

@@ -81,12 +81,10 @@ export function ChangePasswordCard() {
                       "flex-1 rounded-full transition-colors",
                       i < strength.score
                         ? strength.score <= 1
-                          ? "bg-rose-500"
+                          ? "bg-[color:var(--status-error)]"
                           : strength.score === 2
-                          ? "bg-amber-500"
-                          : strength.score === 3
-                          ? "bg-lime-500"
-                          : "bg-emerald-500"
+                          ? "bg-[color:var(--status-warning)]"
+                          : "bg-[color:var(--status-live)]"
                         : "bg-[color:var(--border-hairline)]",
                     )}
                   />
@@ -180,9 +178,9 @@ export function TwoFactorCard() {
       action={
         <span
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium",
+            "inline-flex items-center gap-1.5 rounded-[4px] px-2 py-1 text-[11px] font-medium",
             security.twoFactorEnabled
-              ? "bg-[color:color-mix(in_oklab,var(--emerald,#10B981)_14%,transparent)] text-emerald-600 dark:text-emerald-400"
+              ? "bg-[var(--status-live-bg)] text-[var(--status-live-fg)]"
               : "bg-[color:var(--s2)] text-muted-foreground",
           )}
         >
@@ -249,7 +247,7 @@ export function TwoFactorCard() {
       {security.twoFactorEnabled && (
         <div className="space-y-4">
           <div className="flex items-start gap-3 rounded-lg border border-[color:var(--border-hairline)] bg-[color:var(--s2)] px-3.5 py-3">
-            <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--card)] text-emerald-500">
+            <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--card)] text-[color:var(--status-live)]">
               <ShieldCheck className="h-4 w-4" />
             </span>
             <div className="min-w-0 flex-1">
@@ -330,7 +328,7 @@ export function SessionsCard() {
                 <div className="flex items-center gap-2">
                   <span className="truncate text-[13px] font-medium text-foreground">{s.device}</span>
                   {s.current && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-[color:color-mix(in_oklab,var(--emerald,#10B981)_14%,transparent)] px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                    <span className="inline-flex items-center gap-1 rounded-[4px] bg-[var(--status-live-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--status-live-fg)]">
                       <Check className="h-3 w-3" /> This device
                     </span>
                   )}

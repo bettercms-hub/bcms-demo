@@ -113,7 +113,7 @@ function AIBuilderPage() {
 
   const state = usageState(usedTotal, included);
   const barTone =
-    state === "over" ? "bg-sky-500" : state === "approaching" ? "bg-amber-500" : "bg-emerald-500";
+    state === "over" ? "bg-[var(--status-preview)]" : state === "approaching" ? "bg-[var(--status-warning)]" : "bg-[var(--status-live)]";
   const barPct = included ? Math.min(100, (usedTotal / included) * 100) : 0;
 
   const noteTier = gateTier ?? (!tierOk ? tier : null);
@@ -346,7 +346,7 @@ function AIBuilderPage() {
             )}
 
             {done && !running && (
-              <p className="mt-3 flex items-center gap-1.5 text-[12.5px] font-medium text-emerald-600 dark:text-emerald-400">
+              <p className="mt-3 flex items-center gap-1.5 text-[12.5px] font-medium text-[var(--status-live)]">
                 <Check className="h-3.5 w-3.5" aria-hidden />
                 Draft ready. Find it in your pages as a draft.
               </p>
@@ -462,7 +462,7 @@ function RunProgress() {
 }
 
 const TIER_CHIP_TONE: Record<CreditEvent["tier"], string> = {
-  Lite: "border-slate-500/20 bg-slate-500/10 text-slate-600 dark:text-slate-400",
+  Lite: "border-border bg-[color:var(--s2)] text-muted-foreground",
   Balanced: "border-sky-500/20 bg-sky-500/10 text-sky-600 dark:text-sky-400",
   Max: "border-violet-500/20 bg-violet-500/10 text-violet-600 dark:text-violet-400",
   Image: "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",

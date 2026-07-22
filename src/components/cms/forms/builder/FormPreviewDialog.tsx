@@ -126,15 +126,15 @@ export function FormPreviewDialog({ open, onOpenChange, form, onSubmit }: Props)
               <code className="max-w-full truncate rounded bg-muted px-2 py-1 text-[11.5px] text-muted-foreground">
                 {action.url || "(no URL set)"}
               </code>
-              <Button variant="secondary" size="sm" onClick={reset}>
+              <Button variant="outline" size="sm" onClick={reset}>
                 Run again
               </Button>
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-6 py-10 text-center">
-              <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+            <div className="flex flex-col items-center gap-3 rounded-lg border border-status-success/30 bg-status-success/5 px-6 py-10 text-center">
+              <CheckCircle2 className="h-8 w-8 text-status-success" />
               <p className="text-[13px] text-foreground">{successMessage}</p>
-              <Button variant="secondary" size="sm" onClick={reset}>
+              <Button variant="outline" size="sm" onClick={reset}>
                 Submit another
               </Button>
             </div>

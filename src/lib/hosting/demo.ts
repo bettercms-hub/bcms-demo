@@ -34,11 +34,11 @@ export interface Deployment {
 
 export const DEPLOY_STATUS_META: Record<DeployStatus, { label: string; tone: string; dot: string }> = {
   queued: { label: "Queued", tone: "bg-[color:var(--s2)] text-muted-foreground", dot: "bg-muted-foreground/60" },
-  installing: { label: "Installing", tone: "bg-sky-500/10 text-sky-600 dark:text-sky-400", dot: "bg-sky-400" },
-  building: { label: "Building", tone: "bg-amber-500/10 text-amber-600 dark:text-amber-400", dot: "bg-amber-400" },
-  deploying: { label: "Deploying", tone: "bg-violet-500/10 text-violet-600 dark:text-violet-400", dot: "bg-violet-400" },
-  live: { label: "Live", tone: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-400" },
-  failed: { label: "Failed", tone: "bg-rose-500/10 text-rose-600 dark:text-rose-400", dot: "bg-rose-400" },
+  installing: { label: "Installing", tone: "bg-status-preview/10 text-status-preview", dot: "bg-status-preview" },
+  building: { label: "Building", tone: "bg-status-warning/10 text-status-warning", dot: "bg-status-warning" },
+  deploying: { label: "Deploying", tone: "bg-status-scheduled/10 text-status-scheduled", dot: "bg-status-scheduled" },
+  live: { label: "Live", tone: "bg-[var(--status-live-bg)] text-[var(--status-live-fg)]", dot: "bg-status-success" },
+  failed: { label: "Failed", tone: "bg-destructive/10 text-destructive", dot: "bg-destructive" },
   cancelled: { label: "Cancelled", tone: "bg-[color:var(--s2)] text-muted-foreground", dot: "bg-muted-foreground/40" },
   superseded: { label: "Superseded", tone: "bg-[color:var(--s2)] text-muted-foreground", dot: "bg-muted-foreground/40" },
 };

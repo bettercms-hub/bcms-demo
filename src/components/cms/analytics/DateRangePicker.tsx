@@ -82,7 +82,7 @@ export function DateRangePicker({ value, onChange }: { value: RangeValue; onChan
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-8 items-center gap-2 rounded-lg border border-border bg-transparent px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[var(--s3)]/50"
+          className="inline-flex h-8 items-center gap-2 rounded-[6px] border border-border bg-transparent px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[var(--s3)]/50"
         >
           <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="tabular-nums">{triggerLabel}</span>

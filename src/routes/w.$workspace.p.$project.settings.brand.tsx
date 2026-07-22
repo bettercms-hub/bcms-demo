@@ -80,12 +80,12 @@ function BrandPage() {
             <button
               type="button"
               onClick={() => setImporting(true)}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
+              className="inline-flex h-8 items-center gap-1.5 rounded-[6px] border border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
             >
               <FileUp className="h-3.5 w-3.5 text-muted-foreground" /> Import design.md
             </button>
           ) : (
-            <span className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[color:var(--s2)] px-2.5 text-[11.5px] font-medium text-muted-foreground">
+            <span className="inline-flex h-8 items-center gap-1.5 rounded-[6px] bg-[color:var(--s2)] px-2.5 text-[11.5px] font-medium text-muted-foreground">
               <Lock className="h-3 w-3" /> Developers edit the brand kit
             </span>
           )}
@@ -93,7 +93,7 @@ function BrandPage() {
 
         {/* API bar */}
         <div className="mt-4 flex items-center gap-1.5 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--s2)] px-2.5 py-1.5">
-          <span className="rounded bg-[color:var(--card)] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-sky-600">GET PUT</span>
+          <span className="rounded bg-[color:var(--card)] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-status-preview">GET PUT</span>
           <span className="truncate font-mono text-[11.5px] text-foreground">{endpoint}</span>
           <button
             type="button"
@@ -476,7 +476,7 @@ function ImportDialog({
             onChange={(e) => setText(e.target.value)}
             autoFocus
             rows={7}
-            placeholder={"# Brand guidelines\nPrimary: #EF037F\nBackground: #FFFFFF\nHeadings: Epilogue, Body: Inter\nTone: confident and plain spoken\nDo: ship, structured\nDo not: synergy, revolutionary"}
+            placeholder={"# Brand guidelines\nPrimary: #D54646\nBackground: #FFFFFF\nHeadings: Epilogue, Body: Inter\nTone: confident and plain spoken\nDo: ship, structured\nDo not: synergy, revolutionary"}
             className="w-full resize-none rounded-lg border border-[color:var(--color-border)] bg-[color:var(--background)] px-3 py-2.5 font-mono text-[12px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/50 focus:border-[color:color-mix(in_oklab,var(--primary)_45%,transparent)]"
           />
 

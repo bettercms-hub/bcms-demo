@@ -48,7 +48,7 @@ export function CodePanel({ formId }: { formId: string }) {
         </p>
 
         {!form || form.status !== "published" ? (
-          <div className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+          <div className="mt-4 rounded-md border border-status-warning/30 bg-status-warning/10 px-3 py-2 text-xs text-status-warning">
             This form is in draft. Publish it before sending real submissions. The endpoint
             will reject posts with a 403 until you do.
           </div>
@@ -109,7 +109,7 @@ function CodeBlock({ code }: { code: string }) {
         <code>{code}</code>
       </pre>
       <Button
-        variant="secondary"
+        variant="outline"
         size="sm"
         className="absolute right-2 top-2"
         onClick={() => {

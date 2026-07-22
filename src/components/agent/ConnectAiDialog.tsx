@@ -154,7 +154,7 @@ export function ConnectAiDialog({ open, onOpenChange, projectId, projectName, ws
 
         {!gov.externalAgentsAllowed ? (
           <div className="px-5 py-6">
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+            <div className="rounded-lg border border-[color:color-mix(in_srgb,var(--status-warning)_30%,transparent)] bg-[color:color-mix(in_srgb,var(--status-warning)_10%,transparent)] px-4 py-3">
               <p className="text-[13px] font-medium text-foreground">External agents are turned off</p>
               <p className="mt-1 text-[12px] text-muted-foreground">An admin has disabled outside agents for this workspace. Turn it back on in AI controls to connect.</p>
               <Link to="/w/$workspace/settings/ai" params={{ workspace: wsSlug }} onClick={() => reset(false)} className="mt-2 inline-flex items-center gap-1 text-[12.5px] font-medium text-primary hover:underline">
@@ -177,7 +177,7 @@ export function ConnectAiDialog({ open, onOpenChange, projectId, projectName, ws
                       aria-pressed={clientId === c.id}
                       title={c.hint}
                       className={cn(
-                        "inline-flex h-8 items-center rounded-md border px-3 text-[12.5px] font-medium transition-colors",
+                        "inline-flex h-8 items-center rounded-[6px] border px-3 text-[12.5px] font-medium transition-colors",
                         clientId === c.id
                           ? "border-[color:color-mix(in_oklab,var(--primary)_45%,transparent)] bg-[color:color-mix(in_oklab,var(--primary)_8%,transparent)] text-foreground"
                           : "border-[color:var(--color-border)] text-muted-foreground hover:bg-[color:var(--color-row-hover)] hover:text-foreground",
@@ -189,7 +189,7 @@ export function ConnectAiDialog({ open, onOpenChange, projectId, projectName, ws
                 </div>
                 <div className="mt-4 rounded-lg border border-[color:var(--border-hairline)] bg-[color:var(--s1,var(--card))] px-3.5 py-3">
                   <p className="flex items-center gap-1.5 text-[12px] font-medium text-foreground">
-                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> How this stays safe
+                    <ShieldCheck className="h-3.5 w-3.5 text-[color:var(--status-live)]" /> How this stays safe
                   </p>
                   <ul className="mt-1.5 space-y-1 text-[11.5px] leading-relaxed text-muted-foreground">
                     <li>You pick the exact permissions on the next step.</li>
@@ -203,7 +203,7 @@ export function ConnectAiDialog({ open, onOpenChange, projectId, projectName, ws
                     <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Connected</div>
                     {grants.map((g) => (
                       <div key={g.id} className="flex items-center gap-2 py-1">
-                        <Plug className={cn("h-3.5 w-3.5 shrink-0", g.status === "active" ? "text-emerald-500" : "text-amber-500")} />
+                        <Plug className={cn("h-3.5 w-3.5 shrink-0", g.status === "active" ? "text-[color:var(--status-live)]" : "text-[color:var(--status-warning)]")} />
                         <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">{g.client}</span>
                         <span className="shrink-0 rounded-md bg-[color:var(--s2)] px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                           {g.access.length} permissions · {grantScopeChip(g)}
@@ -305,7 +305,7 @@ export function ConnectAiDialog({ open, onOpenChange, projectId, projectName, ws
                                 );
                               })}
                             </div>
-                            {projectIds.length === 0 && <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">Tick at least one project.</p>}
+                            {projectIds.length === 0 && <p className="mt-1 text-[11px] text-[color:var(--status-warning)]">Tick at least one project.</p>}
                           </div>
                         )}
 
@@ -326,7 +326,7 @@ export function ConnectAiDialog({ open, onOpenChange, projectId, projectName, ws
                                 );
                               })}
                             </div>
-                            <p className="mt-1.5 flex items-start gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
+                            <p className="mt-1.5 flex items-start gap-1.5 text-[11px] text-[color:var(--status-warning)]">
                               <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
                               A cross-workspace key is the widest reach. You must be an admin on each, and one revoke pulls it from all of them.
                             </p>
@@ -357,7 +357,7 @@ export function ConnectAiDialog({ open, onOpenChange, projectId, projectName, ws
                 <div className="mt-3 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--s1,var(--card))] px-3.5 py-3">
                   {token ? (
                     <div className="flex items-center gap-2">
-                      <Check className="h-4 w-4 shrink-0 text-emerald-500" />
+                      <Check className="h-4 w-4 shrink-0 text-[color:var(--status-live)]" />
                       <div className="min-w-0 flex-1">
                         <p className="text-[12.5px] font-medium text-foreground">Key added to the commands below</p>
                         <p className="text-[11px] text-muted-foreground">Shown once for safety. Regenerating replaces it.</p>
@@ -372,7 +372,7 @@ export function ConnectAiDialog({ open, onOpenChange, projectId, projectName, ws
                         <p className="text-[12.5px] font-medium text-foreground">Generate the connection key</p>
                         <p className="text-[11px] text-muted-foreground">Carries exactly the permissions you chose. Shown once.</p>
                       </div>
-                      <button type="button" onClick={generate} className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]">
+                      <button type="button" onClick={generate} className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] bg-primary px-3 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] active:bg-[var(--primary-pressed)]">
                         <KeySquare className="h-3.5 w-3.5" /> Generate key
                       </button>
                     </div>
@@ -397,10 +397,10 @@ export function ConnectAiDialog({ open, onOpenChange, projectId, projectName, ws
                 </div>
 
                 {/* the human moment */}
-                <div className={cn("mt-4 rounded-lg border px-3.5 py-3", authorized ? "border-emerald-500/35 bg-emerald-500/10" : "border-amber-500/35 bg-amber-500/10")}>
+                <div className={cn("mt-4 rounded-lg border px-3.5 py-3", authorized ? "border-[color:color-mix(in_srgb,var(--status-live)_35%,transparent)] bg-[color:color-mix(in_srgb,var(--status-live)_10%,transparent)]" : "border-[color:color-mix(in_srgb,var(--status-warning)_35%,transparent)] bg-[color:color-mix(in_srgb,var(--status-warning)_10%,transparent)]")}>
                   {authorized ? (
                     <p className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
-                      <Check className="h-4 w-4 text-emerald-500" /> Authorized. {client.label} is connected and shows with your agents.
+                      <Check className="h-4 w-4 text-[color:var(--status-live)]" /> Authorized. {client.label} is connected and shows with your agents.
                     </p>
                   ) : (
                     <div className="flex items-center gap-3">
@@ -408,7 +408,7 @@ export function ConnectAiDialog({ open, onOpenChange, projectId, projectName, ws
                         <p className="text-[12.5px] font-medium text-foreground">Waiting for your authorization</p>
                         <p className="text-[11px] text-muted-foreground">The key stays inactive until you approve this connection.</p>
                       </div>
-                      <button type="button" onClick={authorize} disabled={!grantId} className={cn("inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-3 text-[12.5px] font-semibold transition-colors", grantId ? "bg-primary text-primary-foreground hover:bg-[var(--primary-hover)]" : "bg-[color:var(--s2)] text-muted-foreground")}>
+                      <button type="button" onClick={authorize} disabled={!grantId} className={cn("inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] px-3 text-[12.5px] font-semibold transition-colors", grantId ? "bg-primary text-primary-foreground hover:bg-[var(--primary-hover)] active:bg-[var(--primary-pressed)]" : "bg-[color:var(--s2)] text-muted-foreground")}>
                         <ShieldCheck className="h-3.5 w-3.5" /> Authorize connection
                       </button>
                     </div>
@@ -430,11 +430,11 @@ export function ConnectAiDialog({ open, onOpenChange, projectId, projectName, ws
             </button>
           )}
           {gov.externalAgentsAllowed && step < 3 ? (
-            <button type="button" disabled={step === 2 && !scopeReady} onClick={() => setStep((s) => (s === 1 ? 2 : 3) as Step)} className={cn("inline-flex h-8 items-center rounded-md px-3.5 text-[12.5px] font-semibold transition-colors", step === 2 && !scopeReady ? "bg-[color:var(--s2)] text-muted-foreground" : "bg-primary text-primary-foreground hover:bg-[var(--primary-hover)]")}>
+            <button type="button" disabled={step === 2 && !scopeReady} onClick={() => setStep((s) => (s === 1 ? 2 : 3) as Step)} className={cn("inline-flex h-8 items-center rounded-[6px] px-3.5 text-[12.5px] font-semibold transition-colors", step === 2 && !scopeReady ? "bg-[color:var(--s2)] text-muted-foreground" : "bg-primary text-primary-foreground hover:bg-[var(--primary-hover)] active:bg-[var(--primary-pressed)]")}>
               {step === 1 ? "Choose access" : `Continue with ${access.length} permissions`}
             </button>
           ) : (
-            <button type="button" onClick={() => reset(false)} className="inline-flex h-8 items-center rounded-md border border-[color:var(--color-border)] px-3.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]">
+            <button type="button" onClick={() => reset(false)} className="inline-flex h-8 items-center rounded-[6px] border border-[color:var(--color-border)] bg-card px-3.5 text-[12.5px] font-medium text-foreground transition-colors hover:border-[color:var(--border-strong)] hover:bg-[color:var(--color-row-hover)]">
               Done
             </button>
           )}

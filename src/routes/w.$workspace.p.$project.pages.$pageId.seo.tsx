@@ -245,7 +245,7 @@ function PageSeoEditor() {
                 {form.topics.map((t) => (
                   <li key={t.topic} className="flex items-center justify-between rounded border border-border bg-background px-3 py-1.5">
                     <span>{t.topic}</span>
-                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${t.covered ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`}>
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${t.covered ? "bg-status-success/15 text-status-success" : "bg-muted text-muted-foreground"}`}>
                       {t.covered ? "covered" : "missing"}
                     </span>
                   </li>
@@ -291,7 +291,7 @@ function PageSeoEditor() {
             <ul className="space-y-1.5 text-[12px]">
               {audit.checks.map((c) => (
                 <li key={c.id} className="flex items-start gap-2">
-                  <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${c.status === "pass" ? "bg-emerald-500" : c.status === "warn" ? "bg-amber-500" : "bg-red-500"}`} />
+                  <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${c.status === "pass" ? "bg-status-success" : c.status === "warn" ? "bg-status-warning" : "bg-status-error"}`} />
                   <div>
                     <div className="font-medium">{c.label}</div>
                     <div className="text-muted-foreground">{c.detail}</div>

@@ -64,14 +64,14 @@ function Roles() {
       <div className="flex-1 overflow-auto">
         <div className="mx-auto w-full max-w-[1200px] px-8 py-8">
           <header className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-border pb-6">
-            <div>
+            <div className="min-w-0 flex-1 basis-[360px]">
               <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 Workspace
               </div>
-              <h1 className="mt-1.5 text-[20px] font-semibold tracking-tight leading-none text-foreground">
+              <h1 className="mt-1.5 text-[28px] font-semibold leading-[1.1] tracking-tight text-foreground">
                 Roles & permissions
               </h1>
-              <p className="mt-1.5 text-[13px] text-muted-foreground">
+              <p className="mt-1.5 text-[14px] text-muted-foreground">
                 Built-in roles cover most teams. Create custom roles when you need finer control.
               </p>
             </div>
@@ -81,7 +81,7 @@ function Roles() {
             </Button>
           </header>
 
-          <div className="mb-6 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[12.5px] text-amber-700 dark:text-amber-300">
+          <div className="mb-6 flex items-start gap-2 rounded-[6px] border border-[color-mix(in_srgb,var(--status-warning)_30%,transparent)] bg-[color-mix(in_srgb,var(--status-warning)_6%,transparent)] px-3 py-2 text-[12.5px] text-[color:var(--status-warning)]">
             <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>
               Permissions are enforced in the UI only. Add sign-in to enforce them on the server.

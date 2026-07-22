@@ -13,8 +13,8 @@ export function MetricTile({ label, value, sublabel, icon, trend }: Props) {
   const trendTone = !trend
     ? ""
     : trend.positive
-      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
-      : "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300";
+      ? "bg-[color:var(--status-live-bg)] text-[color:var(--status-live-fg)]"
+      : "bg-[color-mix(in_srgb,var(--destructive)_12%,transparent)] text-[color:var(--destructive)]";
   return (
     <div className="bg-card px-6 py-5">
       <div className="flex items-center justify-between gap-2">
@@ -29,7 +29,7 @@ export function MetricTile({ label, value, sublabel, icon, trend }: Props) {
       {(sublabel || trend) && (
         <div className="mt-3 flex items-center gap-2 text-[12px] text-muted-foreground">
           {trend && (
-            <span className={`inline-flex h-[20px] items-center gap-0.5 rounded-full px-1.5 text-[11px] font-medium tabular-nums ${trendTone}`}>
+            <span className={`inline-flex h-[20px] items-center gap-0.5 rounded-[4px] px-1.5 text-[11px] font-medium tabular-nums ${trendTone}`}>
               {trend.positive ? "▲" : "▼"} {trend.value}
             </span>
           )}

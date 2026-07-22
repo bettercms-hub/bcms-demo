@@ -108,7 +108,7 @@ function Backups() {
         }
       />
 
-      <div className="mb-8 rounded-md border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-[12px] text-amber-600 dark:text-amber-400">
+      <div className="mb-8 rounded-md border border-status-warning/30 bg-status-warning/5 px-4 py-3 text-[12px] text-status-warning">
         <div className="flex items-start gap-2">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>

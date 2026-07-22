@@ -39,7 +39,7 @@ export function SettingsSubNav({ items, title }: Props) {
             <Link
               key={it.href}
               to={it.href}
-              className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
+              className={`shrink-0 whitespace-nowrap rounded-[6px] px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
                 active
                   ? "bg-[color:var(--row-selected)] text-foreground"
                   : "text-muted-foreground hover:bg-[color:var(--row-hover)] hover:text-foreground"
@@ -110,9 +110,9 @@ export function PageHeader({
             {eyebrow}
           </div>
         )}
-        <h1 className="truncate text-[22px] font-semibold tracking-tight text-foreground">{title}</h1>
+        <h1 className="truncate text-[28px] font-semibold leading-[1.1] tracking-tight text-foreground">{title}</h1>
         {description && (
-          <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">{description}</p>
+          <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-muted-foreground">{description}</p>
         )}
       </div>
       {action && <div className="shrink-0">{action}</div>}
@@ -125,8 +125,8 @@ export const SettingsHeader = PageHeader;
 
 export function ComingSoonCard({ label = "Coming soon" }: { label?: string }) {
   return (
-    <div className="rounded-md border border-dashed border-[color:var(--border-hairline)] bg-card px-6 py-8 text-center">
-      <div className="text-[13px] font-medium text-foreground">{label}</div>
+    <div className="rounded-xl border border-dashed border-[color:var(--border-hairline)] bg-card px-6 py-8 text-center">
+      <div className="text-[15px] font-semibold text-foreground">{label}</div>
       <p className="mx-auto mt-1 max-w-sm text-[13px] text-muted-foreground">
         The structure is in place. Functionality is coming soon.
       </p>
@@ -202,7 +202,7 @@ export function SettingsSection({
 }) {
   return (
     <section className="mb-6">
-      <div className="overflow-hidden rounded-lg border border-[color:var(--border-hairline)] bg-card">
+      <div className="overflow-hidden rounded-xl border border-[color:var(--border-hairline)] bg-card">
         {/* Header lives INSIDE the card so the title lines up with the content below it. */}
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-[color:var(--border-hairline)] px-5 py-3.5">
           <div className="min-w-0">
@@ -223,13 +223,13 @@ export function SettingsSection({
 export function StatusDot({ tone = "muted" }: { tone?: "success" | "warning" | "danger" | "info" | "muted" }) {
   const cls =
     tone === "success"
-      ? "bg-emerald-500"
+      ? "bg-[color:var(--status-live)]"
       : tone === "warning"
-      ? "bg-amber-500"
+      ? "bg-[color:var(--status-warning)]"
       : tone === "danger"
-      ? "bg-rose-500"
+      ? "bg-[color:var(--status-error)]"
       : tone === "info"
-      ? "bg-sky-500"
+      ? "bg-[color:var(--status-preview)]"
       : "bg-muted-foreground/50";
   return <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${cls}`} />;
 }
@@ -244,10 +244,10 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-md border border-dashed border-[color:var(--border-hairline)] bg-card px-6 py-10 text-center">
-      <div className="text-[13px] font-medium text-foreground">{title}</div>
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[color:var(--border-hairline)] bg-card px-6 py-10 text-center">
+      <div className="text-[15px] font-semibold text-foreground">{title}</div>
       {description && (
-        <p className="mx-auto mt-1 max-w-sm text-[12px] leading-relaxed text-muted-foreground">{description}</p>
+        <p className="mx-auto mt-1 max-w-sm text-[13px] leading-relaxed text-muted-foreground">{description}</p>
       )}
       {action && <div className="mt-4">{action}</div>}
     </div>

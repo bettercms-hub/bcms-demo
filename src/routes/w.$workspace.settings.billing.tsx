@@ -66,7 +66,7 @@ function BillingLayout() {
                 <WorkspacePlanBadge plan={ws.workspacePlan ?? "free"} />
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-3 text-[13px]">
-                <Badge className="rounded-md bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/20 dark:text-emerald-400">
+                <Badge variant="live">
                   <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-current" />
                   Active
                 </Badge>

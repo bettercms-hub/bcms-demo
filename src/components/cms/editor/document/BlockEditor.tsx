@@ -2703,7 +2703,7 @@ function ComponentPreview({ keyName, get, set, onOpenForm }: { keyName?: string;
             title="Change photo"
             onClick={onOpenForm}
             onMouseDown={(e) => e.stopPropagation()}
-            className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-pink-500 to-rose-500 text-[15px] font-semibold text-white"
+            className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-[#D54646] to-[#A93333] text-[15px] font-semibold text-white"
           >
             {get("avatar") ? <img src={get("avatar")} alt="" className="h-full w-full object-cover" /> : (title || "A").charAt(0)}
           </button>

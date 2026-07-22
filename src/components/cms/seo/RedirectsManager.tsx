@@ -93,7 +93,7 @@ export function RedirectsManager({
           <button
             type="button"
             onClick={() => setImportOpen(true)}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--card)] px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
+            className="inline-flex h-9 items-center gap-1.5 rounded-[6px] border border-[color:var(--color-border)] bg-[color:var(--card)] px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
           >
             <Upload className="h-3.5 w-3.5" /> Import
           </button>
@@ -101,7 +101,7 @@ export function RedirectsManager({
             type="button"
             onClick={exportCsv}
             disabled={rows.length === 0}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--card)] px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)] disabled:opacity-50"
+            className="inline-flex h-9 items-center gap-1.5 rounded-[6px] border border-[color:var(--color-border)] bg-[color:var(--card)] px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)] disabled:opacity-50"
           >
             <Download className="h-3.5 w-3.5" /> Export
           </button>
@@ -128,7 +128,7 @@ export function RedirectsManager({
             type="button"
             onClick={submit}
             disabled={!from || !to}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3.5 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] disabled:opacity-60"
+            className="inline-flex h-9 items-center gap-1.5 rounded-[6px] bg-primary px-3.5 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] disabled:opacity-60"
           >
             <Plus className="h-3.5 w-3.5" />
             Add
@@ -163,8 +163,8 @@ export function RedirectsManager({
                 <span
                   className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${
                     isPermanent(r.code)
-                      ? "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400"
-                      : "bg-amber-500/12 text-amber-600 dark:text-amber-400"
+                      ? "bg-status-success/12 text-status-success"
+                      : "bg-status-warning/12 text-status-warning"
                   }`}
                 >
                   {r.code} · {isPermanent(r.code) ? "Perm" : "Temp"}
@@ -174,7 +174,7 @@ export function RedirectsManager({
                 type="button"
                 onClick={() => remove(r.id)}
                 aria-label="Delete redirect"
-                className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-rose-500/12 hover:text-rose-400"
+                className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -222,7 +222,7 @@ function ImportModal({ onClose, onImport }: { onClose: () => void; onImport: (te
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4" onClick={onClose}>
       <div
-        className="w-full max-w-lg rounded-2xl border border-[color:var(--color-border)] bg-[color:var(--elevated-modal)] p-5 shadow-2xl"
+        className="w-full max-w-lg rounded-xl border border-[color:var(--color-border)] bg-[color:var(--elevated-modal)] p-5 shadow-[var(--shadow-3)]"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="mb-1 text-[15px] font-semibold text-foreground">Import redirects</h3>
@@ -241,7 +241,7 @@ function ImportModal({ onClose, onImport }: { onClose: () => void; onImport: (te
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-9 items-center rounded-lg px-3.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
+            className="inline-flex h-9 items-center rounded-[6px] px-3.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
           >
             Cancel
           </button>
@@ -249,7 +249,7 @@ function ImportModal({ onClose, onImport }: { onClose: () => void; onImport: (te
             type="button"
             onClick={() => onImport(text)}
             disabled={!text.trim()}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] disabled:opacity-60"
+            className="inline-flex h-9 items-center gap-1.5 rounded-[6px] bg-primary px-4 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] disabled:opacity-60"
           >
             <Upload className="h-3.5 w-3.5" /> Import
           </button>

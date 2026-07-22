@@ -312,8 +312,8 @@ function ComponentsHub() {
 function Badge({ tone, children }: { tone: "code" | "draft" | "published" | "archived"; children: React.ReactNode }) {
   const cls = {
     code: "bg-[color:var(--s2)] text-muted-foreground",
-    draft: "bg-amber-500/10 text-amber-600",
-    published: "bg-emerald-500/10 text-emerald-600",
+    draft: "bg-[var(--status-draft-bg)] text-[var(--status-draft-fg)]",
+    published: "bg-[var(--status-live-bg)] text-[var(--status-live-fg)]",
     archived: "bg-[color:var(--s2)] text-muted-foreground",
   }[tone];
   return <span className={cn("rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold", cls)}>{children}</span>;
@@ -321,7 +321,7 @@ function Badge({ tone, children }: { tone: "code" | "draft" | "published" | "arc
 
 function ComponentCard({ def, usage, badge, onOpen }: { def: SectionDef; usage: number; badge: React.ReactNode; onOpen: () => void }) {
   return (
-    <button type="button" onClick={onOpen} className="group overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-card text-left transition-all hover:border-[color:var(--primary)] hover:shadow-[0_8px_30px_-12px_rgba(239,3,127,0.25)]">
+    <button type="button" onClick={onOpen} className="group overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-card text-left transition-all hover:border-[color:var(--primary)] hover:shadow-[0_8px_30px_-12px_rgba(213,70,70,0.25)]">
       <SectionPreview def={def} variant={def.variants[0]?.id ?? "default"} />
       <div className="border-t border-[color:var(--border-hairline)] px-3 py-2.5">
         <div className="flex items-center gap-2">
@@ -635,7 +635,7 @@ function BuilderOverlay({ projectId, existing, onClose, onSaved }: { projectId: 
                         </select>
                       ) : f.type === "image" ? (
                         <div className="flex items-center gap-2 text-[11.5px] text-muted-foreground">
-                          <span className="h-6 w-9 rounded border border-[color:var(--color-border)] bg-gradient-to-br from-pink-100 via-white to-pink-50" />
+                          <span className="h-6 w-9 rounded border border-[color:var(--color-border)] bg-gradient-to-br from-[color-mix(in_srgb,var(--primary)_14%,#fff)] via-white to-[color-mix(in_srgb,var(--primary)_5%,#fff)]" />
                           Placeholder art now, the media library in the editor.
                         </div>
                       ) : f.type === "longtext" ? (

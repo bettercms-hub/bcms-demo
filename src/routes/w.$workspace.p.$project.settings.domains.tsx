@@ -19,9 +19,9 @@ export const Route = createFileRoute("/w/$workspace/p/$project/settings/domains"
 });
 
 function sslMeta(status: Domain["sslStatus"]) {
-  if (status === "issued") return { label: "SSL issued", cls: "text-emerald-500" };
-  if (status === "pending") return { label: "SSL pending", cls: "text-amber-500" };
-  if (status === "failed") return { label: "SSL failed", cls: "text-rose-500" };
+  if (status === "issued") return { label: "SSL issued", cls: "text-status-success" };
+  if (status === "pending") return { label: "SSL pending", cls: "text-status-warning" };
+  if (status === "failed") return { label: "SSL failed", cls: "text-destructive" };
   return { label: "No SSL", cls: "text-muted-foreground" };
 }
 
@@ -169,7 +169,7 @@ function Domains() {
             <li key={host} className="flex items-center gap-3 px-4 py-3">
               <Globe className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
               <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-foreground">{host}</span>
-              <span className="inline-flex items-center gap-1.5 text-[12px] text-emerald-500">
+              <span className="inline-flex items-center gap-1.5 text-[12px] text-status-success">
                 <Check className="h-3.5 w-3.5" /> Live
               </span>
               <Button asChild variant="ghost" size="icon" className="h-7 w-7" title="Open">

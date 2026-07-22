@@ -172,7 +172,7 @@ function DeliveryPage() {
               curl -H "Accept: text/markdown" https://{domain}/pricing
             </code>
           </div>
-          <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600">
+          <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-status-success">
             <Check className="h-3 w-3" /> Always on
           </span>
         </div>

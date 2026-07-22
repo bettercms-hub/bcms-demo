@@ -101,11 +101,11 @@ export function PageShell({
                 {eyebrow}
               </div>
             )}
-            <h1 className="mt-2 text-[22px] font-semibold leading-[1.1] tracking-tight text-foreground sm:text-[26px]">
+            <h1 className="mt-2 text-[24px] font-semibold leading-[1.1] tracking-tight text-foreground sm:text-[28px]">
               {title}
             </h1>
             {description && (
-              <p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-muted-foreground">
+              <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-muted-foreground">
                 {description}
               </p>
             )}

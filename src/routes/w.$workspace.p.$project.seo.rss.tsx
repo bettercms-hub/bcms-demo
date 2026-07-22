@@ -280,7 +280,7 @@ function CopyBtn({ text, label }: { text: string; label?: boolean }) {
       className="inline-flex items-center gap-1 text-[11.5px] text-muted-foreground transition-colors hover:text-foreground"
       aria-label="Copy"
     >
-      {done ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+      {done ? <Check className="h-3.5 w-3.5 text-status-success" /> : <Copy className="h-3.5 w-3.5" />}
       {label && (done ? "Copied" : "Copy")}
     </button>
   );

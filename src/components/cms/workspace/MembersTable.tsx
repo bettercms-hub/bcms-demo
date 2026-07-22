@@ -61,9 +61,9 @@ function initials(name: string) {
 }
 
 const STATUS_TONE: Record<string, string> = {
-  active: "bg-emerald-500/15 text-emerald-600",
-  invited: "bg-amber-500/15 text-amber-600",
-  suspended: "bg-rose-500/15 text-rose-600",
+  active: "bg-[color:var(--status-live-bg)] text-[color:var(--status-live-fg)]",
+  invited: "bg-[color-mix(in_srgb,var(--status-warning)_14%,transparent)] text-[color:var(--status-warning)]",
+  suspended: "bg-[color-mix(in_srgb,var(--destructive)_12%,transparent)] text-[color:var(--destructive)]",
 };
 
 export function MembersTable({ workspaceId }: Props) {

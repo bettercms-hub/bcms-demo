@@ -147,7 +147,7 @@ function Usage() {
                 ]);
                 toast.success("Usage summary exported");
               }}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-transparent px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
+              className="inline-flex h-8 items-center gap-1.5 rounded-[6px] border border-border bg-transparent px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
             >
               <Download className="h-3.5 w-3.5" /> Export
             </button>
@@ -206,7 +206,7 @@ function MetricCard({
   const Icon = card.icon;
   const pct = card.limit != null ? Math.min(100, (card.used / Math.max(1, card.limit)) * 100) : 0;
   const state = card.limit != null ? usageState(card.used, card.limit) : "healthy";
-  const bar = state === "approaching" ? "bg-amber-500" : "bg-sky-500";
+  const bar = state === "approaching" ? "bg-status-warning" : "bg-status-preview";
   return (
     <button
       type="button"
@@ -541,10 +541,10 @@ function ApiDetail({ slug, total, days }: { slug: string; total: number; days: n
 /* ─────────────────────────── AI credits ───────────────────────────────── */
 
 const TIER_CHIP: Record<CreditEvent["tier"], string> = {
-  Lite: "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-400",
-  Balanced: "border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400",
+  Lite: "border-[color:var(--border)] bg-[color:var(--s2)] text-muted-foreground",
+  Balanced: "border-status-preview/30 bg-status-preview/10 text-status-preview",
   Max: "border-violet-500/30 bg-violet-500/10 text-violet-600 dark:text-violet-400",
-  Image: "border-amber-500/35 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  Image: "border-status-warning/35 bg-status-warning/10 text-status-warning",
 };
 
 function AiDetail({ events, used, slug }: { events: CreditEvent[]; used: number; slug: string }) {
@@ -609,7 +609,7 @@ function AiDetail({ events, used, slug }: { events: CreditEvent[]; used: number;
           <button
             type="button"
             onClick={() => setShown((s) => s + 8)}
-            className="inline-flex h-8 items-center rounded-lg border border-border bg-transparent px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
+            className="inline-flex h-8 items-center rounded-[6px] border border-border bg-transparent px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
           >
             Load more
           </button>

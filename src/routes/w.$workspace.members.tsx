@@ -157,9 +157,9 @@ function Members() {
           }
         >
           {/* The headline moment: what is free stays free. */}
-          <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] px-6 py-5">
+          <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[color-mix(in_srgb,var(--status-success)_25%,transparent)] bg-[color-mix(in_srgb,var(--status-success)_6%,transparent)] px-6 py-5">
             <div className="flex items-start gap-3.5">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color:var(--status-live-bg)] text-[color:var(--status-live-fg)]">
                 <Icon icon={Gift} size="lg" />
               </span>
               <div className="min-w-0">
@@ -171,7 +171,7 @@ function Members() {
                 </p>
               </div>
             </div>
-            <div className="shrink-0 rounded-full bg-emerald-500/12 px-3.5 py-1.5 text-[12.5px] font-medium text-emerald-700 dark:text-emerald-300">
+            <div className="shrink-0 rounded-[4px] bg-[color:var(--status-live-bg)] px-2.5 py-1.5 text-[12.5px] font-medium text-[color:var(--status-live-fg)]">
               {plural(counts.reviewer, "reviewer")} · {plural(counts.viewer, "viewer")} on free seats
             </div>
           </div>
@@ -192,7 +192,7 @@ function Members() {
                   sublabel={
                     <span className="flex items-center gap-2">
                       Custom seats under your agreement
-                      <Badge className="rounded-full bg-indigo-500/10 px-2 py-0 text-[11px] font-medium text-indigo-600 hover:bg-indigo-500/10 dark:text-indigo-400">
+                      <Badge variant="preview" className="text-[11px]">
                         Custom roles
                       </Badge>
                     </span>
@@ -283,9 +283,7 @@ function Members() {
                         {inv.role.replace(/_/g, " ")}
                       </div>
                     </div>
-                    <span className="shrink-0 rounded-full bg-[color:var(--surface-2)] px-2.5 py-1 text-[11.5px] font-medium text-muted-foreground">
-                      Pending
-                    </span>
+                    <Badge variant="draft" className="shrink-0">Pending</Badge>
                   </div>
                 ))}
               </div>
@@ -360,24 +358,20 @@ function MemberRow({
         <div className="flex items-center gap-2">
           <span className="truncate text-[13px] font-medium text-foreground">{member.name}</span>
           {member.status === "invited" && (
-            <span className="shrink-0 rounded-full bg-[color:var(--surface-2)] px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-              Invited
-            </span>
+            <Badge variant="draft" className="shrink-0 text-[11px]">Invited</Badge>
           )}
           {member.guestOf && (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-indigo-500/10 px-2 py-0.5 text-[11px] font-medium text-indigo-600 dark:text-indigo-400">
+            <Badge variant="preview" className="shrink-0 text-[11px]">
               <Icon icon={UserPlus} size="xs" />
               Guest in {member.guestOf}
-            </span>
+            </Badge>
           )}
         </div>
         <div className="mt-0.5 truncate text-[12px] text-muted-foreground">{member.email}</div>
       </div>
 
       {isOwner ? (
-        <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[11.5px] font-medium text-primary">
-          Owner · always included
-        </span>
+        <Badge variant="default" className="shrink-0">Owner · always included</Badge>
       ) : (
         <div className="flex shrink-0 items-center gap-2">
           <Select

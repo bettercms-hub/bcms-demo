@@ -41,7 +41,7 @@ function EmailPage() {
             <div className="truncate text-[13px] font-medium text-foreground">{current}</div>
             <div className="text-[11.5px] text-muted-foreground">Primary sign-in address</div>
           </div>
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[color:color-mix(in_oklab,var(--emerald,#10B981)_14%,transparent)] px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-[4px] bg-[var(--status-live-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--status-live-fg)]">
             <BadgeCheck className="h-3.5 w-3.5" /> Verified
           </span>
         </div>
