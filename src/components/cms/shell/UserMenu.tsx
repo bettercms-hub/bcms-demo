@@ -21,7 +21,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useProfile } from "@/lib/workspace/account-store";
 
-export function UserMenu() {
+interface UserMenuProps {
+  /**
+   * "row" is the full-width name+email row (drawer footers); "avatar" is the
+   * compact 28px avatar trigger used in the workspace card's top row.
+   */
+  variant?: "row" | "avatar";
+}
+
+export function UserMenu({ variant = "row" }: UserMenuProps) {
   const [appearance, setAppearance] = useAppearance();
   const { user } = useSession();
   const profile = useProfile();
@@ -52,37 +60,66 @@ export function UserMenu() {
     navigate({ to: "/auth", replace: true });
   }
 
+  const avatar = profile.avatarUrl ? (
+    <img src={profile.avatarUrl} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" />
+  ) : (
+    <div
+      className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10.5px] font-semibold text-white"
+      style={{ backgroundColor: profile.avatarColor || "var(--color-elevated)" }}
+    >
+      {initials}
+    </div>
+  );
+
   return (
-    <div className="border-t border-border bg-sidebar p-1.5">
+    <div className={variant === "row" ? "border-t border-border bg-sidebar p-1.5" : undefined}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            className="group flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-[color:var(--color-row-hover)]"
-            aria-label="Open user menu"
-          >
-            {profile.avatarUrl ? (
-              <img src={profile.avatarUrl} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" />
-            ) : (
-              <div
-                className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10.5px] font-semibold text-white"
-                style={{ backgroundColor: profile.avatarColor || "var(--color-elevated)" }}
-              >
-                {initials}
+          {variant === "avatar" ? (
+            <button
+              type="button"
+              aria-label="Open user menu"
+              className="group grid h-8 w-8 shrink-0 place-items-center rounded-full transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {avatar}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="group flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-[color:var(--color-row-hover)]"
+              aria-label="Open user menu"
+            >
+              {avatar}
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[12.5px] font-medium leading-tight text-foreground">
+                  {fullName}
+                </div>
+                <div className="truncate text-[11px] text-muted-foreground">
+                  {email}
+                </div>
               </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[12.5px] font-medium leading-tight text-foreground">
-                {fullName}
-              </div>
-              <div className="truncate text-[11px] text-muted-foreground">
-                {email}
-              </div>
-            </div>
-            <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground/80 transition-colors group-hover:text-foreground group-data-[state=open]:text-foreground" />
-          </button>
+              <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground/80 transition-colors group-hover:text-foreground group-data-[state=open]:text-foreground" />
+            </button>
+          )}
         </DropdownMenuTrigger>
-        <DropdownMenuContent side="top" align="start" sideOffset={6} className="w-[240px] p-1">
+        <DropdownMenuContent
+          side={variant === "avatar" ? "bottom" : "top"}
+          align={variant === "avatar" ? "end" : "start"}
+          sideOffset={6}
+          className="w-[240px] p-1"
+        >
+          {variant === "avatar" && (
+            <>
+              <div className="flex items-center gap-2.5 px-2 pb-2 pt-1.5">
+                {avatar}
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[12.5px] font-medium leading-tight text-foreground">{fullName}</div>
+                  <div className="truncate text-[11px] text-muted-foreground">{email}</div>
+                </div>
+              </div>
+              <DropdownMenuSeparator />
+            </>
+          )}
           <DropdownMenuLabel className="px-2 pb-1 pt-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
             Account
           </DropdownMenuLabel>

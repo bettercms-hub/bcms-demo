@@ -55,7 +55,7 @@ export function AddDomainDialog({
 
   return createPortal(
     <div className="fixed inset-0 z-[95]">
-      <div className="absolute inset-0 bg-slate-900/45" onMouseDown={onClose} aria-hidden />
+      <div className="absolute inset-0 bg-[rgba(24,18,16,0.4)]" onMouseDown={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
@@ -104,7 +104,7 @@ export function AddDomainDialog({
               />
             </div>
             {dupe ? (
-              <div className="mt-1 text-[11px] text-rose-500">{clean} is already connected.</div>
+              <div className="mt-1 text-[11px] text-[color:var(--destructive)]">{clean} is already connected.</div>
             ) : (
               <div className="mt-1 text-[11px] text-muted-foreground">Enter an apex domain or subdomain. You will add DNS records next.</div>
             )}

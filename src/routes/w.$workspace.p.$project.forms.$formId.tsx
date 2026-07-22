@@ -61,7 +61,7 @@ function FormError({ error, reset }: { error: Error; reset: () => void }) {
       <div className="flex items-center gap-2">
         <Button
           size="sm"
-          variant="secondary"
+          variant="outline"
           onClick={() => {
             router.invalidate();
             reset();

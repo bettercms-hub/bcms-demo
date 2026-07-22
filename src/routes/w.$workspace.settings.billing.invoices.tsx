@@ -108,8 +108,8 @@ function InvoicesTab() {
         <div className="grid h-12 w-12 place-items-center rounded-xl bg-[color:color-mix(in_oklab,var(--primary)_12%,transparent)] text-primary">
           <FileText className="h-5 w-5" />
         </div>
-        <h3 className="mt-4 text-[14px] font-semibold text-foreground">No invoices yet</h3>
-        <p className="mt-1 max-w-sm text-[12.5px] text-muted-foreground">
+        <h3 className="mt-4 text-[15px] font-semibold text-foreground">No invoices yet</h3>
+        <p className="mt-1 max-w-sm text-[13px] text-muted-foreground">
           This workspace is on the free plan, so there is nothing to bill.
         </p>
       </div>
@@ -160,8 +160,8 @@ function InvoicesTab() {
           <div className="grid h-12 w-12 place-items-center rounded-xl bg-[color:color-mix(in_oklab,var(--primary)_12%,transparent)] text-primary">
             <FileText className="h-5 w-5" />
           </div>
-          <h3 className="mt-4 text-[14px] font-semibold text-foreground">No invoices match</h3>
-          <p className="mt-1 max-w-sm text-[12.5px] text-muted-foreground">
+          <h3 className="mt-4 text-[15px] font-semibold text-foreground">No invoices match</h3>
+          <p className="mt-1 max-w-sm text-[13px] text-muted-foreground">
             Try a different filter or clear your search.
           </p>
         </div>
@@ -171,23 +171,23 @@ function InvoicesTab() {
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-b border-border bg-[color:var(--surface)] text-left">
-                  <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Invoice</th>
-                  <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Period</th>
-                  <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Amount</th>
-                  <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Status</th>
+                  <th className="h-10 px-5 text-[12.5px] font-medium text-muted-foreground">Invoice</th>
+                  <th className="h-10 px-5 text-[12.5px] font-medium text-muted-foreground">Period</th>
+                  <th className="h-10 px-5 text-[12.5px] font-medium text-muted-foreground">Amount</th>
+                  <th className="h-10 px-5 text-[12.5px] font-medium text-muted-foreground">Status</th>
                   <th className="px-5 py-3"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {filtered.map((r) => (
                   <tr key={r.id} className="hover:bg-[color:var(--row-hover)]">
-                    <td className="px-5 py-3 font-mono text-[12px]">{r.number}</td>
-                    <td className="px-5 py-3 text-muted-foreground">
+                    <td className="px-5 py-3.5 font-mono text-[12px]">{r.number}</td>
+                    <td className="px-5 py-3.5 text-muted-foreground">
                       {fmtDate(r.periodStart)} to {fmtDate(r.periodEnd)}
                     </td>
-                    <td className="px-5 py-3 font-medium tabular-nums">{fmtUSD(r.amount)}</td>
-                    <td className="px-5 py-3"><InvoiceStatusBadge status={r.status} /></td>
-                    <td className="px-5 py-3 text-right">
+                    <td className="px-5 py-3.5 font-medium tabular-nums">{fmtUSD(r.amount)}</td>
+                    <td className="px-5 py-3.5"><InvoiceStatusBadge status={r.status} /></td>
+                    <td className="px-5 py-3.5 text-right">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -217,8 +217,8 @@ function ProcurementEmptyState({ ws }: { ws: Workspace }) {
       <div className="grid h-12 w-12 place-items-center rounded-xl bg-[color:color-mix(in_oklab,var(--primary)_12%,transparent)] text-primary">
         <FileText className="h-5 w-5" />
       </div>
-      <h3 className="mt-4 text-[14px] font-semibold text-foreground">Invoices run through your procurement process</h3>
-      <p className="mt-1 max-w-md text-[12.5px] text-muted-foreground">
+      <h3 className="mt-4 text-[15px] font-semibold text-foreground">Invoices run through your procurement process</h3>
+      <p className="mt-1 max-w-md text-[13px] text-muted-foreground">
         {managed?.contactName ?? "Your account manager"} sends them against your PO. Nothing shows here.
       </p>
       {managed?.contactEmail && (

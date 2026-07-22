@@ -169,7 +169,7 @@ function PageCompareRow({ row, canEdit, onRestore }: { row: Row; canEdit: boolea
         <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{row.label}</span>
         <span className="text-[11px] text-muted-foreground/70">{row.section}</span>
         {row.added && <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">Added</span>}
-        {row.removed && <span className="rounded bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-medium text-rose-600 dark:text-rose-400">Removed</span>}
+        {row.removed && <span className="rounded bg-[color-mix(in_srgb,var(--status-error)_14%,transparent)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--status-error)]">Removed</span>}
         {row.changed && <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">Changed</span>}
         {canEdit && (
           <button
@@ -187,7 +187,7 @@ function PageCompareRow({ row, canEdit, onRestore }: { row: Row; canEdit: boolea
             <span className="italic text-muted-foreground/60">Empty</span>
           ) : diff ? (
             diff.before.map((p, i) => (
-              <span key={i} className={p.changed ? "rounded bg-rose-500/15 px-0.5 text-rose-600 line-through decoration-rose-500/50 dark:text-rose-400" : undefined}>
+              <span key={i} className={p.changed ? "rounded bg-[color-mix(in_srgb,var(--status-error)_14%,transparent)] px-0.5 text-[var(--status-error)] line-through decoration-[color-mix(in_srgb,var(--status-error)_50%,transparent)]" : undefined}>
                 {p.text}
               </span>
             ))

@@ -153,16 +153,16 @@ function UsageMeter({
   const barTone = custom
     ? "bg-muted-foreground/20"
     : state === "over"
-      ? "bg-sky-500"
+      ? "bg-[color:var(--status-preview)]"
       : state === "approaching"
-        ? "bg-amber-500"
-        : "bg-emerald-500";
+        ? "bg-[color:var(--status-warning)]"
+        : "bg-[color:var(--status-success)]";
   const note = custom ? "" : USAGE_STATE_NOTE[state];
   const noteTone =
     state === "over"
-      ? "text-sky-600 dark:text-sky-400"
+      ? "text-[color:var(--status-preview)]"
       : state === "approaching"
-        ? "text-amber-600 dark:text-amber-400"
+        ? "text-[color:var(--status-warning)]"
         : "text-muted-foreground";
 
   return (

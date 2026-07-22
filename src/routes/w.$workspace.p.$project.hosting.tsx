@@ -277,7 +277,7 @@ function HostingPage() {
                   <code className="w-64 shrink-0 truncate font-mono text-[12px] text-foreground">{v.name}</code>
                   <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-muted-foreground">{v.value}</span>
                   {v.secret && (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10.5px] font-medium text-amber-600 dark:text-amber-400">
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-status-warning/10 px-1.5 py-0.5 text-[10.5px] font-medium text-status-warning">
                       <Lock className="h-3 w-3" /> Server only
                     </span>
                   )}
@@ -392,7 +392,7 @@ function HostingPage() {
                     </div>
                   ))}
                 {logDep.status === "failed" && (
-                  <div className="mt-1 text-rose-400">Error: build failed. Missing module "search-client". Fix the import and push again.</div>
+                  <div className="mt-1 text-[#f85149]">Error: build failed. Missing module "search-client". Fix the import and push again.</div>
                 )}
                 {logDep.id === simActiveId.current && logDep.status !== "live" && logDep.status !== "failed" && (
                   <div className="mt-1 animate-pulse text-[#8b949e]">…</div>
@@ -434,10 +434,10 @@ function HostingPage() {
                   <li
                     key={line}
                     className={`flex items-start gap-2 text-[12.5px] leading-relaxed ${
-                      i === arr.length - 1 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                      i === arr.length - 1 ? "text-status-success" : "text-muted-foreground"
                     }`}
                   >
-                    <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                    <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-status-success" />
                     {line}
                   </li>
                 ))}
@@ -446,7 +446,7 @@ function HostingPage() {
                 <button
                   type="button"
                   onClick={() => setSwitchTo(null)}
-                  className="inline-flex h-9 items-center rounded-lg px-3.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
+                  className="inline-flex h-9 items-center rounded-[6px] px-3.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
                 >
                   Cancel
                 </button>
@@ -477,7 +477,7 @@ function HostingPage() {
                     }
                     setSwitchTo(null);
                   }}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-[6px] bg-primary px-4 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
                 >
                   {switchTo === "bettercms" ? "Connect and switch" : "Switch to external"}
                 </button>
@@ -523,12 +523,12 @@ function ModeCard({
         <Icon className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground"}`} />
         <span className="text-[13.5px] font-semibold text-foreground">{title}</span>
         {recommended && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10.5px] font-semibold text-emerald-600 dark:text-emerald-400">
+          <span className="inline-flex items-center gap-1 rounded-[4px] bg-[var(--status-live-bg)] px-2 py-0.5 text-[10.5px] font-semibold text-[var(--status-live-fg)]">
             <Sparkles className="h-3 w-3" /> Recommended
           </span>
         )}
         {active && (
-          <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10.5px] font-semibold text-primary">
+          <span className="ml-auto inline-flex items-center gap-1 rounded-[4px] bg-primary/10 px-2 py-0.5 text-[10.5px] font-semibold text-primary">
             <Check className="h-3 w-3" /> Current
           </span>
         )}
@@ -537,7 +537,7 @@ function ModeCard({
       <ul className="mt-auto space-y-1">
         {points.map((p) => (
           <li key={p} className="flex items-start gap-1.5 text-[11.5px] text-muted-foreground">
-            <Check className="mt-0.5 h-3 w-3 shrink-0 text-emerald-500" />
+            <Check className="mt-0.5 h-3 w-3 shrink-0 text-status-success" />
             {p}
           </li>
         ))}
@@ -557,7 +557,7 @@ function RepoCard({ hosting, onSave }: { hosting: FrontendHosting; onSave: (h: F
         <span className="inline-flex items-center gap-1 rounded-md bg-[color:var(--s2)] px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
           <GitBranch className="h-3 w-3" /> {draft.branch}
         </span>
-        <span className="inline-flex items-center rounded-md border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[10.5px] font-semibold text-sky-600 dark:text-sky-400">
+        <span className="inline-flex items-center rounded-md border border-status-preview/30 bg-status-preview/10 px-1.5 py-0.5 text-[10.5px] font-semibold text-status-preview">
           Next.js · auto detected
         </span>
         <div className="ml-auto flex items-center gap-2">
@@ -617,14 +617,14 @@ function EnvRow({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-3 border-b border-[color:var(--border-hairline)] px-5 py-3.5 last:border-b-0 first:border-b">
-      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${live ? "bg-emerald-400" : "bg-[color:var(--s4)]"}`} />
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${live ? "bg-status-success" : "bg-[color:var(--s4)]"}`} />
       <span className="w-24 shrink-0 text-[13px] font-medium text-foreground">{label}</span>
       <div className="min-w-0 flex-1">
         <div className="truncate font-mono text-[12.5px] text-foreground">{url}</div>
         <div className="truncate text-[11.5px] text-muted-foreground">{detail}</div>
       </div>
       {locked ? (
-        <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10.5px] font-medium text-amber-600 dark:text-amber-400">
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-status-warning/30 bg-status-warning/10 px-1.5 py-0.5 text-[10.5px] font-medium text-status-warning">
           <Lock className="h-3 w-3" /> Members only
         </span>
       ) : (

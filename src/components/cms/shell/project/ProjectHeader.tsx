@@ -57,20 +57,15 @@ export function ProjectHeader({ wsSlug, projectSlug, pathname, scope, view }: Pr
   const showStatusPill = inEditor && status.page && scope !== "collections";
 
   return (
-    <div className="flex h-12 shrink-0 items-center border-b border-border bg-[color:var(--topbar)] pl-1 pr-3">
-      {/* Tabs */}
-      <div className="min-w-0 shrink">
-        <ProjectNav
-          wsSlug={wsSlug}
-          projectSlug={projectSlug}
-          pathname={pathname}
-          scope={scope}
-          view={view}
-        />
-      </div>
-
-      {/* Spacer */}
-      <div className="flex-1" />
+    <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-[color:var(--topbar)] pl-1 pr-3">
+      {/* Tabs — centered in the strip; extras fold into the +N chip */}
+      <ProjectNav
+        wsSlug={wsSlug}
+        projectSlug={projectSlug}
+        pathname={pathname}
+        scope={scope}
+        view={view}
+      />
 
       {/* Actions */}
       <div className="flex shrink-0 items-center gap-1">

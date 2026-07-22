@@ -10,10 +10,10 @@ export function ScoreGauge({ value, label, size = 120 }: Props) {
   const offset = circumference - (value / 100) * circumference;
   const tone =
     value >= 85
-      ? "text-emerald-500"
+      ? "text-status-success"
       : value >= 60
-        ? "text-amber-500"
-        : "text-red-500";
+        ? "text-status-warning"
+        : "text-status-error";
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="relative" style={{ width: size, height: size }}>

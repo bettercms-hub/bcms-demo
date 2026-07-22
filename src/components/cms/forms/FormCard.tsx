@@ -1,4 +1,5 @@
 import { MoreHorizontal, Copy, Inbox, Code2, Trash2, Pencil } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -18,10 +19,10 @@ interface Props {
   onDelete: () => void;
 }
 
-const STATUS_STYLE: Record<FormSummary["status"], string> = {
-  draft: "bg-muted text-muted-foreground",
-  published: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  archived: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+const STATUS_VARIANT: Record<FormSummary["status"], "draft" | "live" | "archived"> = {
+  draft: "draft",
+  published: "live",
+  archived: "archived",
 };
 
 export function FormCard({
@@ -72,9 +73,9 @@ export function FormCard({
       </div>
 
       <div className="mt-4 flex items-center gap-2">
-        <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider ${STATUS_STYLE[form.status]}`}>
+        <Badge variant={STATUS_VARIANT[form.status]} className="capitalize">
           {form.status}
-        </span>
+        </Badge>
         <span className="text-xs text-muted-foreground">·</span>
         <span className="text-xs text-muted-foreground">
           {form.submissionCount} {form.submissionCount === 1 ? "submission" : "submissions"}

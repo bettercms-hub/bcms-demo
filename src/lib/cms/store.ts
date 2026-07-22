@@ -391,6 +391,15 @@ export function getCMSState(): State {
   return state;
 }
 
+/**
+ * Slug of the first real workspace in the store — the default landing spot
+ * for fresh sessions. Resolves against hydrated state (including persisted
+ * slug renames) so entry redirects never point at a stale hardcoded slug.
+ */
+export function defaultWorkspaceSlug(): string {
+  return state.workspaces[0]?.slug ?? "flowtrix";
+}
+
 function shallowEqual(a: unknown, b: unknown): boolean {
   if (Object.is(a, b)) return true;
   if (Array.isArray(a) && Array.isArray(b)) {
@@ -2127,14 +2136,14 @@ export const notificationActions = {
 
 /** Default stages every project starts with. Approved gates publishing. */
 export const DEFAULT_WORKFLOW_STAGES: WorkflowStage[] = [
-  { id: "wfs_draft", name: "Draft", color: "#64748B" },
+  { id: "wfs_draft", name: "Draft", color: "#5D5D5D" },
   { id: "wfs_review", name: "In review", color: "#D97706" },
   { id: "wfs_changes", name: "Changes requested", color: "#E11D48" },
   { id: "wfs_approved", name: "Approved", color: "#4F46E5", publishGate: true },
 ];
 
 /** Palette for custom stages: distinguishable and dark-mode safe. */
-export const WORKFLOW_STAGE_COLORS = ["#64748B", "#D97706", "#E11D48", "#4F46E5", "#0EA5E9", "#10B981", "#8B5CF6", "#14B8A6"];
+export const WORKFLOW_STAGE_COLORS = ["#5D5D5D", "#D97706", "#E11D48", "#4F46E5", "#0EA5E9", "#10B981", "#8B5CF6", "#14B8A6"];
 
 export function getWorkflow(projectId: string): WorkflowStage[] {
   return state.workflows.find((w) => w.projectId === projectId)?.stages ?? DEFAULT_WORKFLOW_STAGES;

@@ -175,14 +175,15 @@ export function scanIssues(pages: Page[]): SeoIssue[] {
 }
 
 export function severityColor(s: Severity): string {
+  // V2 status tokens (dark-safe via the .dark token block).
   switch (s) {
     case "critical":
-      return "text-red-600 bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900/50 dark:text-red-400";
+      return "text-destructive bg-destructive/12 border-destructive/30";
     case "high":
-      return "text-orange-600 bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-900/50 dark:text-orange-400";
+      return "text-status-warning bg-status-warning/15 border-status-warning/35";
     case "medium":
-      return "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/50 dark:text-amber-400";
+      return "text-status-warning bg-status-warning/8 border-status-warning/25";
     case "low":
-      return "text-sky-600 bg-sky-50 border-sky-200 dark:bg-sky-950/30 dark:border-sky-900/50 dark:text-sky-400";
+      return "text-status-preview bg-status-preview/10 border-status-preview/30";
   }
 }

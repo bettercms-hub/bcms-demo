@@ -73,13 +73,13 @@ function ScoreCard({
       ? "text-emerald-600 dark:text-emerald-400"
       : tone === "warn"
         ? "text-amber-600 dark:text-amber-400"
-        : "text-rose-600 dark:text-rose-400";
+        : "text-[var(--status-error)]";
   const ringColor =
     tone === "good"
       ? "stroke-emerald-500"
       : tone === "warn"
         ? "stroke-amber-500"
-        : "stroke-rose-500";
+        : "stroke-[var(--status-error)]";
   const r = 26;
   const c = 2 * Math.PI * r;
   const dash = (score / 100) * c;
@@ -114,7 +114,7 @@ function ScoreCard({
                 ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
                 : tone === "warn"
                   ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
-                  : "bg-rose-500/15 text-rose-700 dark:text-rose-300"
+                  : "bg-[color-mix(in_srgb,var(--status-error)_14%,transparent)] text-[var(--status-error)]"
             }`}
           >
             {tone === "good" ? "Good" : tone === "warn" ? "Needs work" : "Poor"}
@@ -144,7 +144,7 @@ function ChecksList({ checks }: { checks: SeoCheck[] }) {
               ? "bg-emerald-500"
               : c.status === "warn"
                 ? "bg-amber-500"
-                : "bg-rose-500";
+                : "bg-[var(--status-error)]";
           return (
             <li
               key={c.id}

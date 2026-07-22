@@ -123,7 +123,7 @@ export function DataTable<T>({
           <span>{selected.length} selected</span>
           <div className="flex items-center gap-1.5">
             {bulkActions?.(selected, () => setSelected([])) ?? (
-              <Button variant="ghost" size="sm" className="h-7 gap-1 text-[12px] text-rose-500">
+              <Button variant="ghost" size="sm" className="h-7 gap-1 text-[12px] text-destructive">
                 <Trash2 className="h-3 w-3" /> Delete
               </Button>
             )}

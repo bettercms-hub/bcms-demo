@@ -1272,7 +1272,7 @@ function MediaToolbar({
   return (
     <div className="sticky top-0 z-20 border-b border-[color:var(--border-hairline)] bg-background">
       <div className="flex h-14 items-center gap-2 px-6">
-        {/* Search — flex-1, transparent → fills on focus, pink ring */}
+        {/* Search — flex-1, transparent → fills on focus, coral focus */}
         <div className="relative min-w-0 flex-1">
           <Search
             className={`pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 transition-colors duration-120 ${
@@ -1287,7 +1287,7 @@ function MediaToolbar({
             onBlur={() => setFocused(false)}
             placeholder="Search assets, tags, alt text…   /"
             aria-label="Search media library"
-            className="h-10 w-full rounded-[10px] border border-border bg-transparent pl-9 pr-9 text-[13px] text-foreground placeholder:text-muted-foreground/70 transition-all duration-120 hover:border-foreground/30 focus:border-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:shadow-[0_0_24px_-6px_color-mix(in_oklab,var(--primary)_45%,transparent)]"
+            className="h-10 w-full rounded-[10px] border border-border bg-transparent pl-9 pr-9 text-[13px] text-foreground placeholder:text-muted-foreground/70 transition-all duration-120 hover:border-foreground/30 focus:border-[color:var(--border-strong)] focus:bg-card focus:outline-none focus:shadow-[var(--shadow-focus)]"
           />
           {search && (
             <button
@@ -2235,7 +2235,7 @@ function MediaInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...rest}
-      className={`h-10 w-full rounded-[10px] border border-border bg-transparent px-3 text-[12.5px] text-foreground placeholder:text-muted-foreground/60 transition-all duration-120 hover:border-foreground/30 focus:border-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:shadow-[0_0_18px_-6px_color-mix(in_oklab,var(--primary)_50%,transparent)] ${className}`}
+      className={`h-10 w-full rounded-[10px] border border-border bg-transparent px-3 text-[12.5px] text-foreground placeholder:text-muted-foreground/60 transition-all duration-120 hover:border-foreground/30 focus:border-[color:var(--border-strong)] focus:bg-card focus:outline-none focus:shadow-[var(--shadow-focus)] ${className}`}
     />
   );
 }
@@ -2246,7 +2246,7 @@ function MediaTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>)
     <textarea
       {...rest}
       rows={rows}
-      className={`w-full resize-none rounded-[10px] border border-border bg-transparent px-3 py-2 text-[12.5px] text-foreground placeholder:text-muted-foreground/60 transition-all duration-120 hover:border-foreground/30 focus:border-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:shadow-[0_0_18px_-6px_color-mix(in_oklab,var(--primary)_50%,transparent)] ${className}`}
+      className={`w-full resize-none rounded-[10px] border border-border bg-transparent px-3 py-2 text-[12.5px] text-foreground placeholder:text-muted-foreground/60 transition-all duration-120 hover:border-foreground/30 focus:border-[color:var(--border-strong)] focus:bg-card focus:outline-none focus:shadow-[var(--shadow-focus)] ${className}`}
     />
   );
 }
@@ -2542,7 +2542,7 @@ function formatTag(a: MediaAsset) {
 /** Tile styling per non-visual file type, so documents read at a glance. */
 function fileTileMeta(a: MediaAsset): { label: string; icon: LucideIcon; tile: string; text: string } {
   if (a.mimeType === "application/pdf")
-    return { label: "PDF", icon: FileText, tile: "bg-rose-500/10", text: "text-rose-500" };
+    return { label: "PDF", icon: FileText, tile: "bg-red-500/10", text: "text-red-500" };
   if (a.mimeType === "text/markdown")
     return { label: "MD", icon: FileText, tile: "bg-sky-500/10", text: "text-sky-500" };
   if (a.mimeType === "text/plain")

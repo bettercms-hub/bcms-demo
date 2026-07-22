@@ -84,7 +84,7 @@ export function GuestsSection({ ws }: { ws: Workspace }) {
                   <span className="truncate text-[13.5px] font-semibold text-foreground">{t.agencyName}</span>
                   <span className="rounded bg-[color:var(--s2)] px-1.5 py-px text-[10px] font-medium text-muted-foreground">Guest team · free</span>
                   {t.status === "invited" && (
-                    <span className="rounded bg-amber-500/12 px-1.5 py-px text-[10px] font-medium text-amber-600">Invited</span>
+                    <span className="rounded-[4px] bg-[color-mix(in_srgb,var(--status-warning)_14%,transparent)] px-1.5 py-px text-[10px] font-medium text-[color:var(--status-warning)]">Invited</span>
                   )}
                 </div>
                 <div className="mt-0.5 truncate text-[11.5px] text-muted-foreground">
@@ -157,7 +157,7 @@ export function GuestsSection({ ws }: { ws: Workspace }) {
 function DialogShell({ title, subtitle, onClose, children, footer }: { title: string; subtitle?: string; onClose: () => void; children: React.ReactNode; footer: React.ReactNode }) {
   return createPortal(
     <div className="fixed inset-0 z-[95]">
-      <div className="absolute inset-0 bg-slate-900/45" onMouseDown={onClose} aria-hidden />
+      <div className="absolute inset-0 bg-[rgba(24,18,16,0.4)]" onMouseDown={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"

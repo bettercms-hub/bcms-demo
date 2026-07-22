@@ -40,7 +40,7 @@ function Integrations() {
               <div className="grid h-11 w-11 place-items-center rounded-lg bg-[color:var(--color-elevated)]">
                 <it.icon className={`h-5 w-5 ${it.accent}`} strokeWidth={1.75} />
               </div>
-              <span className="rounded-full border border-border/70 bg-background px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              <span className="rounded-[4px] bg-[color:var(--status-draft-bg)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[color:var(--status-draft-fg)]">
                 Coming soon
               </span>
             </div>

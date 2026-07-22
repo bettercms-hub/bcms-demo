@@ -1,6 +1,7 @@
 import { useParams, useRouterState, useSearch } from "@tanstack/react-router";
 import { Sidebar } from "./Sidebar";
 import { GlobalTopBar } from "./GlobalTopBar";
+import { WorkspaceTopRow } from "./WorkspaceTopRow";
 import { ProjectHeader } from "./project/ProjectHeader";
 import { ProjectSidebar } from "./project/ProjectSidebar";
 import { CommandPalette, useCommandPalette } from "../CommandPalette";
@@ -22,11 +23,30 @@ interface Props {
 
 type Scope = "pages" | "collections" | "components";
 
+const SIDEBAR_COLLAPSED_KEY = "bcms:ws-sidebar:collapsed";
+
 export function AppShell({ wsSlug, children }: Props) {
   const palette = useCommandPalette();
   const [cheatsheetOpen, setCheatsheetOpen] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  // Workspace rail collapse — remembered across sessions. Read post-mount so
+  // SSR markup stays deterministic.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  useEffect(() => {
+    setSidebarCollapsed(window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1");
+  }, []);
+  const toggleSidebar = () => {
+    setSidebarCollapsed((c) => {
+      const next = !c;
+      try {
+        window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+      } catch {
+        /* noop */
+      }
+      return next;
+    });
+  };
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { project: projectSlug } = useParams({ strict: false }) as { project?: string };
   const search = useSearch({ strict: false }) as { scope?: Scope; view?: "pages" | "content" };
@@ -66,23 +86,18 @@ export function AppShell({ wsSlug, children }: Props) {
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
-      <GlobalTopBar
-        onOpenPalette={() => palette.setOpen(true)}
-        onMenu={!inProject ? () => setMobileNavOpen(true) : undefined}
-        project={
-          inProject && ws && project
-            ? {
-                wsSlug,
-                wsName: ws.name,
-                projectSlug: project.slug,
-                projectName: project.name,
-                status: project.publishState ?? "draft",
-              }
-            : undefined
-        }
-      />
       {inProject && ws && project ? (
         <div key="project" className="flex min-h-0 flex-1 flex-col animate-in fade-in duration-200">
+          <GlobalTopBar
+            onOpenPalette={() => palette.setOpen(true)}
+            project={{
+              wsSlug,
+              wsName: ws.name,
+              projectSlug: project.slug,
+              projectName: project.name,
+              status: project.publishState ?? "draft",
+            }}
+          />
           <div className="animate-in fade-in slide-in-from-top-2 duration-300">
             <ProjectHeader
               wsSlug={wsSlug}
@@ -110,13 +125,29 @@ export function AppShell({ wsSlug, children }: Props) {
           </div>
         </div>
       ) : (
+        /* Workspace level — 260px rail on the warm canvas + the floating
+           white content card with a 16px gutter (full-bleed below md). */
         <div key="workspace" className="flex min-h-0 flex-1 animate-in fade-in duration-200">
-          <div className="contents animate-in fade-in slide-in-from-left-2 duration-300">
-            <Sidebar wsSlug={wsSlug} pathname={pathname} />
+          {!sidebarCollapsed && (
+            <div className="contents animate-in fade-in slide-in-from-left-2 duration-300">
+              <Sidebar wsSlug={wsSlug} pathname={pathname} onCollapse={toggleSidebar} />
+            </div>
+          )}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col md:p-4">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-card animate-in fade-in duration-300 md:rounded-2xl md:border md:border-[color:var(--border-hairline)]">
+              <WorkspaceTopRow
+                wsSlug={wsSlug}
+                pathname={pathname}
+                sidebarCollapsed={sidebarCollapsed}
+                onToggleSidebar={toggleSidebar}
+                onMenu={() => setMobileNavOpen(true)}
+                onOpenPalette={() => palette.setOpen(true)}
+              />
+              <main className="flex min-w-0 min-h-0 flex-1 flex-col overflow-auto">
+                {blockedFeature ? <LargerScreen feature={blockedFeature} workspace={wsSlug} /> : children}
+              </main>
+            </div>
           </div>
-          <main className="flex min-w-0 min-h-0 flex-1 flex-col overflow-auto bg-background animate-in fade-in duration-300">
-            {blockedFeature ? <LargerScreen feature={blockedFeature} workspace={wsSlug} /> : children}
-          </main>
         </div>
       )}
       {/* Off-canvas workspace nav for phones; the static sidebar is hidden below md. */}

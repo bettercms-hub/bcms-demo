@@ -1,20 +1,18 @@
 /**
  * MarkdownManager — the markdown delivery surface for a project.
  *
- * Three parts, top to bottom:
- * 1. Delivery: llms.txt (auto-generated or a hand-authored override you can
- *    edit or upload) and llms-full.txt, plus the content-negotiation note.
- * 2. Endpoints: every page, entry and file with its .md twin, searchable
+ * Two parts, top to bottom:
+ * 1. Endpoints: every page, entry and file with its .md twin, searchable
  *    and filterable by type, each with a live preview.
- * 3. Files: standalone .md documents with their own draft/publish lifecycle,
+ * 2. Files: standalone .md documents with their own draft/publish lifecycle,
  *    written in place or uploaded.
  *
  * Pages and entries stay structured; markdown is serialized on request.
+ * llms.txt / llms-full.txt / content negotiation live on SEO > AI delivery.
  */
 import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  Check,
   Copy,
   Download,
   FileCode2,
@@ -32,7 +30,7 @@ import { toast } from "sonner";
 import { collections as allCollections, entries as allEntries, schemas as allSchemas } from "@/lib/cms/mock-data";
 import { usePages } from "@/lib/cms/pages-store";
 import { mdActions, useMdState, type MdFile, type MdFileState } from "@/lib/md/md-store";
-import { entryToMarkdown, llmsFullTxt, llmsTxt, pageToMarkdown, type LlmsInput } from "@/lib/md/serialize";
+import { entryToMarkdown, pageToMarkdown } from "@/lib/md/serialize";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -69,13 +67,11 @@ export function MarkdownManager({
   const md = useMdState(projectId);
   const [preview, setPreview] = useState<{ title: string; path: string; body: string } | null>(null);
   const [editing, setEditing] = useState<MdFile | "new" | null>(null);
-  const [llmsEdit, setLlmsEdit] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [mdPage, setMdPage] = useState(0);
   const [mdSize, setMdSize] = useState<PageSize>(50);
   const uploadRef = useRef<HTMLInputElement>(null);
-  const llmsUploadRef = useRef<HTMLInputElement>(null);
 
   const site = { name: siteName, domain };
   const cols = useMemo(
@@ -89,16 +85,6 @@ export function MarkdownManager({
         })),
     [projectId],
   );
-
-  const publishedFiles = md.files.filter((f) => f.state === "published");
-  const llmsInput: LlmsInput = {
-    site,
-    pages: pages.filter((p) => !md.excluded.includes(p.path)),
-    collections: cols.map((g) => ({ ...g, entries: g.entries.filter((e) => !md.excluded.includes(e.id)) })),
-    files: publishedFiles.map((f) => ({ path: f.path, title: f.title })),
-  };
-  const generatedLlms = llmsTxt(llmsInput);
-  const activeLlms = md.llmsMode === "custom" ? md.llmsCustom : generatedLlms;
 
   const allRows: Row[] = [
     ...pages.map((p): Row => ({
@@ -167,109 +153,8 @@ export function MarkdownManager({
     reader.readAsText(file);
   }
 
-  function onLlmsUpload(file: File) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      mdActions.setLlmsMode(projectId, "custom", String(reader.result ?? ""));
-      toast.success("llms.txt replaced with your file");
-    };
-    reader.readAsText(file);
-  }
-
   return (
     <div className="space-y-4">
-      {/* ------------------------------------------------ delivery card */}
-      <div className="overflow-hidden rounded-xl border border-[color:var(--border-hairline)] bg-card">
-        <div className="border-b border-[color:var(--border-hairline)] bg-[color:var(--s2)] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Delivery
-        </div>
-
-        {/* llms.txt: auto or a hand-authored override */}
-        <div className="flex items-start gap-3 border-b border-[color:var(--border-hairline)] px-4 py-3">
-          <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[color:var(--s2)] text-muted-foreground">
-            <FileText className="h-3.5 w-3.5" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[12.5px] font-semibold text-foreground">llms.txt</span>
-              <span
-                className={cn(
-                  "rounded-md px-1.5 py-0.5 text-[10px] font-medium",
-                  md.llmsMode === "custom"
-                    ? "bg-[color:color-mix(in_oklab,var(--primary)_10%,transparent)] text-primary"
-                    : "bg-[color:var(--s2)] text-muted-foreground",
-                )}
-              >
-                {md.llmsMode === "custom" ? "Custom" : "Auto"}
-              </span>
-              {md.llms && (
-                <button type="button" onClick={() => copyUrl("/llms.txt")} className="inline-flex items-center gap-1 rounded-md bg-[color:var(--s2)] px-1.5 py-0.5 font-mono text-[10.5px] text-muted-foreground transition-colors hover:text-foreground" title="Copy URL">
-                  {domain}/llms.txt <Copy className="h-2.5 w-2.5" />
-                </button>
-              )}
-            </div>
-            <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted-foreground">
-              {md.llmsMode === "custom"
-                ? "Serving your uploaded file. Revert to keep it generated from the site automatically."
-                : "A markdown index of everything worth reading, generated from the site. Agents and AI dev tools fetch this first."}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5 pt-0.5">
-            <Button size="sm" variant="ghost" className="h-7 px-2 text-[12px]" onClick={() => setPreview({ title: "llms.txt", path: "/llms.txt", body: activeLlms })}>
-              Preview
-            </Button>
-            {canEdit && (
-              <>
-                <Button size="sm" variant="ghost" className="h-7 px-2 text-[12px]" onClick={() => setLlmsEdit(activeLlms)}>
-                  <Pencil className="mr-1 h-3 w-3" /> Edit
-                </Button>
-                <input ref={llmsUploadRef} type="file" accept=".txt,.md,text/plain,text/markdown" className="hidden" onChange={(e) => e.target.files?.[0] && onLlmsUpload(e.target.files[0])} />
-                <Button size="sm" variant="ghost" className="h-7 px-2 text-[12px]" onClick={() => llmsUploadRef.current?.click()}>
-                  <Upload className="mr-1 h-3 w-3" /> Upload
-                </Button>
-                {md.llmsMode === "custom" && (
-                  <Button size="sm" variant="ghost" className="h-7 px-2 text-[12px] text-muted-foreground" onClick={() => { mdActions.setLlmsMode(projectId, "auto"); toast.success("Back to auto-generated"); }} title="Revert to auto">
-                    <RotateCcw className="h-3 w-3" />
-                  </Button>
-                )}
-                <Switch checked={md.llms} onCheckedChange={(v) => mdActions.setSurface(projectId, "llms", v)} aria-label="Serve llms.txt" />
-              </>
-            )}
-            {!canEdit && <Switch checked={md.llms} disabled aria-label="Serve llms.txt" />}
-          </div>
-        </div>
-
-        <SurfaceRow
-          title="llms-full.txt"
-          note="The whole site inlined in one file. Large sites can exceed agent context windows, so this stays off unless you need it."
-          url={`https://${domain}/llms-full.txt`}
-          on={md.llmsFull}
-          canEdit={canEdit}
-          onToggle={(v) => mdActions.setSurface(projectId, "llmsFull", v)}
-          onPreview={() => setPreview({ title: "llms-full.txt", path: "/llms-full.txt", body: llmsFullTxt(llmsInput, publishedFiles) })}
-          onCopy={() => copyUrl("/llms-full.txt")}
-        />
-
-        <div className="flex items-start gap-3 px-4 py-3">
-          <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[color:var(--s2)] text-muted-foreground">
-            <FileCode2 className="h-3.5 w-3.5" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="text-[13px] font-medium text-foreground">Content negotiation</div>
-            <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted-foreground">
-              Every canonical URL also answers markdown requests directly, so agents never need a second URL. Search engines
-              see one page, agents get clean markdown.
-            </p>
-            <code className="mt-1.5 block w-fit rounded-md bg-[color:var(--s2)] px-2 py-1 font-mono text-[11px] text-foreground">
-              curl -H "Accept: text/markdown" https://{domain}/pricing
-            </code>
-          </div>
-          <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600">
-            <Check className="h-3 w-3" /> Always on
-          </span>
-        </div>
-      </div>
-
       {/* --------------------------------------------- endpoints table */}
       <div>
         <ListToolbar query={query} onQuery={setQuery} placeholder="Search markdown endpoints">
@@ -386,23 +271,6 @@ export function MarkdownManager({
       </div>
 
       {preview && <MdPreviewDialog {...preview} onClose={() => setPreview(null)} />}
-      {llmsEdit !== null && (
-        <LlmsEditDialog
-          initial={llmsEdit}
-          isCustom={md.llmsMode === "custom"}
-          onClose={() => setLlmsEdit(null)}
-          onSave={(body) => {
-            mdActions.setLlmsMode(projectId, "custom", body);
-            toast.success("llms.txt saved");
-            setLlmsEdit(null);
-          }}
-          onRevert={() => {
-            mdActions.setLlmsMode(projectId, "auto");
-            toast.success("Back to auto-generated");
-            setLlmsEdit(null);
-          }}
-        />
-      )}
       {editing && (
         <MdFileDialog
           file={editing === "new" ? null : editing}
@@ -435,7 +303,7 @@ function StateBadge({ state }: { state: MdFileState }) {
   );
 }
 
-function download(path: string, body: string) {
+export function download(path: string, body: string) {
   const blob = new Blob([body], { type: "text/markdown" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -445,52 +313,7 @@ function download(path: string, body: string) {
   URL.revokeObjectURL(url);
 }
 
-function SurfaceRow({
-  title,
-  note,
-  url,
-  on,
-  canEdit,
-  onToggle,
-  onPreview,
-  onCopy,
-}: {
-  title: string;
-  note: string;
-  url: string;
-  on: boolean;
-  canEdit: boolean;
-  onToggle: (v: boolean) => void;
-  onPreview: () => void;
-  onCopy: () => void;
-}) {
-  return (
-    <div className="flex items-start gap-3 border-b border-[color:var(--border-hairline)] px-4 py-3">
-      <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[color:var(--s2)] text-muted-foreground">
-        <FileText className="h-3.5 w-3.5" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[12.5px] font-semibold text-foreground">{title}</span>
-          {on && (
-            <button type="button" onClick={onCopy} className="inline-flex items-center gap-1 rounded-md bg-[color:var(--s2)] px-1.5 py-0.5 font-mono text-[10.5px] text-muted-foreground transition-colors hover:text-foreground" title="Copy URL">
-              {url.replace("https://", "")} <Copy className="h-2.5 w-2.5" />
-            </button>
-          )}
-        </div>
-        <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted-foreground">{note}</p>
-      </div>
-      <div className="flex shrink-0 items-center gap-2 pt-0.5">
-        <Button size="sm" variant="ghost" className="h-7 px-2 text-[12px]" onClick={onPreview}>
-          Preview
-        </Button>
-        <Switch checked={on} disabled={!canEdit} onCheckedChange={onToggle} aria-label={`Serve ${title}`} />
-      </div>
-    </div>
-  );
-}
-
-function DialogShell({ title, subtitle, icon: Icon, onClose, children, footer }: { title: string; subtitle?: string; icon: typeof FileText; onClose: () => void; children: React.ReactNode; footer?: React.ReactNode }) {
+export function DialogShell({ title, subtitle, icon: Icon, onClose, children, footer }: { title: string; subtitle?: string; icon: typeof FileText; onClose: () => void; children: React.ReactNode; footer?: React.ReactNode }) {
   return createPortal(
     <div className="fixed inset-0 z-[95]">
       <div className="absolute inset-0 bg-slate-900/45" onMouseDown={onClose} aria-hidden />
@@ -515,7 +338,7 @@ function DialogShell({ title, subtitle, icon: Icon, onClose, children, footer }:
   );
 }
 
-function MdPreviewDialog({ title, path, body, onClose }: { title: string; path: string; body: string; onClose: () => void }) {
+export function MdPreviewDialog({ title, path, body, onClose }: { title: string; path: string; body: string; onClose: () => void }) {
   return createPortal(
     <div className="fixed inset-0 z-[95]">
       <div className="absolute inset-0 bg-slate-900/45" onMouseDown={onClose} aria-hidden />
@@ -545,35 +368,6 @@ function MdPreviewDialog({ title, path, body, onClose }: { title: string; path: 
 
 const editorTextarea =
   "w-full flex-1 resize-none border-0 bg-[color:var(--s2)] p-4 font-mono text-[12.5px] leading-relaxed text-foreground outline-none";
-
-function LlmsEditDialog({ initial, isCustom, onClose, onSave, onRevert }: { initial: string; isCustom: boolean; onClose: () => void; onSave: (body: string) => void; onRevert: () => void }) {
-  const [body, setBody] = useState(initial);
-  return (
-    <DialogShell
-      title="Edit llms.txt"
-      subtitle="/llms.txt"
-      icon={FileText}
-      onClose={onClose}
-      footer={
-        <div className="flex items-center justify-between gap-2 border-t border-[color:var(--border-hairline)] px-4 py-3">
-          {isCustom ? (
-            <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={onRevert}>
-              <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Revert to auto
-            </Button>
-          ) : (
-            <span className="text-[11px] text-muted-foreground">Saving switches llms.txt from auto to your custom version.</span>
-          )}
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button size="sm" onClick={() => onSave(body)}>Save llms.txt</Button>
-          </div>
-        </div>
-      }
-    >
-      <textarea value={body} onChange={(e) => setBody(e.target.value)} className={cn(editorTextarea, "min-h-[46vh]")} spellCheck={false} />
-    </DialogShell>
-  );
-}
 
 function MdFileDialog({ file, onClose, onSave }: { file: MdFile | null; onClose: () => void; onSave: (input: { path: string; title: string; body: string }, publish: boolean) => void }) {
   const [title, setTitle] = useState(file?.title ?? "");

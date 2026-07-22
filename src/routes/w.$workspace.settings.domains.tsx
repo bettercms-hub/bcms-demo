@@ -60,8 +60,8 @@ function Domains() {
       {groups.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[color:var(--color-border)] bg-[color:var(--s2)] p-12 text-center">
           <Globe className="mx-auto h-7 w-7 text-muted-foreground/70" strokeWidth={1.5} />
-          <h3 className="mt-3 text-[14px] font-semibold text-foreground">No domains yet</h3>
-          <p className="mx-auto mt-1 max-w-sm text-[12.5px] text-muted-foreground">
+          <h3 className="mt-3 text-[15px] font-semibold text-foreground">No domains yet</h3>
+          <p className="mx-auto mt-1 max-w-sm text-[13px] text-muted-foreground">
             Connect a domain to publish a project under your own brand. Pick the project, add the domain, then follow the DNS steps.
           </p>
           <Button size="sm" className="mt-4" onClick={() => setAdding(true)}>
@@ -86,7 +86,7 @@ function Domains() {
                 )}
               </div>
 
-              <div className="grid grid-cols-[minmax(0,1fr)_110px_110px_100px] items-center gap-3 border-b border-[color:var(--border-hairline)] px-4 py-2 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <div className="grid h-10 grid-cols-[minmax(0,1fr)_110px_110px_100px] items-center gap-3 border-b border-[color:var(--border-hairline)] px-4 text-[12.5px] font-medium text-muted-foreground">
                 <span>Domain</span>
                 <span>Status</span>
                 <span>SSL</span>
@@ -96,7 +96,7 @@ function Domains() {
                 {list.map((d) => (
                   <li
                     key={d.id}
-                    className="grid cursor-pointer grid-cols-[minmax(0,1fr)_110px_110px_100px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--s4)]"
+                    className="grid h-12 cursor-pointer grid-cols-[minmax(0,1fr)_110px_110px_100px] items-center gap-3 px-4 transition-colors hover:bg-[color:var(--row-hover)]"
                     onClick={() => project && goToProject(project.slug)}
                   >
                     <div className="flex min-w-0 items-center gap-2.5">
@@ -104,8 +104,8 @@ function Domains() {
                       <span className="truncate font-medium text-foreground">{d.host}</span>
                       {d.primary && <StatusBadge label="Primary" tone="info" />}
                     </div>
-                    <DomainStatusBadge status={d.status} />
-                    {sslBadge(d.sslStatus)}
+                    <span className="flex"><DomainStatusBadge status={d.status} /></span>
+                    <span className="flex">{sslBadge(d.sslStatus)}</span>
                     <span className="text-right text-[12px] text-muted-foreground">{new Date(d.addedAt).toLocaleDateString()}</span>
                   </li>
                 ))}

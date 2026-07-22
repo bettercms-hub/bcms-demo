@@ -92,7 +92,7 @@ function seed(projectId: string): BrandKit {
     version: 1,
     updatedAt: Date.now(),
     colors: {
-      primary: "#EF037F",
+      primary: "#D54646",
       accent: "#4F46E5",
       background: "#FFFFFF",
       surface: "#F7F7F8",

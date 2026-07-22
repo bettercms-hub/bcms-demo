@@ -99,6 +99,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { toSectionDef, useCustomComponents } from "@/lib/cms/components-store";
 import { getProjectBySlug } from "@/lib/cms/use-cms";
 import { useViewportTier } from "@/lib/device";
 import { useProjectPresence } from "@/lib/workspace/presence-store";
@@ -148,9 +149,9 @@ function stripHtml(s: string): string {
 
 const STATE_META: Record<ContentState, { label: string; dot: string; text: string }> = {
   draft: { label: "Draft", dot: "bg-muted-foreground/60", text: "text-muted-foreground" },
-  published: { label: "Published", dot: "bg-emerald-400", text: "text-emerald-500" },
-  modified: { label: "Unpublished changes", dot: "bg-amber-400", text: "text-amber-500" },
-  scheduled: { label: "Scheduled", dot: "bg-sky-400", text: "text-sky-500" },
+  published: { label: "Published", dot: "bg-[var(--status-live)]", text: "text-[var(--status-live)]" },
+  modified: { label: "Unpublished changes", dot: "bg-[var(--status-warning)]", text: "text-[var(--status-warning)]" },
+  scheduled: { label: "Scheduled", dot: "bg-[var(--status-scheduled)]", text: "text-[var(--status-scheduled)]" },
   archived: { label: "Archived", dot: "bg-muted-foreground/40", text: "text-muted-foreground/70" },
 };
 
@@ -226,6 +227,11 @@ function VisualEditor() {
   const canBuild = canCompose(effective);
   const canEdit = canEditContent(effective);
   const showDev = canSeeDeveloper(effective);
+  // Hub-created components: published for every composer, drafts for developers.
+  const customComponents = useCustomComponents(pr?.id ?? "");
+  const customDefs = customComponents
+    .filter((c) => c.status === "published" || (showDev && c.status === "draft"))
+    .map((c) => toSectionDef(c, c.status === "draft" ? { nameSuffix: "(draft)" } : undefined));
   const publishAllowed = roleCanPublish(effective);
   const composing = canBuild && previewMode === "edit";
 
@@ -651,7 +657,7 @@ function VisualEditor() {
 
         {canEdit && (
           <span className="hidden items-center gap-1.5 pr-1 text-[11.5px] text-muted-foreground md:inline-flex" title="Every change is saved to your draft automatically">
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Saved
+            <CheckCircle2 className="h-3.5 w-3.5 text-[var(--status-live)]" /> Saved
           </span>
         )}
         {active.publishedSnapshot && (
@@ -663,7 +669,7 @@ function VisualEditor() {
           >
             <GitCompareArrows className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Compare</span>
             {pageDiffCount(active) > 0 && (
-              <span className="grid h-4 min-w-4 place-items-center rounded-full bg-amber-500/20 px-1 text-[10px] font-semibold tabular-nums text-amber-700 dark:text-amber-400">
+              <span className="grid h-4 min-w-4 place-items-center rounded-full bg-[color-mix(in_srgb,var(--status-warning)_18%,transparent)] px-1 text-[10px] font-semibold tabular-nums text-[var(--status-warning)]">
                 {pageDiffCount(active)}
               </span>
             )}
@@ -857,8 +863,8 @@ function VisualEditor() {
                     )}
                   </button>
                 </div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10.5px] font-semibold text-amber-700">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Draft preview
+                <span className="inline-flex items-center gap-1 rounded-[4px] bg-[#E6E6E6] px-2 py-0.5 text-[10.5px] font-semibold text-[#5D5D5D]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#5D5D5D]" /> Draft preview
                 </span>
               </div>
 
@@ -985,7 +991,7 @@ function VisualEditor() {
       <CommentStyles />
 
       {/* section library — marketer-facing browser of developer-defined sections */}
-      <SectionLibrary open={libraryAt !== null} onClose={() => setLibraryAt(null)} onAdd={addSection} />
+      <SectionLibrary open={libraryAt !== null} onClose={() => setLibraryAt(null)} onAdd={addSection} extraDefs={customDefs} />
 
       {/* create-page template picker */}
       <TemplatePicker open={pagePicker} onClose={() => setPagePicker(false)} customTemplates={customTemplates} onPick={createFromTemplate} />
@@ -1008,23 +1014,23 @@ function VisualEditor() {
       {/* save current page as a template */}
       {tplName !== null && (
         <div className="fixed inset-0 z-[95]">
-          <div className="absolute inset-0 bg-slate-900/45" onMouseDown={() => setTplName(null)} aria-hidden />
+          <div className="absolute inset-0 bg-[rgba(24,18,16,0.4)]" onMouseDown={() => setTplName(null)} aria-hidden />
           <div
             role="dialog"
             aria-modal="true"
             aria-label="Save page as template"
-            className="absolute left-1/2 top-[24vh] w-[min(400px,calc(100vw-24px))] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 shadow-2xl"
+            className="absolute left-1/2 top-[24vh] w-[min(400px,calc(100vw-24px))] -translate-x-1/2 rounded-xl border border-[color:var(--border-hairline)] bg-card p-4 text-foreground shadow-[var(--shadow-3)]"
           >
             <div className="flex items-center gap-2">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-indigo-50 text-indigo-600">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--s2)] text-foreground-secondary">
                 <LayoutTemplate className="h-4 w-4" />
               </span>
               <div>
                 <div className="text-[14px] font-semibold">Save page as template</div>
-                <div className="text-[11.5px] text-slate-500">The current section stack becomes a reusable template.</div>
+                <div className="text-[11.5px] text-muted-foreground">The current section stack becomes a reusable template.</div>
               </div>
             </div>
-            <label htmlFor="tpl-name" className="mt-3 block text-[11.5px] font-medium text-slate-600">
+            <label htmlFor="tpl-name" className="mt-3 block text-[11.5px] font-medium text-foreground-secondary">
               Template name
             </label>
             <input
@@ -1036,20 +1042,20 @@ function VisualEditor() {
                 if (e.key === "Enter" && tplName.trim()) saveAsTemplate(tplName.trim());
                 if (e.key === "Escape") setTplName(null);
               }}
-              className="mt-1 h-9 w-full rounded-md border border-slate-200 px-2.5 text-[13px] outline-none transition-shadow focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+              className="mt-1 h-9 w-full rounded-[8px] border border-[color:var(--color-border)] bg-card px-2.5 text-[13px] outline-none transition-shadow focus:border-[color:var(--border-strong)] focus:shadow-[var(--shadow-focus)]"
             />
-            <p className="mt-2 text-[11px] text-slate-500">
+            <p className="mt-2 text-[11px] text-muted-foreground">
               Anyone with the Marketer or Developer role sees it under Create a page.
             </p>
             <div className="mt-3 flex items-center justify-end gap-2">
-              <button type="button" onClick={() => setTplName(null)} className="h-8 rounded-md px-3 text-[12.5px] font-medium text-slate-600 transition-colors hover:bg-slate-100">
+              <button type="button" onClick={() => setTplName(null)} className="h-8 rounded-md px-3 text-[12.5px] font-medium text-foreground-secondary transition-colors hover:bg-[color:var(--s3)]">
                 Cancel
               </button>
               <button
                 type="button"
                 disabled={!tplName.trim()}
                 onClick={() => saveAsTemplate(tplName.trim())}
-                className="h-8 rounded-md bg-indigo-600 px-3.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="h-8 rounded-md bg-primary px-3.5 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Save template
               </button>
@@ -1741,7 +1747,7 @@ function ShellBtn({
       onClick={onClick}
       className={cn(
         "grid h-6 w-6 place-items-center rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-30",
-        danger ? "text-rose-500 hover:bg-rose-50" : "text-slate-500 hover:bg-slate-100 hover:text-slate-700",
+        danger ? "text-[#B03A3A] hover:bg-[#B03A3A]/10" : "text-slate-500 hover:bg-slate-100 hover:text-slate-700",
       )}
     >
       {children}

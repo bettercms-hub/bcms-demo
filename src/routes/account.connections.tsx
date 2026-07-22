@@ -75,7 +75,7 @@ function ProviderRow({ provider, email }: { provider: ConnectionProvider; email:
         <div className="flex items-center gap-2">
           <span className="text-[13px] font-medium text-foreground">{meta.label}</span>
           {conn && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-[color:color-mix(in_oklab,var(--emerald,#10B981)_14%,transparent)] px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+            <span className="inline-flex items-center gap-1 rounded-[4px] bg-[var(--status-live-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--status-live-fg)]">
               <Check className="h-3 w-3" /> Connected
             </span>
           )}

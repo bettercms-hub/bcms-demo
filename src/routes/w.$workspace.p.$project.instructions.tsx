@@ -85,9 +85,9 @@ const REF_TINT: Record<string, string> = {
   Collection: "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/20",
   Field: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20",
   Component: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20",
-  Section: "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200 dark:bg-fuchsia-500/10 dark:text-fuchsia-300 dark:border-fuchsia-500/20",
+  Section: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/10 dark:text-purple-300 dark:border-purple-500/20",
   Page: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20",
-  "Brand token": "bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-500/10 dark:text-pink-300 dark:border-pink-500/20",
+  "Brand token": "bg-[color-mix(in_srgb,var(--primary)_8%,transparent)] text-[var(--primary)] border-[color-mix(in_srgb,var(--primary)_25%,transparent)]",
   Skill: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/20",
   Rule: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/20",
 };
@@ -553,8 +553,8 @@ function InstructionEditor({
                 }}
               />
               {confirmDelete ? (
-                <div className="flex items-center gap-1.5 rounded-md bg-rose-500/10 px-2 py-1.5">
-                  <span className="flex-1 text-[11.5px] font-medium text-rose-600 dark:text-rose-400">Delete this {ins.kind}?</span>
+                <div className="flex items-center gap-1.5 rounded-md bg-destructive/10 px-2 py-1.5">
+                  <span className="flex-1 text-[11.5px] font-medium text-destructive">Delete this {ins.kind}?</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -562,11 +562,11 @@ function InstructionEditor({
                       onDeleted();
                       toast.success(`"${ins.name}" deleted`);
                     }}
-                    className="rounded bg-rose-600 px-1.5 py-0.5 text-[11px] font-semibold text-white hover:bg-rose-700"
+                    className="rounded bg-destructive px-1.5 py-0.5 text-[11px] font-semibold text-white hover:bg-[color-mix(in_srgb,var(--destructive)_88%,#000)]"
                   >
                     Delete
                   </button>
-                  <button type="button" aria-label="Cancel" onClick={() => setConfirmDelete(false)} className="grid h-5 w-5 place-items-center rounded text-rose-600 hover:bg-rose-500/10">
+                  <button type="button" aria-label="Cancel" onClick={() => setConfirmDelete(false)} className="grid h-5 w-5 place-items-center rounded text-destructive hover:bg-destructive/10">
                     <X className="h-3 w-3" />
                   </button>
                 </div>
@@ -581,7 +581,7 @@ function InstructionEditor({
       {/* editor column */}
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="flex items-center gap-2 border-b border-[color:var(--border-hairline)] px-4 py-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[color:color-mix(in_oklab,var(--primary)_8%,transparent)] px-2 py-0.5 text-[11px] font-medium text-primary">
+          <span className="inline-flex items-center gap-1.5 rounded-[4px] bg-[color:color-mix(in_oklab,var(--primary)_8%,transparent)] px-2 py-0.5 text-[11px] font-medium text-primary">
             <meta.icon className="h-3 w-3" /> {meta.label}
           </span>
 
@@ -720,7 +720,7 @@ function SettingsAction({ icon: Icon, label, danger, onClick }: { icon: typeof D
       onClick={onClick}
       className={cn(
         "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-medium transition-colors",
-        danger ? "text-rose-600 hover:bg-rose-500/10 dark:text-rose-400" : "text-foreground/85 hover:bg-[color:var(--color-row-hover)]",
+        danger ? "text-destructive hover:bg-destructive/10" : "text-foreground/85 hover:bg-[color:var(--color-row-hover)]",
       )}
     >
       <Icon className="h-3.5 w-3.5" /> {label}
@@ -880,7 +880,7 @@ function ReferenceMenu({
                 type="button"
                 onClick={() => setMediaFilter(k)}
                 className={cn(
-                  "rounded-full px-2 py-0.5 text-[11px] font-medium capitalize transition-colors",
+                  "rounded-[6px] px-2 py-0.5 text-[11px] font-medium capitalize transition-colors",
                   mediaFilter === k ? "bg-[color:var(--primary)] text-white" : "text-muted-foreground hover:bg-[color:var(--color-row-hover)]",
                 )}
               >

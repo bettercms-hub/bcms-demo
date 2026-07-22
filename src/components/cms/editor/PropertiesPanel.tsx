@@ -203,7 +203,7 @@ function Field({
       {error && (
         <div
           role="alert"
-          className="mt-1 text-[10.5px] font-medium text-rose-500"
+          className="mt-1 text-[10.5px] font-medium text-destructive"
         >
           {error}
         </div>

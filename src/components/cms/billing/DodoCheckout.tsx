@@ -50,7 +50,7 @@ export function DodoCheckoutDialog({
         <DialogHeader>
           <div className="flex items-center justify-between gap-2">
             <DialogTitle>{title}</DialogTitle>
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-amber-500/35 bg-amber-500/10 px-2 py-0.5 text-[10.5px] font-semibold text-amber-600 dark:text-amber-400">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-[4px] border border-[color-mix(in_srgb,var(--status-warning)_35%,transparent)] bg-[color-mix(in_srgb,var(--status-warning)_10%,transparent)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:var(--status-warning)]">
               Dodo Payments · Test mode
             </span>
           </div>
@@ -101,8 +101,8 @@ export function DodoCheckoutDialog({
           </div>
         ) : (
           <div className="space-y-4 py-2 text-center">
-            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-emerald-500/12">
-              <Check className="h-6 w-6 text-emerald-500" />
+            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[color:var(--status-live-bg)]">
+              <Check className="h-6 w-6 text-[color:var(--status-success)]" />
             </div>
             <div>
               <div className="text-[15px] font-semibold text-foreground">All set</div>

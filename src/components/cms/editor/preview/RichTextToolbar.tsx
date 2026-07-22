@@ -66,7 +66,7 @@ import { toast } from "sonner";
 const COLORS = [
   { value: "#0f172a", name: "Ink" },
   { value: "#6366f1", name: "Indigo" },
-  { value: "#db2777", name: "Pink" },
+  { value: "#D54646", name: "Coral" },
   { value: "#059669", name: "Green" },
   { value: "#d97706", name: "Amber" },
   { value: "#dc2626", name: "Red" },
@@ -351,7 +351,7 @@ export function RichTextToolbar({
           opacity: place ? 1 : 0,
           maxWidth: "calc(100vw - 16px)",
         }}
-        className="flex items-center gap-0.5 overflow-x-auto rounded-xl border border-slate-200 bg-white px-1.5 py-1 text-slate-700 shadow-[0_8px_30px_-8px_rgba(15,23,42,0.35)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex items-center gap-0.5 overflow-x-auto rounded-xl border border-slate-200 bg-white px-1.5 py-1 text-slate-700 shadow-[0_8px_30px_-8px_rgba(53,30,39,0.35)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {/* Improve writing → AI panel */}
         <ToolBtn
@@ -615,7 +615,7 @@ export function RichTextToolbar({
                 <button
                   type="button"
                   onClick={removeLink}
-                  className="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[12.5px] font-medium text-rose-600 transition-colors hover:bg-rose-50"
+                  className="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[12.5px] font-medium text-destructive transition-colors hover:bg-destructive/10"
                 >
                   <Trash2 className="h-3.5 w-3.5" /> Remove
                 </button>
@@ -845,7 +845,7 @@ function Flyout({
           zIndex: 81,
           opacity: pos ? 1 : 0,
         }}
-        className="overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-700 shadow-[0_12px_40px_-8px_rgba(15,23,42,0.4)]"
+        className="overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-700 shadow-[0_12px_40px_-8px_rgba(53,30,39,0.4)]"
       >
         {children}
       </div>

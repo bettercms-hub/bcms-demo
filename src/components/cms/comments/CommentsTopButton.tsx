@@ -77,7 +77,7 @@ export function CommentsTopButton({
             className={cn(
               "absolute -top-0.5 -right-0.5 grid h-3.5 min-w-[14px] place-items-center rounded-full px-1 text-[9px] font-bold ring-2 ring-[color:var(--topbar,var(--canvas))]",
               unreadCount > 0
-                ? "bg-rose-500 text-white"
+                ? "bg-[color:var(--destructive)] text-white"
                 : "bg-[color:var(--primary)] text-[color:var(--primary-foreground)]",
             )}
           >

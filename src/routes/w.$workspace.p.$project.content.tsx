@@ -60,9 +60,9 @@ export const Route = createFileRoute("/w/$workspace/p/$project/content")({
 
 const PAGE_TONE: Record<PageState, { label: string; dot: string; text: string }> = {
   draft: { label: "Draft", dot: "bg-muted-foreground/50", text: "text-muted-foreground" },
-  published: { label: "Published", dot: "bg-emerald-400", text: "text-emerald-600" },
-  modified: { label: "Unpublished changes", dot: "bg-amber-400", text: "text-amber-600" },
-  scheduled: { label: "Scheduled", dot: "bg-sky-400", text: "text-sky-600" },
+  published: { label: "Published", dot: "bg-[var(--status-live)]", text: "text-[var(--status-live)]" },
+  modified: { label: "Unpublished changes", dot: "bg-[var(--status-warning)]", text: "text-[var(--status-warning)]" },
+  scheduled: { label: "Scheduled", dot: "bg-[var(--status-scheduled)]", text: "text-[var(--status-scheduled)]" },
   archived: { label: "Archived", dot: "bg-muted-foreground/40", text: "text-muted-foreground/70" },
 };
 
@@ -337,7 +337,7 @@ function ContentPage() {
                     to="/w/$workspace/p/$project/editor"
                     params={{ workspace, project }}
                     search={{ scope: "collections" as const, node: `collection:${c.id}`, section: undefined }}
-                    className="group rounded-xl border border-[color:var(--border-hairline)] bg-card p-4 transition-colors hover:border-[color:var(--color-border-strong)] hover:bg-[var(--s4)]"
+                    className="group rounded-xl border border-[color:var(--border-hairline)] bg-card p-4 transition-colors hover:border-[color:var(--color-border-strong)] hover:bg-[var(--color-row-hover)]"
                   >
                     <div className="flex items-center gap-2.5">
                       <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-[color:var(--s2)] text-muted-foreground">
@@ -494,7 +494,7 @@ function ContentPage() {
                             ref={mergeRefs(dropRef, dragRef)}
                             style={style}
                             className={cn(
-                              "group relative grid grid-cols-[1fr_44px] items-center bg-[color:var(--s2)]/60 transition-colors hover:bg-[var(--s4)]",
+                              "group relative grid grid-cols-[1fr_44px] items-center bg-[color:var(--s2)]/60 transition-colors hover:bg-[var(--color-row-hover)]",
                               isOver && "bg-[color:color-mix(in_oklab,var(--primary)_10%,transparent)] ring-1 ring-inset ring-[color:color-mix(in_oklab,var(--primary)_55%,transparent)]",
                             )}
                           >
@@ -558,7 +558,7 @@ function ContentPage() {
                 return (
                   <li
                     key={c.id}
-                    className="group relative grid grid-cols-[1fr_92px_64px] items-center gap-3 py-2.5 pr-4 transition-colors hover:bg-[var(--s4)] sm:grid-cols-[1fr_150px_130px_76px]"
+                    className="group relative grid grid-cols-[1fr_92px_64px] items-center gap-3 py-2.5 pr-4 transition-colors hover:bg-[var(--color-row-hover)] sm:grid-cols-[1fr_150px_130px_76px]"
                     style={{ paddingLeft: 16 + item.depth * 22 }}
                   >
                     <Link
@@ -641,7 +641,7 @@ function ContentPage() {
               return (
                 <Draggable key={pg.id} id={`page:${pg.path}`} data={{ type: "page", path: pg.path, label: pg.title }} disabled={dndOff}>
                   {({ setNodeRef, handleProps, style }) => (
-                <li ref={setNodeRef} className="group relative grid grid-cols-[1fr_92px_64px] items-center gap-3 py-2.5 pr-4 transition-colors hover:bg-[var(--s4)] sm:grid-cols-[1fr_150px_130px_76px]" style={{ ...style, paddingLeft: 16 + item.depth * 22 }}>
+                <li ref={setNodeRef} className="group relative grid grid-cols-[1fr_92px_64px] items-center gap-3 py-2.5 pr-4 transition-colors hover:bg-[var(--color-row-hover)] sm:grid-cols-[1fr_150px_130px_76px]" style={{ ...style, paddingLeft: 16 + item.depth * 22 }}>
                   {!dndOff && (
                     <button
                       type="button"
@@ -778,7 +778,7 @@ function ContentPage() {
             })}
           </ul>
           {canBuild && !batchRun && (
-            <button type="button" onClick={() => setNewPageOpen(true)} className="flex w-full items-center gap-2 border-t border-[color:var(--border-hairline)] px-4 py-2.5 text-[12.5px] font-medium text-primary transition-colors hover:bg-[var(--s4)]">
+            <button type="button" onClick={() => setNewPageOpen(true)} className="flex w-full items-center gap-2 border-t border-[color:var(--border-hairline)] px-4 py-2.5 text-[12.5px] font-medium text-primary transition-colors hover:bg-[var(--color-row-hover)]">
               <Plus className="h-3.5 w-3.5" /> New page
             </button>
           )}

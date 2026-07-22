@@ -85,7 +85,7 @@ function Stat({
       ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
       : tone === "success"
         ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-        : "bg-rose-500/15 text-rose-700 dark:text-rose-300";
+        : "bg-[color-mix(in_srgb,var(--status-error)_14%,transparent)] text-[var(--status-error)]";
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${cls}`}

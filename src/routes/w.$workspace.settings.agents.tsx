@@ -40,9 +40,9 @@ function ConnectedAgentsPage() {
       />
 
       {!gov.externalAgentsAllowed && (
-        <div className="mb-4 flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-          <Plug className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
-          <p className="flex-1 text-[12.5px] text-amber-700 dark:text-amber-200">
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-[color-mix(in_srgb,var(--status-warning)_30%,transparent)] bg-[color-mix(in_srgb,var(--status-warning)_8%,transparent)] px-4 py-3">
+          <Plug className="h-4 w-4 shrink-0 text-[color:var(--status-warning)]" />
+          <p className="flex-1 text-[12.5px] text-[color:var(--status-warning)]">
             External agents are turned off for this workspace. Existing keys stop working until this is turned back on.
           </p>
           {canManage && (
@@ -105,7 +105,7 @@ function ConnectedAgentsPage() {
                   <div className="text-[11.5px] text-muted-foreground">
                     {grants.length === 0 ? "No keys" : `${grants.length} active ${grants.length === 1 ? "key" : "keys"}`}
                     {grants.length > 0 && (
-                      <span className="ml-1.5 inline-flex items-center gap-1 text-emerald-600">
+                      <span className="ml-1.5 inline-flex items-center gap-1 text-[color:var(--status-live-fg)]">
                         <Check className="h-3 w-3" /> connected
                       </span>
                     )}

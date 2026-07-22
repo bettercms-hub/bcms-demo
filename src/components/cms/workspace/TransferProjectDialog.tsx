@@ -64,12 +64,12 @@ export function TransferProjectDialog({
 
   return createPortal(
     <div className="fixed inset-0 z-[95]">
-      <div className="absolute inset-0 bg-slate-900/45" onMouseDown={onClose} aria-hidden />
+      <div className="absolute inset-0 bg-[rgba(24,18,16,0.4)]" onMouseDown={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={`Transfer ${project.name}`}
-        className="absolute left-1/2 top-[8vh] flex max-h-[84vh] w-[min(480px,calc(100vw-24px))] -translate-x-1/2 flex-col overflow-hidden rounded-2xl border border-[color:var(--color-border)] bg-[color:var(--card)] text-foreground shadow-2xl"
+        className="absolute left-1/2 top-[8vh] flex max-h-[84vh] w-[min(480px,calc(100vw-24px))] -translate-x-1/2 flex-col overflow-hidden rounded-xl border border-[color:var(--border-hairline)] bg-[color:var(--card)] text-foreground shadow-[var(--shadow-3)]"
       >
         <div className="flex items-center gap-2.5 border-b border-[color:var(--border-hairline)] px-4 py-3">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--s2)] text-muted-foreground">
@@ -167,9 +167,9 @@ export function TransferProjectDialog({
             </div>
           )}
 
-          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-400/30 dark:bg-amber-400/10">
-            <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
-            <p className="text-[11.5px] leading-relaxed text-amber-800 dark:text-amber-300">
+          <div className="flex items-start gap-2 rounded-lg border border-[color-mix(in_srgb,var(--status-warning)_30%,transparent)] bg-[color-mix(in_srgb,var(--status-warning)_8%,transparent)] px-3 py-2.5">
+            <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[color:var(--status-warning)]" />
+            <p className="text-[11.5px] leading-relaxed text-[color:var(--status-warning)]">
               Pages, content, schemas, forms and media all move with the project. The site plan resets to Starter and custom domains disconnect. The new workspace owns billing.
             </p>
           </div>

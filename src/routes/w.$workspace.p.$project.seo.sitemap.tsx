@@ -101,7 +101,7 @@ function SitemapPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3.5 py-2.5 text-[12px] text-muted-foreground">
+          <div className="rounded-lg border border-status-warning/30 bg-status-warning/5 px-3.5 py-2.5 text-[12px] text-muted-foreground">
             <span className="font-medium text-foreground">Custom sitemap is served instead of the auto one.</span> You own
             it now, so new pages won't be added automatically.
           </div>
@@ -134,7 +134,7 @@ function SitemapPage() {
                 setCfg((c) => ({ ...c, customXml: draft }));
                 toast.success("Custom sitemap saved");
               }}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
+              className="inline-flex h-9 items-center gap-1.5 rounded-[6px] bg-primary px-4 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
             >
               Save custom sitemap
             </button>
@@ -159,7 +159,7 @@ function CopyBtn({ text, label }: { text: string; label?: boolean }) {
       className="inline-flex items-center gap-1 text-[11.5px] text-muted-foreground transition-colors hover:text-foreground"
       aria-label="Copy"
     >
-      {done ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+      {done ? <Check className="h-3.5 w-3.5 text-status-success" /> : <Copy className="h-3.5 w-3.5" />}
       {label && (done ? "Copied" : "Copy")}
     </button>
   );

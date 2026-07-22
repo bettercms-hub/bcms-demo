@@ -446,7 +446,7 @@ function ConfigureStep(props: {
           type="button"
           disabled={!ready}
           onClick={props.onCreate}
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-[0_2px_8px_-2px_rgba(239,3,127,0.4)] transition-all hover:bg-[var(--primary-hover)] disabled:opacity-50 disabled:shadow-none"
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-[0_2px_8px_-2px_rgba(213,70,70,0.35)] transition-all hover:bg-[var(--primary-hover)] disabled:opacity-50 disabled:shadow-none"
         >
           {managed ? "Create & deploy" : "Create project"}
           <ArrowRight className="h-3.5 w-3.5" />

@@ -15,6 +15,7 @@ import {
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { ArrowLeft, Eye, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   getForm,
@@ -188,7 +189,7 @@ export function FormBuilder({ formId, tab }: Props) {
             {error?.message ?? "This form may have been deleted, or the link is incorrect."}
           </p>
           <div className="mt-5 flex items-center justify-center gap-2">
-            <Button size="sm" variant="secondary" onClick={() => refetch()}>
+            <Button size="sm" variant="outline" onClick={() => refetch()}>
               Try again
             </Button>
             <Button asChild size="sm" variant="ghost">
@@ -228,15 +229,9 @@ export function FormBuilder({ formId, tab }: Props) {
             }}
             className="min-w-0 max-w-[280px] truncate rounded border border-transparent bg-transparent px-2 py-1 text-sm font-semibold text-foreground hover:border-border focus:border-border focus:outline-none"
           />
-          <span
-            className={`rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
-              isPublished
-                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                : "bg-muted text-muted-foreground"
-            }`}
-          >
+          <Badge variant={isPublished ? "live" : "draft"} className="capitalize">
             {form.status}
-          </span>
+          </Badge>
         </div>
         <div className="flex items-center gap-0.5 rounded-lg bg-[color:var(--surface-3)] p-1">
           {(["build", "submissions", "integrations", "code"] as Tab[]).map((t) => (

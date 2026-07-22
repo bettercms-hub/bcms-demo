@@ -142,8 +142,8 @@ function NewTokenDialog({ kind, onClose, onCreate }: { kind: TokenKind; onClose:
   const valid = name.trim().length >= 2;
   return createPortal(
     <div className="fixed inset-0 z-[95]">
-      <div className="absolute inset-0 bg-slate-900/45" onMouseDown={onClose} aria-hidden />
-      <div role="dialog" aria-modal="true" aria-label="New token" className="absolute left-1/2 top-[16vh] w-[min(440px,calc(100vw-24px))] -translate-x-1/2 overflow-hidden rounded-2xl border border-[color:var(--color-border)] bg-[color:var(--card)] shadow-2xl">
+      <div className="absolute inset-0 bg-[rgba(24,18,16,0.4)]" onMouseDown={onClose} aria-hidden />
+      <div role="dialog" aria-modal="true" aria-label="New token" className="absolute left-1/2 top-[16vh] w-[min(440px,calc(100vw-24px))] -translate-x-1/2 overflow-hidden rounded-xl border border-[color:var(--border-hairline)] bg-[color:var(--card)] shadow-[var(--shadow-3)]">
         <div className="flex items-center gap-2.5 border-b border-[color:var(--border-hairline)] px-4 py-3">
           <KeyRound className="h-4 w-4 text-primary" />
           <div className="flex-1 text-[14px] font-semibold text-foreground">New {kind === "personal" ? "personal" : "machine"} token</div>
@@ -183,10 +183,10 @@ function RevealDialog({ name, raw, onClose }: { name: string; raw: string; onClo
   }
   return createPortal(
     <div className="fixed inset-0 z-[95]">
-      <div className="absolute inset-0 bg-slate-900/45" aria-hidden />
-      <div role="dialog" aria-modal="true" aria-label="Token created" className="absolute left-1/2 top-[16vh] w-[min(500px,calc(100vw-24px))] -translate-x-1/2 overflow-hidden rounded-2xl border border-[color:var(--color-border)] bg-[color:var(--card)] shadow-2xl">
+      <div className="absolute inset-0 bg-[rgba(24,18,16,0.4)]" aria-hidden />
+      <div role="dialog" aria-modal="true" aria-label="Token created" className="absolute left-1/2 top-[16vh] w-[min(500px,calc(100vw-24px))] -translate-x-1/2 overflow-hidden rounded-xl border border-[color:var(--border-hairline)] bg-[color:var(--card)] shadow-[var(--shadow-3)]">
         <div className="p-5 text-center">
-          <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-emerald-500/10 text-emerald-600">
+          <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[color:var(--status-live-bg)] text-[color:var(--status-live-fg)]">
             <Check className="h-5 w-5" />
           </span>
           <h3 className="mt-3 text-[15px] font-semibold text-foreground">{name} created</h3>

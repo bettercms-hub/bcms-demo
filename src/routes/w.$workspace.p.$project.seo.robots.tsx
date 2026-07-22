@@ -43,7 +43,7 @@ function RobotsPage() {
           Control which crawlers can access your site. Includes AI crawlers (GPTBot, ClaudeBot, PerplexityBot).
         </p>
       </header>
-      <div className="rounded-2xl border border-border bg-card p-6">
+      <div className="rounded-xl border border-border bg-card p-6">
         <Textarea
           rows={16}
           className="font-mono text-[12px] bg-[var(--surface-focused)]"

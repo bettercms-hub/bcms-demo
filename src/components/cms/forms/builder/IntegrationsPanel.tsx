@@ -27,7 +27,7 @@ const CATALOG: {
     label: "Google Sheets",
     description: "Sync every submission into a spreadsheet.",
     icon: Sheet,
-    iconClass: "text-emerald-600",
+    iconClass: "text-status-success",
   },
   {
     kind: "webhook",
@@ -306,12 +306,12 @@ function SheetsConfig({
       {/* Connected account */}
       <div className="flex items-center justify-between rounded-md border border-border bg-[color:var(--card)] px-3 py-2">
         <div className="flex items-center gap-2.5">
-          <span className="grid h-7 w-7 place-items-center rounded-full bg-emerald-500/10 text-[11px] font-semibold text-emerald-600">
+          <span className="grid h-7 w-7 place-items-center rounded-full bg-status-success/10 text-[11px] font-semibold text-status-success">
             {initials}
           </span>
           <div>
             <div className="flex items-center gap-1.5 text-[12.5px] font-medium text-foreground">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Connected
+              <span className="h-1.5 w-1.5 rounded-full bg-status-success" /> Connected
             </div>
             <div className="text-[11px] text-muted-foreground">{cfg.account}</div>
           </div>

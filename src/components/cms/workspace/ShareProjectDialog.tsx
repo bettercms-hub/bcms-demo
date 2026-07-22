@@ -26,12 +26,12 @@ export function ShareProjectDialog({
 
   return createPortal(
     <div className="fixed inset-0 z-[95]">
-      <div className="absolute inset-0 bg-slate-900/45" onMouseDown={onClose} aria-hidden />
+      <div className="absolute inset-0 bg-[rgba(24,18,16,0.4)]" onMouseDown={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={`Share ${project.name}`}
-        className="absolute left-1/2 top-[8vh] flex max-h-[84vh] w-[min(520px,calc(100vw-24px))] -translate-x-1/2 flex-col overflow-hidden rounded-2xl border border-[color:var(--color-border)] bg-[color:var(--card)] text-foreground shadow-2xl"
+        className="absolute left-1/2 top-[8vh] flex max-h-[84vh] w-[min(520px,calc(100vw-24px))] -translate-x-1/2 flex-col overflow-hidden rounded-xl border border-[color:var(--border-hairline)] bg-[color:var(--card)] text-foreground shadow-[var(--shadow-3)]"
       >
         <div className="flex items-center gap-2.5 border-b border-[color:var(--border-hairline)] px-4 py-3">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--s2)] text-muted-foreground">
@@ -166,7 +166,7 @@ function ShareCard({
             <Link2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-muted-foreground">{url.replace(/^https?:\/\//, "")}</span>
             <button type="button" onClick={copy} aria-label="Copy link" className="grid h-6 w-6 shrink-0 place-items-center rounded text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground">
-              {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+              {copied ? <Check className="h-3.5 w-3.5 text-[color:var(--status-success)]" /> : <Copy className="h-3.5 w-3.5" />}
             </button>
             <a href={url} target="_blank" rel="noopener noreferrer" aria-label="Open link" className="grid h-6 w-6 shrink-0 place-items-center rounded text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground">
               <ExternalLink className="h-3.5 w-3.5" />

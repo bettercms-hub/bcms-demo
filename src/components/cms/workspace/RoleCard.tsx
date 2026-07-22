@@ -10,12 +10,12 @@ interface Props {
 }
 
 const TONE: Record<string, string> = {
-  amber: "bg-amber-500/10 text-amber-600 border-amber-500/30",
-  violet: "bg-violet-500/10 text-violet-500 border-violet-500/30",
-  sky: "bg-sky-500/10 text-sky-500 border-sky-500/30",
-  emerald: "bg-emerald-500/10 text-emerald-500 border-emerald-500/30",
-  rose: "bg-rose-500/10 text-rose-500 border-rose-500/30",
-  slate: "bg-slate-500/10 text-muted-foreground border-slate-500/30",
+  amber: "bg-[color-mix(in_srgb,var(--status-warning)_12%,transparent)] text-[color:var(--status-warning)] border-transparent",
+  violet: "bg-[color:var(--status-review-bg)] text-[color:var(--status-review-fg)] border-transparent",
+  sky: "bg-[color:var(--status-review-bg)] text-[color:var(--status-review-fg)] border-transparent",
+  emerald: "bg-[color:var(--status-live-bg)] text-[color:var(--status-live-fg)] border-transparent",
+  rose: "bg-[color-mix(in_srgb,var(--destructive)_12%,transparent)] text-[color:var(--destructive)] border-transparent",
+  slate: "bg-[color:var(--status-draft-bg)] text-[color:var(--status-draft-fg)] border-transparent",
 };
 
 export function RoleCard({ role, count, onEdit, onDelete }: Props) {
@@ -28,7 +28,7 @@ export function RoleCard({ role, count, onEdit, onDelete }: Props) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.06em] ${tone}`}>
+            <span className={`inline-flex items-center rounded-[4px] border px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.06em] ${tone}`}>
               {role.is_builtin ? "Built-in" : "Custom"}
             </span>
             <h3 className="truncate text-[14px] font-semibold text-foreground">{role.name}</h3>

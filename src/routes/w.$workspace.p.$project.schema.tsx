@@ -116,10 +116,10 @@ const FIELD_TYPES: { type: FieldType; label: string; blurb: string; icon: Lucide
   { type: "number", label: "Number", blurb: "Integer or decimal", icon: Hash, tint: "bg-amber-50 text-amber-600" },
   { type: "toggle", label: "Toggle", blurb: "True or false", icon: ToggleLeft, tint: "bg-emerald-50 text-emerald-600" },
   { type: "date", label: "Date", blurb: "Date and time", icon: CalendarDays, tint: "bg-teal-50 text-teal-600" },
-  { type: "image", label: "Image", blurb: "Asset from the media library", icon: ImageIcon, tint: "bg-pink-50 text-pink-600" },
+  { type: "image", label: "Image", blurb: "Asset from the media library", icon: ImageIcon, tint: "bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] text-[var(--primary)]" },
   { type: "file", label: "File", blurb: "PDF or any downloadable asset", icon: File, tint: "bg-stone-100 text-stone-600" },
   { type: "link", label: "Link", blurb: "URL or internal page", icon: Link2, tint: "bg-cyan-50 text-cyan-600" },
-  { type: "email", label: "Email", blurb: "Validated email address", icon: Mail, tint: "bg-rose-50 text-rose-600" },
+  { type: "email", label: "Email", blurb: "Validated email address", icon: Mail, tint: "bg-orange-50 text-orange-600" },
   { type: "phone", label: "Phone", blurb: "Validated phone number", icon: Phone, tint: "bg-green-50 text-green-600" },
   { type: "select", label: "Select", blurb: "One value from a fixed list", icon: List, tint: "bg-purple-50 text-purple-600" },
   { type: "reference", label: "Reference", blurb: "Links to one entry in a collection", icon: Database, tint: "bg-indigo-50 text-indigo-600" },
@@ -127,7 +127,7 @@ const FIELD_TYPES: { type: FieldType; label: string; blurb: string; icon: Lucide
   { type: "color", label: "Color", blurb: "Hex color value", icon: Palette, tint: "bg-red-50 text-red-600" },
   { type: "json", label: "JSON", blurb: "Raw structured data", icon: FileJson, tint: "bg-zinc-100 text-zinc-600" },
   { type: "group", label: "Group", blurb: "Nest related fields together", icon: Folder, tint: "bg-orange-50 text-orange-600" },
-  { type: "sections", label: "Section zone", blurb: "Which sections marketers can compose with", icon: LayoutTemplate, tint: "bg-fuchsia-50 text-fuchsia-600" },
+  { type: "sections", label: "Section zone", blurb: "Which sections marketers can compose with", icon: LayoutTemplate, tint: "bg-purple-50 text-purple-600" },
   { type: "faq", label: "FAQ", blurb: "Q&A accordion that auto-emits FAQ schema", icon: MessagesSquare, tint: "bg-indigo-50 text-indigo-600" },
   { type: "schema", label: "Schema markup", blurb: "Structured data, auto-mapped from your fields", icon: Braces, tint: "bg-violet-50 text-violet-600" },
   { type: "embed", label: "Embed", blurb: "Custom HTML, CSS or JS that renders live", icon: CodeXml, tint: "bg-slate-100 text-slate-600" },
@@ -135,7 +135,7 @@ const FIELD_TYPES: { type: FieldType; label: string; blurb: string; icon: Lucide
 const typeMeta = (t: FieldType) => FIELD_TYPES.find((x) => x.type === t)!;
 
 const KIND_META: Record<ModelKind, { label: string; plural: string; blurb: string; icon: LucideIcon; tint: string }> = {
-  page: { label: "Page type", plural: "Page types", blurb: "A routed page with fixed fields and a section zone", icon: LayoutTemplate, tint: "bg-fuchsia-50 text-fuchsia-600" },
+  page: { label: "Page type", plural: "Page types", blurb: "A routed page with fixed fields and a section zone", icon: LayoutTemplate, tint: "bg-purple-50 text-purple-600" },
   collection: { label: "Collection", plural: "Collections", blurb: "Repeatable entries served over the API", icon: Database, tint: "bg-sky-50 text-sky-600" },
   block: { label: "Block", plural: "Blocks", blurb: "A reusable group of fields embedded in other models", icon: Braces, tint: "bg-amber-50 text-amber-600" },
 };
@@ -238,7 +238,7 @@ function SchemaBuilder() {
                       <span className={cn("flex-1 truncate text-[12.5px]", active ? "font-medium text-foreground" : "text-foreground/80")}>
                         {m.name}
                       </span>
-                      {dirty.has(m.id) && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" title="Unsaved changes" />}
+                      {dirty.has(m.id) && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--status-warning)]" title="Unsaved changes" />}
                       <span className="shrink-0 text-[10.5px] tabular-nums text-muted-foreground">{countFields(m.fields)}</span>
                     </button>
                   );
@@ -413,7 +413,7 @@ function ModelEditor({
       <div className="mx-auto w-full max-w-[760px] px-8 py-8">
         {/* header */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium", kind.tint)}>
+          <span className={cn("inline-flex items-center gap-1.5 rounded-[4px] px-2 py-0.5 text-[11px] font-medium", kind.tint)}>
             <kind.icon className="h-3 w-3" /> {kind.label}
           </span>
           <span className="text-[11px] text-muted-foreground">{countFields(model.fields)} fields</span>
@@ -423,8 +423,8 @@ function ModelEditor({
             <span className="hidden items-center gap-1.5 pr-1 text-[11.5px] sm:inline-flex">
               {isDirty ? (
                 <>
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                  <span className="text-amber-600">Unsaved changes</span>
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--status-warning)]" />
+                  <span className="text-[var(--status-warning)]">Unsaved changes</span>
                 </>
               ) : isDraft ? (
                 <>
@@ -433,7 +433,7 @@ function ModelEditor({
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                  <CheckCircle2 className="h-3.5 w-3.5 text-[var(--status-live)]" />
                   <span className="text-muted-foreground">Saved</span>
                 </>
               )}
@@ -526,7 +526,7 @@ function ModelEditor({
 
         {/* API bar */}
         <div className="mt-4 flex items-center gap-1.5 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--s2)] px-2.5 py-1.5">
-          <span className="rounded bg-[color:var(--card)] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-600">GET</span>
+          <span className="rounded bg-[color:var(--card)] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[var(--status-live)]">GET</span>
           <span className="truncate font-mono text-[11.5px] text-foreground">{endpoint}</span>
           <button
             type="button"
@@ -929,7 +929,7 @@ function RowBtn({ children, label, onClick, disabled, danger }: { children: Reac
       onClick={onClick}
       className={cn(
         "grid h-6 w-6 place-items-center rounded transition-colors disabled:cursor-not-allowed disabled:opacity-30",
-        danger ? "text-rose-500 hover:bg-rose-50" : "text-muted-foreground hover:bg-[color:var(--s2)] hover:text-foreground",
+        danger ? "text-destructive hover:bg-destructive/10" : "text-muted-foreground hover:bg-[color:var(--s2)] hover:text-foreground",
       )}
     >
       {children}
@@ -1426,7 +1426,7 @@ function PreviewField({ field, models }: { field: ModelField; models: SchemaMode
       case "color":
         return (
           <div className={cn(previewInput, "flex items-center gap-1.5 font-mono")}>
-            <span className="h-3.5 w-3.5 rounded ring-1 ring-black/10" style={{ background: "#EF037F" }} /> #EF037F
+            <span className="h-3.5 w-3.5 rounded ring-1 ring-black/10" style={{ background: "#D54646" }} /> #D54646
           </div>
         );
       case "json":
@@ -1795,7 +1795,7 @@ function NewModelDialog({
               />
               {name.trim() && (
                 <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <span className="font-mono text-emerald-600">GET</span>
+                  <span className="font-mono text-[var(--status-live)]">GET</span>
                   <span className="font-mono">api.bettercms.site/v1/content/{toApiId(name)}</span>
                 </p>
               )}

@@ -23,11 +23,11 @@ export function Segmented<T extends string>({
   className,
 }: SegmentedProps<T>) {
   const h = size === "sm" ? "h-8" : "h-9";
-  const inner = size === "sm" ? "h-7 px-2.5 text-[12px]" : "h-8 px-3 text-[12px]";
+  const inner = size === "sm" ? "h-6 px-2.5 text-[12px]" : "h-7 px-3 text-[12px]";
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-0.5 rounded-lg border border-border bg-transparent p-0.5",
+        "inline-flex items-center gap-0.5 rounded-[8px] bg-[var(--s2)] p-1 shadow-[var(--shadow-seg-track)]",
         h,
         className,
       )}
@@ -41,11 +41,11 @@ export function Segmented<T extends string>({
             type="button"
             onClick={() => onChange(opt.value)}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-md font-medium transition-colors duration-[120ms]",
+              "inline-flex items-center gap-1.5 rounded-[6px] font-medium transition-colors duration-[120ms]",
               inner,
               active
-                ? "bg-[var(--s3)] text-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-[var(--s4)]/60",
+                ? "bg-card border border-border text-foreground shadow-[var(--shadow-seg)]"
+                : "text-muted-foreground hover:text-foreground",
             )}
             aria-pressed={active}
           >

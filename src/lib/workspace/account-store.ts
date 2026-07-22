@@ -55,7 +55,7 @@ export interface AccountSession {
   lastActive: string;
 }
 
-export const AVATAR_COLORS = ["#EF037F", "#6366F1", "#0EA5E9", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899", "#14B8A6"];
+export const AVATAR_COLORS = ["#D54646", "#6366F1", "#0EA5E9", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899", "#14B8A6"];
 
 export const CONNECTION_META: Record<ConnectionProvider, { label: string; blurb: string }> = {
   google: { label: "Google", blurb: "Sign in with Google and sync your calendar." },

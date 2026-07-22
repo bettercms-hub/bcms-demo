@@ -80,8 +80,8 @@ export function OnboardingShell({
 export function StepHeading({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="mb-7 text-center">
-      <h1 className="text-[24px] font-semibold tracking-[-0.01em] text-foreground">{title}</h1>
-      <p className="mt-1.5 text-[13px] text-muted-foreground">{subtitle}</p>
+      <h1 className="text-[28px] font-semibold tracking-tight text-foreground">{title}</h1>
+      <p className="mt-1.5 text-[14px] text-muted-foreground">{subtitle}</p>
     </div>
   );
 }
@@ -219,7 +219,7 @@ export function WorkspaceStep({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Acme Inc"
-            className="h-11 w-full rounded-lg border border-[color:var(--color-border)] bg-card px-3 text-[14px] outline-none transition-colors focus:border-[color:var(--primary)]"
+            className="h-11 w-full rounded-[8px] border border-[color:var(--color-border)] bg-card px-3 text-[14px] outline-none transition-[border-color,box-shadow] focus:border-[color:var(--border-strong)] focus:shadow-[var(--shadow-focus)]"
           />
         </label>
 
@@ -273,7 +273,7 @@ export function InviteStep({
         subtitle="Teammates get an email invite and pick their own password. Roles are set per member afterwards."
       />
       <div
-        className="flex min-h-11 flex-wrap items-center gap-1.5 rounded-lg border border-[color:var(--color-border)] bg-card px-2 py-1.5 transition-colors focus-within:border-[color:var(--primary)]"
+        className="flex min-h-11 flex-wrap items-center gap-1.5 rounded-[8px] border border-[color:var(--color-border)] bg-card px-2 py-1.5 transition-[border-color,box-shadow] focus-within:border-[color:var(--border-strong)] focus-within:shadow-[var(--shadow-focus)]"
         onClick={() => inputRef.current?.focus()}
       >
         {emails.map((e) => (

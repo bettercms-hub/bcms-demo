@@ -100,8 +100,8 @@ function CardOnFile({ ws, yearlyTotal }: { ws: Workspace; yearlyTotal: number | 
         </div>
       ) : (
         <div className="flex items-center gap-3 py-3">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-500/10">
-            <Check className="h-4 w-4 text-emerald-500" />
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[color:var(--status-live-bg)]">
+            <Check className="h-4 w-4 text-[color:var(--status-success)]" />
           </div>
           <p className="text-[13px] text-foreground">
             No card on file. Nothing to pay. A card is only needed when you move to a paid plan.
@@ -121,7 +121,7 @@ function UpdateCardDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
         <DialogHeader>
           <div className="flex items-center justify-between gap-2">
             <DialogTitle className="text-[16px]">Update card</DialogTitle>
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-amber-500/35 bg-amber-500/10 px-2 py-0.5 text-[10.5px] font-semibold text-amber-600 dark:text-amber-400">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-[4px] border border-[color-mix(in_srgb,var(--status-warning)_35%,transparent)] bg-[color-mix(in_srgb,var(--status-warning)_10%,transparent)] px-2 py-0.5 text-[10.5px] font-semibold text-[color:var(--status-warning)]">
               Dodo Payments · Test mode
             </span>
           </div>

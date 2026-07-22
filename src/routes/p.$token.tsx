@@ -103,7 +103,7 @@ function Sandbox({ link }: { link: ShareLink }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="truncate text-[13.5px] font-semibold">{project.name}</span>
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[color:var(--s2)] px-2 py-0.5 text-[10.5px] font-medium text-muted-foreground">
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-[4px] bg-[color:var(--s2)] px-2 py-0.5 text-[10.5px] font-medium text-muted-foreground">
               <Lock className="h-2.5 w-2.5" /> {isTemplate ? "Template" : "Read-only preview"}
             </span>
           </div>
@@ -112,7 +112,7 @@ function Sandbox({ link }: { link: ShareLink }) {
           <button
             type="button"
             onClick={() => setCloneOpen(true)}
-            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] bg-primary px-3 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] active:bg-[var(--primary-pressed)]"
           >
             <CopyIcon className="h-3.5 w-3.5" /> Clone this project
           </button>
@@ -225,15 +225,15 @@ function PagesView({ pages }: { pages: ReturnType<typeof usePages> }) {
         </div>
 
         <div className="mx-auto overflow-hidden rounded-xl border border-[color:var(--border-hairline)] bg-white shadow-sm transition-all" style={{ maxWidth: device === "mobile" ? 390 : 1100 }}>
-          {/* fake browser chrome */}
-          <div className="flex items-center gap-1.5 border-b border-slate-100 bg-slate-50 px-3 py-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-            <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-            <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
+          {/* fake browser chrome — the rendered site stays light in both themes */}
+          <div className="flex items-center gap-1.5 border-b border-[#ECEBE9] bg-[#F7F7F7] px-3 py-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#D9D9D9]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[#D9D9D9]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[#D9D9D9]" />
           </div>
           <div className="min-h-[400px]">
             {active.sections.length === 0 ? (
-              <div className="grid place-items-center py-24 text-[13px] text-slate-400">Empty page</div>
+              <div className="grid place-items-center py-24 text-[13px] text-[#A6A6A6]">Empty page</div>
             ) : (
               active.sections.map((s) =>
                 getSectionDef(s.type) ? (
@@ -291,7 +291,7 @@ function ModelView({ projectId }: { projectId: string }) {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <span className="truncate text-[13px] font-medium">{f.label}</span>
-                      {f.required && <span className="text-[13px] leading-none text-rose-500">*</span>}
+                      {f.required && <span className="text-[13px] leading-none text-destructive">*</span>}
                     </div>
                     <div className="truncate font-mono text-[10.5px] text-muted-foreground">{f.name}</div>
                   </div>
@@ -361,7 +361,7 @@ function ContentView({ projectId }: { projectId: string }) {
               </thead>
               <tbody className="divide-y divide-[color:var(--border-hairline)]">
                 {rows.map((e) => (
-                  <tr key={e.id} className="hover:bg-[var(--s4)]">
+                  <tr key={e.id} className="hover:bg-[var(--row-hover)]">
                     <td className="px-4 py-2.5 font-medium">{e.title}</td>
                     {cols2.map((f) => (
                       <td key={f.id} className="hidden max-w-[220px] truncate px-4 py-2.5 text-muted-foreground sm:table-cell">
@@ -370,7 +370,7 @@ function ContentView({ projectId }: { projectId: string }) {
                     ))}
                     <td className="px-4 py-2.5">
                       <span className="inline-flex items-center gap-1.5 text-[12px]">
-                        <span className={cn("h-1.5 w-1.5 rounded-full", (e.status ?? "published") === "published" ? "bg-emerald-400" : "bg-muted-foreground/50")} />
+                        <span className={cn("h-1.5 w-1.5 rounded-full", (e.status ?? "published") === "published" ? "bg-[color:var(--status-live)]" : "bg-muted-foreground/50")} />
                         <span className="text-muted-foreground">{e.status ?? "published"}</span>
                       </span>
                     </td>
@@ -422,8 +422,8 @@ function CloneDialog({ project, onClose }: { project: { id: string; name: string
 
   return createPortal(
     <div className="fixed inset-0 z-[95]">
-      <div className="absolute inset-0 bg-slate-900/45" onMouseDown={onClose} aria-hidden />
-      <div role="dialog" aria-modal="true" aria-label={`Clone ${project.name}`} className="absolute left-1/2 top-[10vh] flex max-h-[80vh] w-[min(460px,calc(100vw-24px))] -translate-x-1/2 flex-col overflow-hidden rounded-2xl border border-[color:var(--color-border)] bg-[color:var(--card)] text-foreground shadow-2xl">
+      <div className="absolute inset-0 bg-[rgba(24,18,16,0.4)]" onMouseDown={onClose} aria-hidden />
+      <div role="dialog" aria-modal="true" aria-label={`Clone ${project.name}`} className="absolute left-1/2 top-[10vh] flex max-h-[80vh] w-[min(460px,calc(100vw-24px))] -translate-x-1/2 flex-col overflow-hidden rounded-xl border border-[color:var(--border-hairline)] bg-[color:var(--elevated-modal)] text-foreground shadow-[var(--shadow-3)]">
         <div className="flex items-center gap-2.5 border-b border-[color:var(--border-hairline)] px-4 py-3">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--s2)] text-muted-foreground">
             <CopyIcon className="h-4 w-4" />
@@ -439,7 +439,7 @@ function CloneDialog({ project, onClose }: { project: { id: string; name: string
         <div className="min-h-0 flex-1 space-y-3.5 overflow-y-auto p-4">
           <label className="block">
             <div className="mb-1 text-[11.5px] font-medium text-muted-foreground">Project name</div>
-            <input value={name} onChange={(e) => setName(e.target.value)} className="h-9 w-full rounded-lg border border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 text-[13px] outline-none transition-colors focus:border-[color:var(--primary)]" />
+            <input value={name} onChange={(e) => setName(e.target.value)} className="h-9 w-full rounded-[8px] border border-[color:var(--color-border)] bg-[color:var(--card)] px-2.5 text-[13px] outline-none transition-[border-color,box-shadow] focus:border-[color:var(--border-strong)] focus:shadow-[var(--shadow-focus)]" />
           </label>
           <div>
             <div className="mb-1 text-[11.5px] font-medium text-muted-foreground">Clone into</div>
@@ -466,8 +466,8 @@ function CloneDialog({ project, onClose }: { project: { id: string; name: string
           </div>
         </div>
         <div className="flex items-center justify-end gap-2 border-t border-[color:var(--border-hairline)] px-4 py-3">
-          <button type="button" onClick={onClose} className="h-8 rounded-md px-3 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)]">Cancel</button>
-          <button type="button" onClick={doClone} disabled={!targetId} className="h-8 rounded-md bg-primary px-3.5 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-40">
+          <button type="button" onClick={onClose} className="h-8 rounded-[6px] px-3 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)]">Cancel</button>
+          <button type="button" onClick={doClone} disabled={!targetId} className="h-8 rounded-[6px] bg-primary px-3.5 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] active:bg-[var(--primary-pressed)] disabled:cursor-not-allowed disabled:opacity-40">
             Clone project
           </button>
         </div>

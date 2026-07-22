@@ -140,7 +140,7 @@ export function GlobalTopBar({ onOpenPalette, onMenu, project }: Props) {
   );
 }
 
-function NotificationsMenu() {
+export function NotificationsMenu() {
   const { workspace: wsSlug } = useParams({ strict: false }) as { workspace?: string };
   const ws = wsSlug ? getWorkspaceBySlug(wsSlug) : undefined;
   const unread = useUnreadCount(ws?.id);

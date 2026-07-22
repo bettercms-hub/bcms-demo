@@ -5,6 +5,7 @@ import { getWorkspaceBySlug } from "@/lib/cms/use-cms";
 import { projects } from "@/lib/cms/mock-data";
 import { PageShell } from "@/components/cms/layout";
 import { DataTable, type DataTableColumn } from "@/components/cms/data-table";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/cms/Icon";
 
@@ -172,14 +173,5 @@ function ProjectsList() {
 }
 
 function StatusPill({ status }: { status: "live" | "draft" }) {
-  const meta =
-    status === "live"
-      ? { label: "Live", dot: "bg-[color:var(--status-live)]" }
-      : { label: "Draft", dot: "bg-[color:var(--status-draft)]" };
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--surface-2)] px-2 py-0.5 text-[11.5px] font-medium text-foreground">
-      <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
-      {meta.label}
-    </span>
-  );
+  return status === "live" ? <Badge variant="live">Live</Badge> : <Badge variant="draft">Draft</Badge>;
 }

@@ -20,7 +20,7 @@ export function StageChip({ stage, size = "sm" }: { stage: WorkflowStage; size?:
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full font-medium",
+        "inline-flex items-center gap-1.5 rounded-[4px] font-medium",
         size === "sm" ? "px-2 py-0.5 text-[10.5px]" : "px-2.5 py-1 text-[11.5px]",
       )}
       style={stageChipStyle(stage)}
@@ -93,9 +93,9 @@ export function DueChip({ iso }: { iso?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+        "inline-flex items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[10px] font-medium",
         overdue
-          ? "bg-rose-500/12 text-rose-600 dark:text-rose-400"
+          ? "bg-[color-mix(in_srgb,var(--status-error)_12%,transparent)] text-[var(--status-error)]"
           : soon
             ? "bg-amber-500/12 text-amber-700 dark:text-amber-400"
             : "bg-[color:var(--s2)] text-muted-foreground",

@@ -114,9 +114,12 @@ export function WorkspaceSubNav({ wsSlug }: Props) {
       <nav className="px-3 pb-10">
         {groups.map((g, gi) => (
           <div key={g.label} className={gi > 0 ? "mt-6" : ""}>
-            <div className="px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
-              {g.label}
-            </div>
+            {/* The rail is already titled "Workspace"; skip the redundant first label. */}
+            {!(gi === 0 && g.label === "Workspace") && (
+              <div className="px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
+                {g.label}
+              </div>
+            )}
             {g.items.map((it) => {
               const active = isActive(it);
               return (

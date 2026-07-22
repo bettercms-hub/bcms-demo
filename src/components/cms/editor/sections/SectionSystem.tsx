@@ -203,8 +203,15 @@ export function createSection(type: string, variant?: string): SectionInstance {
     content: { ...(def?.defaults ?? {}) },
   };
 }
+/** Hub-created components resolve through here (see components-store). The
+ *  built-in catalog stays code-defined; customs never shadow a built-in. */
+let customResolver: ((type: string) => SectionDef | undefined) | null = null;
+export function registerSectionResolver(fn: (type: string) => SectionDef | undefined) {
+  customResolver = fn;
+}
+
 export function getSectionDef(type: string): SectionDef | undefined {
-  return SECTION_DEFS.find((d) => d.type === type);
+  return SECTION_DEFS.find((d) => d.type === type) ?? customResolver?.(type);
 }
 
 /* ------------------------------------------------------- inline text field */
@@ -677,10 +684,13 @@ export function SectionLibrary({
   open,
   onClose,
   onAdd,
+  extraDefs = [],
 }: {
   open: boolean;
   onClose: () => void;
   onAdd: (type: string, variant: string) => void;
+  /** Hub-created components (published, plus drafts for developers). */
+  extraDefs?: SectionDef[];
 }) {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("All");
@@ -700,11 +710,12 @@ export function SectionLibrary({
   if (!open) return null;
 
   const query = q.trim().toLowerCase();
-  const filtered = SECTION_DEFS.filter((d) => {
+  const allDefs = [...SECTION_DEFS, ...extraDefs];
+  const filtered = allDefs.filter((d) => {
     if (cat !== "All" && d.category !== cat) return false;
     return !query || d.name.toLowerCase().includes(query) || d.blurb.toLowerCase().includes(query) || d.category.toLowerCase().includes(query);
   });
-  const variantTotal = SECTION_DEFS.reduce((n, d) => n + d.variants.length, 0);
+  const variantTotal = allDefs.reduce((n, d) => n + d.variants.length, 0);
 
   return createPortal(
     <div className="fixed inset-0 z-[90]">
@@ -723,7 +734,7 @@ export function SectionLibrary({
           <div className="min-w-0 flex-1">
             <div className="text-[14px] font-semibold">Add a section</div>
             <div className="truncate text-[11.5px] text-slate-500">
-              {SECTION_DEFS.length} sections, {variantTotal} layouts. Defined by your developers, always on brand.
+              {allDefs.length} sections, {variantTotal} layouts. Defined by your team, always on brand.
             </div>
           </div>
           <div className="relative w-56 shrink-0">
@@ -747,7 +758,7 @@ export function SectionLibrary({
           {/* categories rail */}
           <div className="flex w-48 shrink-0 flex-col gap-0.5 border-r border-slate-100 p-2">
             {["All", ...SECTION_CATEGORIES].map((c) => {
-              const count = c === "All" ? SECTION_DEFS.length : SECTION_DEFS.filter((d) => d.category === c).length;
+              const count = c === "All" ? allDefs.length : allDefs.filter((d) => d.category === c).length;
               return (
                 <button
                   key={c}

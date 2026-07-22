@@ -112,7 +112,7 @@ function Publishing() {
               <Button variant="outline" size="icon" className="h-9 w-9" title="Regenerate">
                 <RotateCw className="h-3.5 w-3.5" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-rose-500" title="Delete">
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive" title="Delete">
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </div>

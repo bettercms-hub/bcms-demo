@@ -241,7 +241,7 @@ function Section({
 function Table({ children }: { children: React.ReactNode }) {
   return (
     <div className="overflow-hidden rounded-md border border-border bg-background">
-      <div className="grid grid-cols-[2fr_1fr_1fr_160px] gap-3 border-b border-border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      <div className="grid grid-cols-[2fr_1fr_1fr_160px] gap-3 border-b border-border px-3 py-2 text-[12.5px] font-medium text-muted-foreground">
         <div>Email</div>
         <div>Role</div>
         <div>Access</div>

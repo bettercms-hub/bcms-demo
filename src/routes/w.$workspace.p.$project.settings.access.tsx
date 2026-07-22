@@ -211,7 +211,7 @@ function RolesTab({
                 customRoleActions.remove(projectId, r.id);
                 toast.success(`Role "${r.name}" deleted. Members fall back to their workspace role.`);
               }}
-              className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-rose-500/10 hover:text-rose-500"
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
               title="Delete role"
               aria-label={`Delete ${r.name}`}
             >
@@ -543,7 +543,7 @@ function AuditLog() {
           <button
             type="button"
             onClick={() => setShown((s) => s + 6)}
-            className="inline-flex h-8 items-center rounded-lg border border-border bg-transparent px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
+            className="inline-flex h-8 items-center rounded-[6px] border border-border bg-transparent px-3 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
           >
             Load more
           </button>

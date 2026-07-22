@@ -335,7 +335,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
           ))}
         </CommandGroup>
       </CommandList>
-      <div className="flex items-center justify-between gap-3 border-t border-border bg-surface px-3 py-1.5 text-[10px] text-muted-foreground">
+      <div className="flex items-center justify-between gap-3 border-t border-[color:var(--border-hairline)] bg-[color:var(--s2)] px-3 py-1.5 text-[10px] text-muted-foreground">
         <div className="flex items-center gap-3">
           <span><Kbd>↑</Kbd> <Kbd>↓</Kbd> navigate</span>
           <span><Kbd>⏎</Kbd> run</span>
@@ -344,7 +344,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
         <button
           type="button"
           onClick={() => { onOpenChange(false); setTimeout(() => editorBus.emit({ type: "editor:open-cheatsheet" }), 0); }}
-          className="rounded-[4px] px-1.5 py-0.5 hover:bg-muted hover:text-foreground"
+          className="rounded-[4px] px-1.5 py-0.5 hover:bg-[color:var(--s3)] hover:text-foreground"
         >
           <Kbd>?</Kbd> shortcuts
         </button>
@@ -418,7 +418,7 @@ function Item({ icon: Icon, label, hint, shortcutKeys, keywords, disabled, onSel
       value={`${label} ${hint ?? ""} ${keywords ?? ""}`}
       className={disabled ? "opacity-40" : ""}
     >
-      <Icon className="mr-2 h-3.5 w-3.5" />
+      <Icon className="text-muted-foreground" />
       <span className="flex-1 truncate">{label}</span>
       {hint && <span className="ml-2 truncate text-[11px] text-muted-foreground">{hint}</span>}
       {shortcutKeys && (
@@ -435,7 +435,7 @@ function Item({ icon: Icon, label, hint, shortcutKeys, keywords, disabled, onSel
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-[3px] border border-border bg-background px-1 font-mono text-[9px] text-muted-foreground">
+    <kbd className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-[4px] border border-[color:var(--color-border)] bg-card px-1 font-mono text-[9px] text-muted-foreground">
       {children}
     </kbd>
   );

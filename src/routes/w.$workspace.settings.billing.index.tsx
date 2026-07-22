@@ -293,7 +293,7 @@ function SitesCard({ ws, wsProjects, cycle }: { ws: Workspace; wsProjects: Proje
               {note && (
                 <div
                   className={`px-5 pb-3 text-[12px] leading-relaxed ${
-                    note.tone === "over" ? "text-sky-600 dark:text-sky-400" : "text-amber-600 dark:text-amber-400"
+                    note.tone === "over" ? "text-[color:var(--status-preview)]" : "text-[color:var(--status-warning)]"
                   }`}
                 >
                   {note.text}
@@ -333,7 +333,7 @@ function SeatsCard({ ws, wsMembers }: { ws: Workspace; wsMembers: Member[] }) {
       <div className="divide-y divide-[color:var(--border-hairline)]">
         <div className="flex items-center justify-between gap-4 px-5 py-3">
           <div className="flex min-w-0 items-center gap-2.5">
-            <Check className="h-4 w-4 shrink-0 text-emerald-500" />
+            <Check className="h-4 w-4 shrink-0 text-[color:var(--status-success)]" />
             <div className="min-w-0">
               <div className="text-[13px] text-foreground">Viewers and reviewers are free, unlimited</div>
               {freeParts.length > 0 && (
@@ -380,8 +380,8 @@ function PaymentMethodCard({ ws }: { ws: Workspace }) {
       <>
         <SettingsSection title="Free forever" description="This workspace runs on the free plan.">
           <div className="flex items-center gap-3 py-3">
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-500/10">
-              <Check className="h-4 w-4 text-emerald-500" />
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[color:var(--status-live-bg)]">
+              <Check className="h-4 w-4 text-[color:var(--status-success)]" />
             </div>
             <p className="text-[13px] text-foreground">No card on file. Nothing to pay.</p>
           </div>

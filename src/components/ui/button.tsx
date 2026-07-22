@@ -5,18 +5,19 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-[13px] font-medium cursor-pointer transition-[background-color,border-color,box-shadow,color] duration-[120ms] ease-out focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-3.5 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[6px] text-sm font-medium tracking-[-0.01em] cursor-pointer transition-[background-color,border-color,box-shadow,color] duration-[120ms] ease-out focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        // Primary: sacred pink. One per surface.
+        // Primary: coral. One per surface.
         default:
           "bg-primary text-primary-foreground hover:bg-[var(--primary-hover)] active:bg-[var(--primary-pressed)]",
-        // Secondary: transparent + hairline border
+        // Secondary: filled neutral, no border (v2)
         secondary:
-          "bg-transparent text-foreground border border-border hover:bg-[var(--row-hover)] hover:border-border-strong",
+          "bg-[var(--s3)] text-[var(--foreground-secondary)] hover:bg-[var(--s4)]",
+        // Outline: tertiary — card fill + border
         outline:
-          "bg-transparent text-foreground border border-border hover:bg-[var(--row-hover)] hover:border-border-strong",
+          "bg-card text-foreground border border-border hover:bg-[var(--row-hover)] hover:border-border-strong",
         // Ghost: transparent, hover only
         ghost: "bg-transparent text-foreground hover:bg-[var(--row-hover)]",
         link: "text-primary underline-offset-4 hover:underline",

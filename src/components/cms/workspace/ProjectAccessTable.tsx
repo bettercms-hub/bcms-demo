@@ -58,7 +58,7 @@ export function ProjectAccessTable({ workspaceId, projectSlug }: Props) {
   return (
     <div className="grid gap-3">
       <div className="overflow-hidden rounded-md border border-border bg-background">
-        <div className="grid grid-cols-[1.5fr_1.2fr_1.2fr_24px] gap-3 border-b border-border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        <div className="grid grid-cols-[1.5fr_1.2fr_1.2fr_24px] gap-3 border-b border-border px-3 py-2 text-[12.5px] font-medium text-muted-foreground">
           <div>Member</div>
           <div>Workspace role (inherited)</div>
           <div>Project role</div>

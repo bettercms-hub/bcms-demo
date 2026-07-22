@@ -87,7 +87,7 @@ function EnvVars() {
             <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit">
               <Pencil className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-rose-500" title="Delete">
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" title="Delete">
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </div>
@@ -129,7 +129,7 @@ function EnvVars() {
           emptyTitle="No variables in this scope"
           emptyDescription="Add a variable to expose configuration to your server code."
           bulkActions={(ids, clear) => (
-            <Button variant="ghost" size="sm" className="h-7 gap-1 text-[12px] text-rose-500" onClick={clear}>
+            <Button variant="ghost" size="sm" className="h-7 gap-1 text-[12px] text-destructive" onClick={clear}>
               <Trash2 className="h-3 w-3" /> Delete ({ids.length})
             </Button>
           )}

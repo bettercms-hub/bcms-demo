@@ -563,13 +563,13 @@ function PublishedColumn({
           ref={setNodeRef}
           className={cn(
             "flex h-full w-[264px] shrink-0 flex-col rounded-xl border bg-[color:var(--s2)]/50 transition-colors",
-            isOver ? "border-emerald-500/60 bg-emerald-500/5" : "border-[color:var(--border-hairline)]",
+            isOver ? "border-[color-mix(in_srgb,var(--status-live)_60%,transparent)] bg-[color-mix(in_srgb,var(--status-live)_5%,transparent)]" : "border-[color:var(--border-hairline)]",
           )}
         >
           <div className="flex items-center gap-2 px-3 py-2.5">
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+            <CheckCircle2 className="h-3.5 w-3.5 text-[var(--status-live)]" />
             <span className="text-[12.5px] font-semibold text-foreground">Published</span>
-            <span className="ml-auto rounded-full bg-[color:var(--card)] px-1.5 py-0.5 text-[10.5px] tabular-nums text-muted-foreground">
+            <span className="ml-auto rounded-[4px] bg-[color:var(--card)] px-1.5 py-0.5 text-[10.5px] tabular-nums text-muted-foreground">
               {entries.length}
             </span>
           </div>
@@ -599,7 +599,7 @@ function ColumnHeader({ color, name, count, gate }: { color: string; name: strin
           Gate
         </span>
       )}
-      <span className="ml-auto rounded-full bg-[color:var(--card)] px-1.5 py-0.5 text-[10.5px] tabular-nums text-muted-foreground">{count}</span>
+      <span className="ml-auto rounded-[4px] bg-[color:var(--card)] px-1.5 py-0.5 text-[10.5px] tabular-nums text-muted-foreground">{count}</span>
     </div>
   );
 }

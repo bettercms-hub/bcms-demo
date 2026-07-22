@@ -66,7 +66,7 @@ export const ME = "Himanshu Sahu";
 export const MEMBERS = ["Himanshu Sahu", "Arnab Dhar", "Kiran Rao", "Vamsi Krishna", "Priya Nair"];
 const REACTIONS = ["👍", "❤️", "😂", "🎉", "👀", "🙏"];
 
-const AVATAR_COLORS = ["#6366f1", "#db2777", "#0ea5e9", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444"];
+const AVATAR_COLORS = ["#6366f1", "#D54646", "#0ea5e9", "#10b981", "#f59e0b", "#8b5cf6", "#761B36"];
 function hueOf(name: string) {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
@@ -147,7 +147,7 @@ export function CommentStyles() {
   return (
     <style>{`
 .bcms-mention { background: rgba(99,102,241,0.14); color: #4f46e5; border-radius: 4px; padding: 0 3px; font-weight: 500; white-space: nowrap; }
-.bcms-composer.is-empty:before { content: attr(data-placeholder); color: #94a3b8; pointer-events: none; }
+.bcms-composer.is-empty:before { content: attr(data-placeholder); color: #a6a6a6; pointer-events: none; }
 `}</style>
   );
 }
@@ -625,7 +625,7 @@ function Message({
                   <button type="button" onClick={() => { setEditing(true); setMenu(false); }} className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[12px] text-slate-700 hover:bg-slate-100">
                     <Pencil className="h-3.5 w-3.5" /> Edit
                   </button>
-                  <button type="button" onClick={() => { onDelete(); setMenu(false); }} className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[12px] text-rose-600 hover:bg-rose-50">
+                  <button type="button" onClick={() => { onDelete(); setMenu(false); }} className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[12px] text-destructive hover:bg-destructive/10">
                     <Trash2 className="h-3.5 w-3.5" /> Delete{isRoot ? " thread" : ""}
                   </button>
                 </div>
@@ -734,7 +734,7 @@ function AnchoredPopover({
       role="dialog"
       aria-label="Comment thread"
       style={{ position: "fixed", top: pos?.top ?? -9999, left: pos?.left ?? -9999, width, opacity: pos ? 1 : 0, zIndex: 76 }}
-      className="overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-[0_16px_50px_-12px_rgba(15,23,42,0.45)]"
+      className="overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-[0_16px_50px_-12px_rgba(53,30,39,0.45)]"
     >
       {children}
     </div>,
@@ -788,7 +788,7 @@ export function ThreadPopover({
               <button type="button" onClick={() => { onCopyLink(); setMenu(false); }} className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[12px] text-slate-700 hover:bg-slate-100">
                 <Link2 className="h-3.5 w-3.5" /> Copy link
               </button>
-              <button type="button" onClick={() => { onDeleteMsg(thread.messages[0].id); setMenu(false); }} className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[12px] text-rose-600 hover:bg-rose-50">
+              <button type="button" onClick={() => { onDeleteMsg(thread.messages[0].id); setMenu(false); }} className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[12px] text-destructive hover:bg-destructive/10">
                 <Trash2 className="h-3.5 w-3.5" /> Delete thread
               </button>
             </div>

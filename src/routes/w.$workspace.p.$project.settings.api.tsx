@@ -164,7 +164,7 @@ function ApiSettings() {
           <CopyRow label="Project slug" value={pr?.slug ?? project} mono />
           <SettingsRow label="Staging preview domain" description="Managed by BetterCMS · shows drafts in the visual editor.">
             <div className="flex items-center gap-2 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--s2)] px-3 py-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <span className="h-1.5 w-1.5 rounded-full bg-status-success" />
               <span className="flex-1 truncate font-mono text-[12.5px] text-foreground">{staging}</span>
               <button
                 type="button"
@@ -233,7 +233,7 @@ function ApiSettings() {
           <button
             type="button"
             onClick={() => setDialogOpen(true)}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-[12.5px] font-medium text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
+            className="inline-flex h-8 items-center gap-1.5 rounded-[6px] bg-primary px-3 text-[12.5px] font-medium text-primary-foreground transition-colors hover:bg-[var(--primary-hover)]"
           >
             <Plus className="h-3.5 w-3.5" /> New token
           </button>
@@ -265,7 +265,7 @@ function ApiSettings() {
                     onClick={() => revoke(t.id)}
                     aria-label="Revoke token"
                     title="Revoke"
-                    className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-rose-500/12 hover:text-rose-400"
+                    className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -349,7 +349,7 @@ function ApiSettings() {
             <button
               type="button"
               onClick={addOrigin}
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--card)] px-3 text-[13px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[6px] border border-[color:var(--color-border)] bg-[color:var(--card)] px-3 text-[13px] font-medium text-foreground transition-colors hover:bg-[color:var(--color-row-hover)]"
             >
               <Plus className="h-3.5 w-3.5" /> Add
             </button>
@@ -491,14 +491,14 @@ function NewTokenDialog({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="inline-flex h-9 items-center rounded-lg px-3.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
+              className="inline-flex h-9 items-center rounded-[6px] px-3.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!name.trim()}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] disabled:opacity-50"
+              className="inline-flex h-9 items-center gap-1.5 rounded-[6px] bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] disabled:opacity-50"
             >
               <Check className="h-3.5 w-3.5" /> Create token
             </button>
