@@ -64,14 +64,21 @@ export function WorkspaceIdentity({ wsSlug }: { wsSlug: string }) {
   };
 
   return (
-    <div className="border-b border-border px-2 pb-2 pt-2.5">
+    <div>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
           <button
-            className="group flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-[color:var(--color-row-hover)]"
+            className="group flex w-full items-center gap-2 rounded-lg bg-[color:var(--s4)] p-1.5 pr-2 text-left transition-colors hover:bg-[color:var(--border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Switch workspace"
           >
-            <div className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-md border border-border bg-[color:var(--s3)] text-[12px] font-semibold uppercase text-foreground">
+            <div
+              className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-md border border-[color:var(--border-strong)] text-[13px] font-bold uppercase text-white"
+              style={{
+                background: current.logoUrl
+                  ? undefined
+                  : "linear-gradient(135deg, var(--brand-plum), var(--brand-burgundy))",
+              }}
+            >
               {current.logoUrl ? (
                 <img src={current.logoUrl} alt="" className="h-full w-full object-cover" />
               ) : (
@@ -79,12 +86,12 @@ export function WorkspaceIdentity({ wsSlug }: { wsSlug: string }) {
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[13px] font-semibold leading-tight tracking-tight text-foreground">
+              <div className="truncate text-[13px] font-semibold leading-tight tracking-[-0.02em] text-[color:var(--plum-text)]">
                 {current.name}
               </div>
-              <div className="truncate text-[11px] text-muted-foreground">{planSubtitle}</div>
+              <div className="truncate text-[11px] font-medium text-[color:var(--plum-muted)]">{planSubtitle}</div>
             </div>
-            <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70 transition-colors duration-150 group-hover:text-foreground group-data-[state=open]:text-foreground" />
+            <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-[color:var(--plum-muted)] transition-colors duration-150 group-hover:text-[color:var(--plum-text)] group-data-[state=open]:text-[color:var(--plum-text)]" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" sideOffset={6} className="w-[260px] p-1">

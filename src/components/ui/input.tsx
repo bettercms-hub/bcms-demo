@@ -8,8 +8,8 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
       <input
         type={type}
         className={cn(
-          // Transparent default → subtle tint on hover → raised + pink border on focus.
-          "flex h-9 w-full rounded-lg border border-border bg-transparent px-3 text-[13px] text-foreground transition-[background-color,border-color,box-shadow] duration-[120ms] ease-out placeholder:text-muted-foreground hover:bg-[var(--row-hover)]/40 focus-visible:outline-none focus-visible:border-primary focus-visible:bg-[var(--surface-focused)] file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground disabled:cursor-not-allowed disabled:opacity-50",
+          // V2: card fill, 8px radius; focus = strong border + soft coral halo.
+          "flex h-10 w-full rounded-[8px] border border-border bg-card px-3 text-[13px] text-foreground transition-[background-color,border-color,box-shadow] duration-[120ms] ease-out placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-border-strong focus-visible:shadow-[var(--shadow-focus)] file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground disabled:cursor-not-allowed disabled:opacity-50",
           className,
         )}
         ref={ref}

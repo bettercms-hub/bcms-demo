@@ -59,7 +59,7 @@ function Roles() {
   const customs = roles.filter((r) => !r.is_builtin);
 
   return (
-    <div className="flex min-h-0 flex-1">
+    <div className="flex min-h-0 flex-1 max-md:flex-col">
       <WorkspaceSubNav wsSlug={workspace} />
       <div className="flex-1 overflow-auto">
         <div className="mx-auto w-full max-w-[1200px] px-8 py-8">

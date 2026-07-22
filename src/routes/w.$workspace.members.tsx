@@ -93,7 +93,7 @@ function Members() {
 
   if (!ws) {
     return (
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 max-md:flex-col">
         <WorkspaceSubNav wsSlug={slug} />
         <div className="flex-1 overflow-auto">
           <PageShell title="Seats and members" width="full">
@@ -138,7 +138,7 @@ function Members() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1">
+    <div className="flex min-h-0 flex-1 max-md:flex-col">
       <WorkspaceSubNav wsSlug={slug} />
       <div className="flex-1 overflow-auto">
         <PageShell

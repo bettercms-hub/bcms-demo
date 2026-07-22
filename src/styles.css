@@ -5,6 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 10px;
@@ -64,6 +65,7 @@
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-foreground-secondary: var(--foreground-secondary);
   --color-surface: var(--surface);
   --color-panel: var(--panel);
   --color-input-bg: var(--input-bg);
@@ -115,6 +117,12 @@
   --color-status-warning: var(--status-warning);
   --color-status-success: var(--status-success);
 
+  /* V2 brand accents (coral/warm system) */
+  --color-brand-burgundy: var(--brand-burgundy);
+  --color-brand-plum: var(--brand-plum);
+  --color-plum-text: var(--plum-text);
+  --color-plum-muted: var(--plum-muted);
+
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
@@ -124,10 +132,10 @@
    paper-cards sit on top in pure white (S0). */
 :root {
   --s0: #FFFFFF;   /* paper: cards, modals, popovers, topbar */
-  --s1: #FAFBFC;   /* page canvas: route content area */
-  --s2: #F4F5F7;   /* panels, inspectors, muted/secondary */
-  --s3: #ECEEF1;   /* section surfaces, group containers */
-  --s4: #E4E6EB;   /* interactive chips, soft buttons resting */
+  --s1: #F2F1EF;   /* page canvas: route content area (warm putty) */
+  --s2: #F7F7F7;   /* panels, inspectors, muted/secondary */
+  --s3: #F1F0F0;   /* section surfaces, group containers */
+  --s4: #E6E6E6;   /* interactive chips, soft buttons resting */
 
   --background: var(--s1);
   --surface:    var(--s2);
@@ -152,63 +160,80 @@
   --surface-3: var(--s2);   /* Section surface */
   --surface-4: var(--s0);   /* Card / interactive (lifted above section) */
 
-  --foreground:           #0F172A;
-  --foreground-secondary: #475569;
-  --foreground-disabled:  #94A3B8;
+  --foreground:           #181D27;
+  --foreground-secondary: #4D4D4D;
+  --foreground-disabled:  #A6A6A6;
   --muted:                var(--s2);
-  --muted-foreground:     #64748B;
+  --muted-foreground:     #606060;
   --accent:               var(--s2);
-  --accent-foreground:    #0F172A;
+  --accent-foreground:    #181D27;
 
   --secondary:            var(--s2);
-  --secondary-foreground: #0F172A;
+  --secondary-foreground: #181D27;
 
   /* Hairline border system — soft, neutral, no dark borders */
-  --border-hairline: #EEEFF2;
-  --border:          #E3E5EA;
-  --border-strong:   #CFD2D9;
+  --border-hairline: #ECEBE9;
+  --border:          #E3E3E3;
+  --border-strong:   #BABABA;
 
   --row-hover:    #F4F5F7;
-  --row-selected: color-mix(in srgb, #EF037F 7%, transparent);
+  --row-selected: color-mix(in srgb, #D54646 7%, transparent);
 
-  --nav-active-bg: color-mix(in srgb, #EF037F 8%, transparent);
-  --nav-active-indicator: var(--primary);
+  --nav-active-bg: transparent;
+  --nav-active-indicator: #761B36;
 
-  --primary: #EF037F;
+  --primary: #D54646;
   --primary-foreground: #FFFFFF;
-  --primary-hover: #FF1F8F;
-  --primary-pressed: #D6026F;
-  --ring: #EF037F;
+  --primary-hover: #C23B3B;
+  --primary-pressed: #A93333;
+  --ring: #D54646;
 
-  --destructive: #B4243A;
+  --destructive: #B03A3A;
   --destructive-foreground: #FFFFFF;
 
-  --status-live: #16A34A;
-  --status-draft: #D97706;
-  --status-preview: #2563EB;
+  --status-live: #2E8B57;
+  --status-draft: #5D5D5D;
+  --status-preview: #2786CA;
   --status-archived: #6B7280;
-  --status-scheduled: #0891B2;
-  --status-error: #B4243A;
-  --status-warning: #D97706;
-  --status-success: #16A34A;
+  --status-scheduled: #0E7490;
+  --status-error: #B03A3A;
+  --status-warning: #9A7B24;
+  --status-success: #2E8B57;
+
+  /* V2 brand accents + status/plan chip pairs */
+  --brand-burgundy: #761B36;      /* active nav indicator, deep accent */
+  --brand-plum:     #4B2D39;      /* Upgrade button, deep surface */
+  --plum-text:      #351E27;      /* sidebar workspace name */
+  --plum-muted:     #5F4E55;      /* sidebar workspace meta */
+  --shadow-nav-card: 0 2px 2px rgba(0, 0, 0, 0.02), 0 5px 3px rgba(0, 0, 0, 0.01);
+  --shadow-seg: 0 0 1px rgba(158, 143, 146, 0.10), 0 1px 1px rgba(158, 143, 146, 0.09), 0 3px 2px rgba(158, 143, 146, 0.05);
+  --shadow-seg-track: inset 0 0.5px 2px rgba(182, 168, 171, 0.5);
+  --status-draft-bg: #E6E6E6;
+  --status-draft-fg: #5D5D5D;
+  --status-live-bg:  #D3EDDE;
+  --status-live-fg:  #2D593F;
+  --status-review-bg: rgba(0, 132, 209, 0.15);
+  --status-review-fg: #2786CA;
+  --plan-fg: #0084D1;
+  --plan-border: rgba(0, 166, 244, 0.3);
 
   /* Block category accents (left rail color). Subtle in both themes. */
   --accent-content: transparent;
   --accent-media: #3B82F6;
   --accent-layout: #8B5CF6;
   --accent-interactive: #10B981;
-  --accent-action: #EF037F;
+  --accent-action: #D54646;
   --accent-advanced: #F59E0B;
 
   /* Shadows — restricted to floating layers only.
      Cards/panels/inputs/tables use border + surface tone for depth. */
   --shadow-1: none;
-  --shadow-2: 0 4px 14px -8px rgba(15, 23, 42, 0.12);
-  --shadow-3: 0 12px 32px -16px rgba(15, 23, 42, 0.16), 0 2px 6px -2px rgba(15, 23, 42, 0.06);
+  --shadow-2: 0 4px 14px -8px rgba(53, 30, 39, 0.14);
+  --shadow-3: 0 12px 32px -16px rgba(53, 30, 39, 0.18), 0 2px 6px -2px rgba(53, 30, 39, 0.08);
   --shadow-card:      none;
   --shadow-container: none;
   --shadow-elevated:  var(--shadow-3);
-  --shadow-focus:     0 0 0 3px rgba(239, 3, 127, 0.18);
+  --shadow-focus:     0 0 0 3px rgba(213, 70, 70, 0.20);
 
   /* Motion */
   --motion-fast:   120ms cubic-bezier(0.2, 0, 0, 1);
@@ -256,19 +281,19 @@
    Neutral cool grays, no hue tint in surfaces. Elevation = lighter, never
    shadow. The canvas is dark graphite, not black: comfortable in a dim room
    without glare, with enough floor for the surface ladder to read.
-   The brand pink stays the brand pink, lifted one step for dark contrast.
+   The brand coral stays the brand coral — identical to light mode.
 
    Contrast targets (WCAG AA, checked):
-   - foreground #EDEDEF on card #1C1C1F  ~ 14.6:1
-   - secondary  #C2C2C8 on card          ~  9.6:1
-   - muted-fg   #A0A0A8 on card          ~  6.4:1 (AA normal text)
-   - primary    #F63E8F on canvas        ~  4.8:1 (links, active nav) */
+   - foreground #F2F2F2 on card #1A1A1C
+   - secondary  #C9C9CC on card
+   - muted-fg   #8E8E93 on card
+   - primary    #D54646 on canvas (links, active nav) */
 .dark {
-  --s0:  #141416;   /* Surface 0 — app chrome: canvas, sidebar, topbar */
-  --s1:  #1C1C1F;   /* Surface 1 — cards, panels, inputs (lifted) */
-  --s2:  #222226;   /* Surface 2 — inset, focused, muted fills */
-  --s3:  #28282D;   /* Surface 3 — dropdowns, popovers */
-  --s4:  #2E2E34;   /* Surface 4 — modals, command palette */
+  --s0:  #0F0F10;   /* Surface 0 — app chrome: canvas, sidebar, topbar */
+  --s1:  #1A1A1C;   /* Surface 1 — cards, panels, inputs (lifted) */
+  --s2:  #202023;   /* Surface 2 — inset, focused, muted fills */
+  --s3:  #242428;   /* Surface 3 — dropdowns, popovers */
+  --s4:  #2A2A2E;   /* Surface 4 — modals, command palette */
 
   /* Semantic aliases — chrome sits on s0, content lifts above it */
   --background: var(--s0);
@@ -295,46 +320,57 @@
   --surface-4: var(--s1);
 
   /* Typography — near-white, never pure white (glare), strictly neutral */
-  --foreground:           #EDEDEF;
-  --foreground-secondary: #C2C2C8;
+  --foreground:           #F2F2F2;
+  --foreground-secondary: #C9C9CC;
   --muted:                var(--s2);
-  --muted-foreground:     #A0A0A8;
-  --foreground-disabled:  #6E6E76;
+  --muted-foreground:     #8E8E93;
+  --foreground-disabled:  #6E6E73;
   --accent:               var(--s2);
   --accent-foreground:    var(--foreground);
   --secondary:            var(--s2);
   --secondary-foreground: var(--foreground);
 
   /* Borders — neutral white alphas; hairline carries the structure */
-  --border-hairline: rgba(255, 255, 255, 0.06);
-  --border:          rgba(255, 255, 255, 0.09);
+  --border-hairline: rgba(255, 255, 255, 0.07);
+  --border:          rgba(255, 255, 255, 0.10);
   --border-strong:   rgba(255, 255, 255, 0.16);
 
-  /* Rows: neutral lift on hover, pink tint only when selected */
+  /* Rows: neutral lift on hover, coral tint only when selected */
   --row-hover:    rgba(255, 255, 255, 0.045);
-  --row-selected: color-mix(in srgb, #F63E8F 12%, transparent);
+  --row-selected: color-mix(in srgb, #D54646 12%, transparent);
 
-  /* Sidebar nav: pink indicator + subtle pink wash */
-  --nav-active-bg:        color-mix(in srgb, #F63E8F 12%, transparent);
+  /* Sidebar nav: coral indicator (burgundy is invisible in dark) */
+  --nav-active-bg:        transparent;
   --nav-active-indicator: var(--primary);
 
-  /* Brand — the same pink as light, lifted one step so text and rings
-     hold contrast on graphite. */
-  --primary:            #F63E8F;
+  /* Brand — coral identical to light; it holds contrast on near-black. */
+  --primary:            #D54646;
   --primary-foreground: #FFFFFF;
-  --primary-hover:      #FF5AA1;
-  --primary-pressed:    #E02A7D;
-  --ring:               #F63E8F;
+  --primary-hover:      #E05252;
+  --primary-pressed:    #C23B3B;
+  --ring:               #D54646;
 
-  /* Status — 400-level hues that read on graphite without shouting */
+  /* Status — hues that read on near-black without shouting */
   --status-live:      #4ADE80;
-  --status-draft:     #FBBF24;
+  --status-draft:     #D4B450;
   --status-preview:   #60A5FA;
   --status-archived:  #8B8B93;
   --status-scheduled: #22D3EE;
   --status-error:     #F87171;
-  --status-warning:   #FBBF24;
+  --status-warning:   #D4B450;
   --status-success:   #4ADE80;
+
+  /* V2 brand accents + status/plan chip pairs (dark equivalents) */
+  --plum-text:  #E8DFE3;
+  --plum-muted: #B3A6AC;
+  --status-draft-bg: rgba(212, 180, 80, 0.18);
+  --status-draft-fg: #D4B450;
+  --status-live-bg:  rgba(76, 175, 122, 0.16);
+  --status-live-fg:  #4CAF7A;
+  --status-review-bg: rgba(90, 167, 232, 0.16);
+  --status-review-fg: #5AA7E8;
+  --plan-fg: #4DA9E8;
+  --plan-border: rgba(77, 169, 232, 0.35);
 
   --destructive:            #E5484D;
   --destructive-foreground: #FFFFFF;
@@ -344,7 +380,7 @@
   --accent-media: #60A5FA;
   --accent-layout: #A78BFA;
   --accent-interactive: #34D399;
-  --accent-action: #F63E8F;
+  --accent-action: #D54646;
   --accent-advanced: #FBBF24;
 
   /* Shadows — only floating layers, deeper than light mode */
@@ -354,7 +390,7 @@
   --shadow-card:      none;
   --shadow-container: none;
   --shadow-elevated:  var(--shadow-3);
-  --shadow-focus:     0 0 0 3px rgba(246, 62, 143, 0.28);
+  --shadow-focus:     0 0 0 3px rgba(213, 70, 70, 0.28);
 
   /* Motion */
   --motion-fast:   120ms cubic-bezier(0.2, 0.8, 0.2, 1);

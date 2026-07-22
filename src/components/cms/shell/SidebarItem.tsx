@@ -14,6 +14,13 @@ interface Props {
   trailing?: React.ReactNode;
 }
 
+/**
+ * V2 workspace nav row — 36px, radius 6, 14px medium. The active row is the
+ * only "card" in the sidebar: white surface, hairline border, the layered
+ * nav-card micro shadow, plus the 2px burgundy indicator bar hanging at the
+ * sidebar's left edge (the list carries px-3, so -left-3 lands on the edge
+ * of the scroll container, safely inside its clip box).
+ */
 export function SidebarItem({
   label,
   icon: Icon,
@@ -26,22 +33,28 @@ export function SidebarItem({
   initial,
   trailing,
 }: Props) {
-  const cls = `group relative my-px flex h-8 items-center gap-2.5 rounded-md ${
-    nested ? "pl-7 pr-2" : "px-2.5"
-  } text-[13px] transition-colors duration-150 ${
+  const cls = `group relative flex h-9 items-center gap-2 rounded-md border ${
+    nested ? "pl-7 pr-2.5" : "px-2.5"
+  } text-sm font-medium tracking-[-0.01em] transition-colors duration-150 ${
     active
-      ? "bg-[color:var(--color-row-selected)] font-medium text-foreground"
+      ? "border-border bg-card text-foreground shadow-[var(--shadow-nav-card)]"
       : disabled
-        ? "cursor-default text-muted-foreground/50"
-        : "text-muted-foreground hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
+        ? "cursor-default border-transparent text-muted-foreground/50"
+        : "border-transparent text-foreground-secondary hover:bg-[color:var(--color-row-hover)] hover:text-foreground"
   }`;
 
   const content = (
     <>
+      {active && (
+        <span
+          aria-hidden
+          className="absolute -left-3 bottom-2 top-2 w-0.5 rounded-full bg-[color:var(--nav-active-indicator)]"
+        />
+      )}
       {Icon && (
         <Icon
-          className={`h-4 w-4 shrink-0 ${
-            active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+          className={`h-[18px] w-[18px] shrink-0 ${
+            active ? "text-foreground-secondary" : "text-muted-foreground group-hover:text-foreground-secondary"
           }`}
           strokeWidth={1.75}
         />
